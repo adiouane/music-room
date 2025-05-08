@@ -15,7 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
  */
 @Composable
 fun AuthContainer(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (Any?) -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     var isLoginMode by remember { mutableStateOf(true) }
@@ -25,7 +25,9 @@ fun AuthContainer(
     // Handle login success
     LaunchedEffect(authState.user) {
         if (authState.user != null) {
-            onLoginSuccess()
+            onLoginSuccess(
+                authState.user // Pass the user object to the callback
+            )
         }
     }
     
