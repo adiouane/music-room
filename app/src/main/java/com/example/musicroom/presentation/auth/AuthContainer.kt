@@ -8,52 +8,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.musicroom.data.models.User
 
 /**
- * Container component for authentication flow.
- * Manages navigation between login and signup screens.
+ * This component has been disabled as authentication is being implemented later.
+ * This is just a placeholder to maintain the package structure.
  */
 @Composable
 fun AuthContainer(
-    onLoginSuccess: (Any?) -> Unit,
-    viewModel: AuthViewModel = hiltViewModel()
+    onLoginSuccess: (User) -> Unit,
 ) {
-    var isLoginMode by remember { mutableStateOf(true) }
+    // Immediately call onLoginSuccess with a mock user
+    // This is a simplified approach as authentication is disabled
+    val mockUser = User(
+        id = "test-123",
+        name = "Test User",
+        photoUrl = "https://example.com/test-avatar.jpg",
+        email = "test@gmail.com"
+    )
     
-    val authState by viewModel.authState.collectAsState()
-    
-    // Handle login success
-    LaunchedEffect(authState.user) {
-        if (authState.user != null) {
-            onLoginSuccess(
-                authState.user // Pass the user object to the callback
-            )
-        }
+    LaunchedEffect(Unit) {
+        onLoginSuccess(mockUser)
     }
     
-    if (isLoginMode) {
-        LoginScreen(
-            onLoginClick = { email, password ->
-                viewModel.signInWithEmail(email, password)
-            },
-            onSignUpClick = { 
-                // Switch to sign up mode
-                isLoginMode = false
-            },
-            onForgotPasswordClick = {
-                // TODO: Implement forgot password flow
-                viewModel.sendPasswordResetEmail("") // This needs a proper implementation
-            }
-        )
-    } else {
-        SignUpScreen(
-            onSignUpClick = { name, email, password ->
-                viewModel.signUpWithEmail(name, email, password)
-            },
-            onBackToLoginClick = {
-                // Switch back to login mode
-                isLoginMode = true
-            }
-        )
-    }
+    // No UI is rendered, immediately move to the home screen
 }

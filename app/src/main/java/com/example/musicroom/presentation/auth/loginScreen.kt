@@ -1,43 +1,38 @@
 package com.example.musicroom.presentation.auth
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.RemoveRedEye // Alternative for visibility
-import androidx.compose.material.icons.filled.AccountCircle // Alternative for Google icon
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.musicroom.R
 import com.example.musicroom.components.GoogleButton
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Queue
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.ui.graphics.vector.ImageVector
+
+/**
+ * Login screen - disabled as authentication will be implemented later
+ */
 
 
 @Composable
@@ -46,9 +41,11 @@ fun LoginScreen(
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("test@gmail.com") } // Pre-filled test email
+    var password by remember { mutableStateOf("pass123") } // Pre-filled test password
     var passwordVisible by remember { mutableStateOf(false) }
+    
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrollable content
@@ -90,10 +87,13 @@ fun LoginScreen(
                         passwordVisible = passwordVisible,
                         onPasswordVisibilityChange = { passwordVisible = !passwordVisible }
                     )
+
+
                     
                     ActionButtons(
                         onForgotPasswordClick = onForgotPasswordClick,
-                        onLoginClick = { onLoginClick(email, password) }
+                        onLoginClick = { onLoginClick(email, password) },
+                        isLoading = false
                     )
                 }
             }
@@ -209,14 +209,16 @@ private fun LoginForm(
 @Composable
 private fun ActionButtons(
     onForgotPasswordClick: () -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    isLoading: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
     ) {
         TextButton(
-            onClick = onForgotPasswordClick
+            onClick = onForgotPasswordClick,
+            enabled = !isLoading
         ) {
             Text("Forgot Password?")
         }
@@ -227,11 +229,20 @@ private fun ActionButtons(
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp),
+        enabled = !isLoading,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary
         )
     ) {
-        Text("Login")
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text("Login")
+        }
     }
 
     // Social Login Section

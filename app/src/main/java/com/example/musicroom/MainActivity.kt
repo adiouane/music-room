@@ -4,19 +4,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.navigation.compose.composable
 import com.example.musicroom.data.models.User
-import com.example.musicroom.presentation.auth.AuthContainer
-import com.example.musicroom.presentation.auth.AuthViewModel
-import com.example.musicroom.presentation.main.MainContent
+import com.example.musicroom.presentation.home.SimpleHomeScreen
 import com.example.musicroom.presentation.theme.MusicRoomTheme
 import dagger.hilt.android.AndroidEntryPoint
+import com.example.musicroom.presentation.home.SimpleHomeScreen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.musicroom.presentation.auth.LoginScreen
+import com.example.musicroom.presentation.auth.SignUpScreen
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -34,23 +41,47 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppContent() {
-    val viewModel: AuthViewModel = hiltViewModel()
-    val authState by viewModel.authState.collectAsState()
+    var isAuthenticated by remember { mutableStateOf(false) }
+    val navController = rememberNavController()  
     
-    if (authState.user != null) {
-        // User is logged in, show main app content
-        MainContent(user = authState.user!!)
-    } else {
-        // User is not logged in, show auth container
-        AuthContainer(
-            onLoginSuccess = { user ->
-                // Handle login success, e.g., navigate to main content
-                // This is handled in the AuthContainer via the viewModel
-            }
+    // Mock user data for testing purposes
+    val mockUser = remember {
+        User(
+            id = "test-123",
+            name = "Test User",
+            photoUrl = "https://example.com/test-avatar.jpg",
+            email = "test@gmail.com"
         )
-        // No need to pass onLoginSuccess as the viewModel will handle state updates
+    }
+
+    if (isAuthenticated) {
+        // Show home screen when authenticated
+        SimpleHomeScreen(user = mockUser)
+    } else {
+        // Show login screen when not authenticated
+        NavHost(navController = navController, startDestination = "login") {
+            composable("login") {
+                LoginScreen(
+                    onLoginClick = { email, password -> /* Handle login */
+                        isAuthenticated = true // Simulate successful login
+                    },
+                    onSignUpClick = {
+                        navController.navigate("signup")
+                    },
+                    onForgotPasswordClick = { /* Handle forgot password */ }
+                )
+            }
+            composable("signup") {
+                SignUpScreen(
+                    onSignUpClick = { name, email, password -> /* Handle sign up */ },
+                    onBackToLoginClick = {
+                        navController.navigateUp()
+                    }
+                )
+            }
+        }
     }
 }

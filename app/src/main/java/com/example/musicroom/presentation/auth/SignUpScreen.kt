@@ -14,15 +14,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.musicroom.presentation.auth.components.PasswordTextField
+//import com.example.musicroom.presentation.auth.components.PasswordTextField
 
+/**
+ * SignUp screen - disabled as authentication will be implemented later
+ */
 @Composable
 fun SignUpScreen(
     onSignUpClick: (name: String, email: String, password: String) -> Unit,
     onBackToLoginClick: () -> Unit
 ) {
     var signUpState by remember { mutableStateOf(SignUpFormState()) }
+    
+
     
     Column(
         modifier = Modifier
@@ -32,14 +38,29 @@ fun SignUpScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         SignUpHeader()
+        
         SignUpForm(
             state = signUpState,
             onStateChange = { signUpState = it }
         )
+        
+
+        
+        // Information text for test workflow
+        Text(
+            text = "Note: For this demo, only test@gmail.com / pass123 will work.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        
         SignUpButton(
             state = signUpState,
-            onSignUpClick = onSignUpClick
+            onSignUpClick = onSignUpClick,
+            isLoading = false
         )
+        
         LoginLink(onBackToLoginClick)
     }
 }
@@ -83,8 +104,7 @@ private fun SignUpHeader() {
                 text = "Create an account to get started",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+            )        }
     }
 }
 
@@ -109,43 +129,15 @@ private fun SignUpForm(
     )
     
     var passwordVisible by remember { mutableStateOf(false) }
-    PasswordTextField(
+    CustomTextField(
         value = state.password,
         onValueChange = { onStateChange(state.copy(password = it)) },
         label = "Password",
-        passwordVisible = passwordVisible,
-        onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
-        imeAction = ImeAction.Done,
+        icon = Icons.Default.Lock,
+        keyboardType = KeyboardType.Password
     )
 }
 
-@Composable
-private fun SignUpButton(
-    state: SignUpFormState,
-    onSignUpClick: (String, String, String) -> Unit
-) {
-    Button(
-        onClick = {
-            if (state.isValid()) {
-                onSignUpClick(state.name, state.email, state.password)
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(12.dp),
-        enabled = state.isValid()
-    ) {
-        Text("Create Account")
-    }
-}
-
-@Composable
-private fun LoginLink(onBackToLoginClick: () -> Unit) {
-    TextButton(onClick = onBackToLoginClick) {
-        Text("Already have an account? Log In")
-    }
-}
 
 @Composable
 private fun CustomTextField(
@@ -164,6 +156,43 @@ private fun CustomTextField(
         modifier = Modifier.fillMaxWidth(),
         singleLine = true
     )
+}
+
+@Composable
+private fun SignUpButton(
+    state: SignUpFormState,
+    onSignUpClick: (String, String, String) -> Unit,
+    isLoading: Boolean = false
+) {
+    Button(
+        onClick = {
+            if (state.isValid()) {
+                onSignUpClick(state.name, state.email, state.password)
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        enabled = state.isValid() && !isLoading
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text("Create Account")
+        }
+    }
+}
+
+@Composable
+private fun LoginLink(onBackToLoginClick: () -> Unit) {
+    TextButton(onClick = onBackToLoginClick) {
+        Text("Already have an account? Log In")
+    }
 }
 
 private data class SignUpFormState(
