@@ -16,6 +16,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.musicroom.presentation.explore.ExploreScreen
 import com.example.musicroom.presentation.profile.ProfileScreen
 import com.example.musicroom.presentation.room.CreateRoomScreen
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * A simplified HomeScreen that is guaranteed not to crash
@@ -27,7 +31,6 @@ fun SimpleHomeScreen(user: User) {
     val navController = rememberNavController()
 
     Scaffold(
-        topBar = { SimpleTopBar(user.name) },
         bottomBar = { 
             SimpleBottomNav(
                 currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route,
@@ -56,52 +59,40 @@ private fun SimpleBottomNav(
     currentRoute: String?,
     onTabSelected: (String) -> Unit
 ) {
-    NavigationBar {
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
-            selected = currentRoute == "home",
-            onClick = { onTabSelected("home") }
+    NavigationBar(
+        containerColor = Color(0xFF181818), // dark background like Spotify
+        tonalElevation = 8.dp
+    ) {
+        val items = listOf(
+            Triple("home", Icons.Default.Home, "Home"),
+            Triple("explore", Icons.Default.Search, "Explore"),
+            Triple("create", Icons.Default.Add, "Create"),
+            Triple("profile", Icons.Default.Person, "Profile")
         )
-        
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Search, contentDescription = "Explore") },
-            label = { Text("Explore") },
-            selected = currentRoute == "explore",
-            onClick = { onTabSelected("explore") }
-        )
-        
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = "Create") },
-            label = { Text("Create") },
-            selected = currentRoute == "create",
-            onClick = { onTabSelected("create") }
-        )
-        
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-            label = { Text("Profile") },
-            selected = currentRoute == "profile",
-            onClick = { onTabSelected("profile") }
-        )
+
+        items.forEach { (route, icon, label) ->
+            val selected = currentRoute == route
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = if (selected) Color.White else Color.Gray
+                    )
+                },
+                label = {
+                    Text(
+                        text = label,
+                        color = if (selected) Color.White else Color.Gray,
+                        fontSize = 12.sp
+                    )
+                },
+                selected = selected,
+                onClick = { onTabSelected(route) },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = Color(0xFF1DB954) // Spotify green indicator
+                )
+            )
+        }
     }
 }
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SimpleTopBar(userName: String) {
-    TopAppBar(
-        title = { Text("Music Room") },
-        actions = {
-            IconButton(onClick = { /* Settings action */ }) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings"
-                )
-            }
-        }    )
-}
-
-
