@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "605192910913",
+    "project_id": "musicroom-7e327",
+    "storage_bucket": "musicroom-7e327.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605192910913:android:d75bf24875d3acf545eec0",
+        "android_client_info": {
+          "package_name": "com.example.musicroom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBV1Xzs6Wc_TepYjEv_yGhyV8S_C2h9MnY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
