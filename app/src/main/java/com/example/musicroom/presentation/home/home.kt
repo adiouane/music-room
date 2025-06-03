@@ -63,14 +63,22 @@ fun HomeTabScreen() {
                         brush = purpleGradient,
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .padding(vertical = 12.dp, horizontal = 16.dp)
+                    .padding(vertical = 24.dp, horizontal = 16.dp)
             ) {
-                Text(
-                    text = "Home",
-                    color = TextPrimary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column {
+                    Text(
+                        text = "Welcome to MusicRoom",
+                        color = TextPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Discover and share your favorite music",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }

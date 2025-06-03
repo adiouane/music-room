@@ -23,6 +23,7 @@ fun AuthContainer(
     val mockUser = User(
         id = "test-123",
         name = "Test User",
+        username = "testuser", // Add username
         photoUrl = "https://example.com/test-avatar.jpg",
         email = "test@gmail.com"
     )
