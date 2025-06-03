@@ -26,6 +26,24 @@ val purpleGradient = Brush.linearGradient(
     )
 )
 
+// Make gradient public
+public val onboardingGradient = Brush.verticalGradient(
+    listOf(
+        DarkBackground,
+        PrimaryPurple.copy(alpha = 0.2f),
+        DeepPurple.copy(alpha = 0.1f),
+        DarkBackground
+    )
+)
+
+// Add to existing gradients
+val signUpGradient = Brush.verticalGradient(
+    listOf(
+        PrimaryPurple,
+        DeepPurple
+    )
+)
+
 // Dark Theme Colors
 val DarkPrimary = PrimaryPurple
 val DarkSecondary = DeepPurple

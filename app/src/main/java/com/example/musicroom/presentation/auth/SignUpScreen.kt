@@ -1,5 +1,6 @@
 package com.example.musicroom.presentation.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,54 +17,97 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-//import com.example.musicroom.presentation.auth.components.PasswordTextField
+import com.example.musicroom.presentation.theme.*
 
-/**
- * SignUp screen - disabled as authentication will be implemented later
- */
 @Composable
 fun SignUpScreen(
     onSignUpClick: (name: String, email: String, password: String) -> Unit,
     onBackToLoginClick: () -> Unit
 ) {
-    var signUpState by remember { mutableStateOf(SignUpFormState()) }
-    
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
-    
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(onboardingGradient)
     ) {
-        SignUpHeader()
-        
-        SignUpForm(
-            state = signUpState,
-            onStateChange = { signUpState = it }
-        )
-        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            SignUpHeader()
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            CustomTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = "Full Name",
+                icon = Icons.Default.Person
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            CustomTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = "Email",
+                icon = Icons.Default.Email,
+                keyboardType = KeyboardType.Email
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            CustomTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = "Password",
+                icon = Icons.Default.Lock,
+                keyboardType = KeyboardType.Password,
+                visualTransformation = if (passwordVisible) 
+                    VisualTransformation.None 
+                else 
+                    PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) 
+                                Icons.Default.Visibility 
+                            else 
+                                Icons.Default.VisibilityOff,
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
 
-        
-        // Information text for test workflow
-        Text(
-            text = "Note: For this demo, only test@gmail.com / pass123 will work.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        
-        SignUpButton(
-            state = signUpState,
-            onSignUpClick = onSignUpClick,
-            isLoading = false
-        )
-        
-        LoginLink(onBackToLoginClick)
+            PasswordStrengthIndicator(password)
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Button(
+                onClick = { onSignUpClick(name, email, password) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+            ) {
+                Text("Sign Up")
+            }
+            
+            TextButton(onClick = onBackToLoginClick) {
+                Text("Already have an account? Log in")
+            }
+        }
     }
 }
 
@@ -69,75 +115,51 @@ fun SignUpScreen(
 private fun SignUpHeader() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(vertical = 32.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = RoundedCornerShape(40.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-            ) {}
-        }
-        
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Welcome to MusicRoom",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Create an account to get started",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )        }
+        Text(
+            text = "Welcome to MusicRoom",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = "Create an account to get started",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun SignUpForm(
-    state: SignUpFormState,
-    onStateChange: (SignUpFormState) -> Unit
-) {
-    CustomTextField(
-        value = state.name,
-        onValueChange = { onStateChange(state.copy(name = it)) },
-        label = "Full Name",
-        icon = Icons.Default.Person
-    )
-    
-    CustomTextField(
-        value = state.email,
-        onValueChange = { onStateChange(state.copy(email = it)) },
-        label = "Email",
-        icon = Icons.Default.Email,
-        keyboardType = KeyboardType.Email
-    )
-    
-    var passwordVisible by remember { mutableStateOf(false) }
-    CustomTextField(
-        value = state.password,
-        onValueChange = { onStateChange(state.copy(password = it)) },
-        label = "Password",
-        icon = Icons.Default.Lock,
-        keyboardType = KeyboardType.Password
-    )
-}
+private fun PasswordStrengthIndicator(password: String) {
+    val strength = when {
+        password.length > 8 && password.any { it.isDigit() } && 
+        password.any { it.isUpperCase() } -> 3
+        password.length > 6 -> 2
+        password.isNotEmpty() -> 1
+        else -> 0
+    }
 
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        repeat(3) { index ->
+            Box(
+                modifier = Modifier
+                .weight(1f)
+                .height(4.dp)
+                .background(
+                    color = if (index < strength) PrimaryPurple 
+                           else TextSecondary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(2.dp)
+                )
+            )
+        }
+    }
+}
 
 @Composable
 private fun CustomTextField(
@@ -145,62 +167,26 @@ private fun CustomTextField(
     onValueChange: (String) -> Unit,
     label: String,
     icon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        leadingIcon = { Icon(icon, null) },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        leadingIcon = { Icon(icon, contentDescription = null) },
+        trailingIcon = trailingIcon,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = ImeAction.Next
+        ),
+        visualTransformation = visualTransformation,
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = PrimaryPurple,
+            unfocusedBorderColor = TextSecondary
+        )
     )
-}
-
-@Composable
-private fun SignUpButton(
-    state: SignUpFormState,
-    onSignUpClick: (String, String, String) -> Unit,
-    isLoading: Boolean = false
-) {
-    Button(
-        onClick = {
-            if (state.isValid()) {
-                onSignUpClick(state.name, state.email, state.password)
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(12.dp),
-        enabled = state.isValid() && !isLoading
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp
-            )
-        } else {
-            Text("Create Account")
-        }
-    }
-}
-
-@Composable
-private fun LoginLink(onBackToLoginClick: () -> Unit) {
-    TextButton(onClick = onBackToLoginClick) {
-        Text("Already have an account? Log In")
-    }
-}
-
-private data class SignUpFormState(
-    val name: String = "",
-    val email: String = "",
-    val password: String = ""
-) {
-    fun isValid() = name.isNotBlank() && 
-                    email.isNotBlank() && 
-                    password.length >= 6
 }

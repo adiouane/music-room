@@ -24,6 +24,8 @@ import com.example.musicroom.presentation.auth.SignUpScreen
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.musicroom.presentation.splash.SplashScreen
+import com.example.musicroom.presentation.onboarding.OnboardingScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -31,58 +33,82 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MusicRoomTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                val navController = rememberNavController()
+                var user by remember { mutableStateOf<User?>(null) }
+                var hasSeenOnboarding by remember { mutableStateOf(false) }
+                
+                NavHost(
+                    navController = navController,
+                    startDestination = "splash"
                 ) {
-                    AppContent()
+                    composable("splash") {
+                        SplashScreen(
+                            onNavigateToOnboarding = { navController.navigate("onboarding") }
+                        )
+                    }
+                    
+                    composable("onboarding") {
+                        OnboardingScreen(
+                            onFinish = {
+                                hasSeenOnboarding = true
+                                navController.navigate("auth") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    
+                    composable("auth") {
+                        AuthContainer(
+                            onLoginSuccess = { newUser ->
+                                user = newUser
+                                navController.navigate("home") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    
+                    composable("home") {
+                        user?.let { SimpleHomeScreen(user = it) }
+                    }
                 }
             }
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppContent() {
-    var isAuthenticated by remember { mutableStateOf(false) }
-    val navController = rememberNavController()  
-    
-    // Mock user data for testing purposes
-    val mockUser = remember {
-        User(
-            id = "test-123",
-            name = "Test User",
-            username = "testuser", // Add username
-            photoUrl = "https://example.com/test-avatar.jpg",
-            email = "test@gmail.com"
-        )
-    }
+fun AuthContainer(onLoginSuccess: (User) -> Unit) {
+    val navController = rememberNavController()
 
-    if (isAuthenticated) {
-        // Show home screen when authenticated
-        SimpleHomeScreen(user = mockUser)
-    } else {
-        // Show login screen when not authenticated
-        NavHost(navController = navController, startDestination = "login") {
-            composable("login") {
-                LoginScreen(
-                    onLoginClick = { email, password -> /* Handle login */
-                        isAuthenticated = true // Simulate successful login
-                    },
-                    onSignUpClick = {
-                        navController.navigate("signup")
-                    },
-                    onForgotPasswordClick = { /* Handle forgot password */ }
-                )
-            }
-            composable("signup") {
-                SignUpScreen(
-                    onSignUpClick = { name, email, password -> /* Handle sign up */ },
-                    onBackToLoginClick = {
-                        navController.navigateUp()
-                    }
-                )
-            }
+    NavHost(navController = navController, startDestination = "login") {
+        composable("login") {
+            LoginScreen(
+                onLoginClick = { email, password -> /* Handle login */
+                    val mockUser = User(
+                        id = "test-123",
+                        name = "Test User",
+                        username = "testuser",
+                        photoUrl = "https://example.com/test-avatar.jpg",
+                        email = email
+                    )
+                    onLoginSuccess(mockUser) // Simulate successful login
+                },
+                onSignUpClick = {
+                    navController.navigate("signup")
+                },
+                onForgotPasswordClick = { /* Handle forgot password */ }
+            )
+        }
+        composable("signup") {
+            SignUpScreen(
+                onSignUpClick = { name, email, password -> /* Handle sign up */ },
+                onBackToLoginClick = {
+                    navController.navigateUp()
+                }
+            )
         }
     }
 }
