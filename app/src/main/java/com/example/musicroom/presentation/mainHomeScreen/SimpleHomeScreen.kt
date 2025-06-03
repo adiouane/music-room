@@ -16,10 +16,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.musicroom.presentation.explore.ExploreScreen
 import com.example.musicroom.presentation.profile.ProfileScreen
 import com.example.musicroom.presentation.room.CreateRoomScreen
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.musicroom.presentation.theme.*
 
 /**
  * A simplified HomeScreen that is guaranteed not to crash
@@ -60,7 +60,7 @@ private fun SimpleBottomNav(
     onTabSelected: (String) -> Unit
 ) {
     NavigationBar(
-        containerColor = Color(0xFF181818), // dark background like Spotify
+        containerColor = DarkBackground,
         tonalElevation = 8.dp
     ) {
         val items = listOf(
@@ -77,20 +77,20 @@ private fun SimpleBottomNav(
                     Icon(
                         imageVector = icon,
                         contentDescription = label,
-                        tint = if (selected) Color.White else Color.Gray
+                        tint = if (selected) TextPrimary else TextSecondary
                     )
                 },
                 label = {
                     Text(
                         text = label,
-                        color = if (selected) Color.White else Color.Gray,
+                        color = if (selected) TextPrimary else TextSecondary,
                         fontSize = 12.sp
                     )
                 },
                 selected = selected,
                 onClick = { onTabSelected(route) },
                 colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color(0xFF1DB954) // Spotify green indicator
+                    indicatorColor = PrimaryPurple
                 )
             )
         }

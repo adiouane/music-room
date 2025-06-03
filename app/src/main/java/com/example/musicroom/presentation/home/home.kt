@@ -15,13 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicroom.R
+import com.example.musicroom.presentation.theme.*
 
 // Data model
 data class Album(val title: String, val artist: String, val imageRes: Int)
@@ -53,7 +52,7 @@ fun HomeTabScreen() {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212))
+            .background(DarkBackground)
             .padding(16.dp)
     ) {
         item {
@@ -61,16 +60,14 @@ fun HomeTabScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color(0xFF1DB954), Color(0xFF121212))
-                        ),
+                        brush = purpleGradient,
                         shape = RoundedCornerShape(12.dp)
                     )
                     .padding(vertical = 12.dp, horizontal = 16.dp)
             ) {
                 Text(
                     text = "Home",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -79,7 +76,12 @@ fun HomeTabScreen() {
         }
 
         item {
-            Text("Expand your recent listening", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Expand your recent listening",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(modifier = Modifier.height(16.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(continueAlbums) { album ->
@@ -92,7 +94,7 @@ fun HomeTabScreen() {
                                 .clip(MaterialTheme.shapes.medium)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(album.title, color = Color.White, fontSize = 12.sp)
+                        Text(album.title, color = TextPrimary, fontSize = 12.sp)
                     }
                 }
             }
@@ -100,7 +102,7 @@ fun HomeTabScreen() {
         }
 
         item {
-            Text("Made For You", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Made For You", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -109,7 +111,7 @@ fun HomeTabScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A))
+                colors = CardDefaults.cardColors(containerColor = DarkSurface)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
                     Image(
@@ -121,11 +123,24 @@ fun HomeTabScreen() {
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(track.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text(track.artist, color = Color.Gray, fontSize = 12.sp)
+                        Text(
+                            track.title,
+                            color = TextPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            track.artist,
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
                     }
                     IconButton(onClick = { }) {
-                        Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = Color.White)
+                        Icon(
+                            Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = TextPrimary
+                        )
                     }
                 }
             }
@@ -133,14 +148,14 @@ fun HomeTabScreen() {
 
         item {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Discover picks for you", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Discover picks for you", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(trackList) { track ->
                     Card(
                         modifier = Modifier.width(260.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF333333))
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -153,11 +168,11 @@ fun HomeTabScreen() {
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(track.title, color = Color.White, fontSize = 14.sp)
-                                    Text("Hand-picked for you", color = Color.Gray, fontSize = 12.sp)
+                                    Text(track.title, color = TextPrimary, fontSize = 14.sp)
+                                    Text("Hand-picked for you", color = TextSecondary, fontSize = 12.sp)
                                 }
                                 IconButton(onClick = { }) {
-                                    Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = Color.White)
+                                    Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = TextPrimary)
                                 }
                             }
                         }
@@ -168,7 +183,7 @@ fun HomeTabScreen() {
 
         item {
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Popular Artists", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Popular Artists", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(popularArtists) { artist ->
@@ -181,7 +196,7 @@ fun HomeTabScreen() {
                                 .clip(CircleShape)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(artist.name, color = Color.White, fontSize = 12.sp)
+                        Text(artist.name, color = TextPrimary, fontSize = 12.sp)
                     }
                 }
             }
