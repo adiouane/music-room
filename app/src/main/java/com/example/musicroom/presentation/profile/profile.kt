@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -178,7 +178,7 @@ private fun SettingsSection(title: String, items: List<SettingsItem>) {
                 items.forEachIndexed { index, item ->
                     SettingsItemRow(item)
                     if (index < items.size - 1) {
-                        HorizontalDivider(color = TextSecondary.copy(alpha = 0.2f))
+                        Divider(color = TextSecondary.copy(alpha = 0.2f))
                     }
                 }
             }

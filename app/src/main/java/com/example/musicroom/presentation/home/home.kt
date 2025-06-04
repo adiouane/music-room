@@ -11,14 +11,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import com.example.musicroom.R
 import com.example.musicroom.presentation.theme.*
 
@@ -26,6 +32,15 @@ import com.example.musicroom.presentation.theme.*
 data class Album(val title: String, val artist: String, val imageRes: Int)
 
 data class Artist(val name: String, val imageRes: Int)
+
+data class MusicRoom(
+    val id: String,
+    val name: String,
+    val hostName: String,
+    val currentTrack: String,
+    val listeners: Int,
+    val isLive: Boolean
+)
 
 // Dummy data
 val continueAlbums = listOf(
@@ -45,6 +60,25 @@ val popularArtists = listOf(
     Artist("LFERDA", R.drawable.short_sweet),
     Artist("Figoshin", R.drawable.fireworks_rollerblades),
     Artist("Cheb Mami", R.drawable.brat)
+)
+
+val activeRooms = listOf(
+    MusicRoom(
+        id = "1",
+        name = "Chill Vibes Room",
+        hostName = "LFERDA",
+        currentTrack = "Figoshin - New Track",
+        listeners = 42,
+        isLive = true
+    ),
+    MusicRoom(
+        id = "2",
+        name = "Party Mix",
+        hostName = "Cheb Mami",
+        currentTrack = "Live Session",
+        listeners = 28,
+        isLive = true
+    )
 )
 
 @Composable
@@ -85,6 +119,22 @@ fun HomeTabScreen() {
 
         item {
             Text(
+                "Live Rooms",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(activeRooms) { room ->
+                    RoomCard(room = room)
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        item {
+            Text(
                 "Expand your recent listening",
                 color = TextPrimary,
                 fontSize = 20.sp,
@@ -114,7 +164,7 @@ fun HomeTabScreen() {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(trackList) { track ->
+        items(trackList) { track -> 
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -159,7 +209,7 @@ fun HomeTabScreen() {
             Text("Discover picks for you", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(trackList) { track ->
+                items(trackList) { track -> 
                     Card(
                         modifier = Modifier.width(260.dp),
                         shape = RoundedCornerShape(16.dp),
@@ -194,7 +244,7 @@ fun HomeTabScreen() {
             Text("Popular Artists", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(popularArtists) { artist ->
+                items(popularArtists) { artist -> 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Image(
                             painter = painterResource(id = artist.imageRes),
@@ -208,6 +258,87 @@ fun HomeTabScreen() {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LiveIndicator() {
+    val transition = remember { 
+        Animatable(0.8f)
+    }
+    
+    LaunchedEffect(Unit) {
+        transition.animateTo(
+            targetValue = 1.2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            )
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .size(8.dp)
+            .scale(transition.value)
+            .background(Color(0xFF4CAF50), CircleShape)
+    )
+}
+
+@Composable
+private fun RoomCard(room: MusicRoom) {
+    Card(
+        modifier = Modifier
+            .width(200.dp)
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = room.name,
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (room.isLive) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        LiveIndicator()
+                        Text(
+                            "LIVE",
+                            color = Color.Green,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Host: ${room.hostName}",
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+            Text(
+                text = "🎵 ${room.currentTrack}",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+            Text(
+                text = "👥 ${room.listeners} listening",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
         }
     }
 }
