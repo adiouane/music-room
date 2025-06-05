@@ -27,6 +27,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import com.example.musicroom.R
 import com.example.musicroom.presentation.theme.*
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextOverflow
 
 // Data model
 data class Album(val title: String, val artist: String, val imageRes: Int)
@@ -286,30 +289,44 @@ private fun LiveIndicator() {
     )
 }
 
+
 @Composable
-private fun RoomCard(room: MusicRoom) {
+private fun RoomCard(
+    room: MusicRoom,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    val cardWidth = when {
+        screenWidth > 600.dp -> screenWidth * 0.3f
+        screenWidth > 400.dp -> screenWidth * 0.45f
+        else -> screenWidth * 0.75f
+    }
+
     Card(
-        modifier = Modifier
-            .width(200.dp)
+        modifier = modifier
+            .width(cardWidth)
+            .height(160.dp)
             .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = room.name,
-                    color = TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (room.isLive) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Live Indicator Badge
+            if (room.isLive) {
+                Card(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopEnd),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF1E4620)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -323,22 +340,57 @@ private fun RoomCard(room: MusicRoom) {
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Host: ${room.hostName}",
-                color = TextSecondary,
-                fontSize = 14.sp
-            )
-            Text(
-                text = "🎵 ${room.currentTrack}",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
-            Text(
-                text = "👥 ${room.listeners} listening",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
+
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = room.name,
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "Hosted by ${room.hostName}",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = room.currentTrack,
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${room.listeners} listening",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
