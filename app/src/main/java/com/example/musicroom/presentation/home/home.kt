@@ -30,20 +30,18 @@ import com.example.musicroom.presentation.theme.*
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.clickable
+import androidx.navigation.NavController
+import com.example.musicroom.data.models.Track
+import com.example.musicroom.data.models.MusicRoom
+import com.example.musicroom.data.models.activeRooms
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 // Data model
 data class Album(val title: String, val artist: String, val imageRes: Int)
 
 data class Artist(val name: String, val imageRes: Int)
-
-data class MusicRoom(
-    val id: String,
-    val name: String,
-    val hostName: String,
-    val currentTrack: String,
-    val listeners: Int,
-    val isLive: Boolean
-)
 
 // Dummy data
 val continueAlbums = listOf(
@@ -65,27 +63,8 @@ val popularArtists = listOf(
     Artist("Cheb Mami", R.drawable.brat)
 )
 
-val activeRooms = listOf(
-    MusicRoom(
-        id = "1",
-        name = "Chill Vibes Room",
-        hostName = "LFERDA",
-        currentTrack = "Figoshin - New Track",
-        listeners = 42,
-        isLive = true
-    ),
-    MusicRoom(
-        id = "2",
-        name = "Party Mix",
-        hostName = "Cheb Mami",
-        currentTrack = "Live Session",
-        listeners = 28,
-        isLive = true
-    )
-)
-
 @Composable
-fun HomeTabScreen() {
+fun HomeTabScreen(navController: NavController) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -130,7 +109,7 @@ fun HomeTabScreen() {
             Spacer(modifier = Modifier.height(16.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(activeRooms) { room ->
-                    RoomCard(room = room)
+                    RoomCard(room = room, navController = navController)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -266,33 +245,41 @@ fun HomeTabScreen() {
 }
 
 @Composable
-private fun LiveIndicator() {
-    val transition = remember { 
-        Animatable(0.8f)
+fun LiveIndicator(isLive: Boolean = false) {
+    if (isLive) {
+        Card(
+            modifier = Modifier
+                .padding(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1E4620)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color.Green, CircleShape)
+                )
+                Text(
+                    "LIVE",
+                    color = Color.Green,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
     }
-    
-    LaunchedEffect(Unit) {
-        transition.animateTo(
-            targetValue = 1.2f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000),
-                repeatMode = RepeatMode.Reverse
-            )
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .size(8.dp)
-            .scale(transition.value)
-            .background(Color(0xFF4CAF50), CircleShape)
-    )
 }
-
 
 @Composable
 private fun RoomCard(
     room: MusicRoom,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -306,6 +293,9 @@ private fun RoomCard(
 
     Card(
         modifier = modifier
+            .clickable { 
+                navController.navigate("room/${room.id}")
+            }
             .width(cardWidth)
             .height(160.dp)
             .padding(vertical = 8.dp),
@@ -316,28 +306,11 @@ private fun RoomCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // Live Indicator Badge
             if (room.isLive) {
-                Card(
+                Box(
                     modifier = Modifier
-                        .padding(8.dp)
-                        .align(Alignment.TopEnd),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF1E4620)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                        .align(Alignment.TopEnd)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        LiveIndicator()
-                        Text(
-                            "LIVE",
-                            color = Color.Green,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    LiveIndicator(isLive = room.isLive)
                 }
             }
 

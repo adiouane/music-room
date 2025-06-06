@@ -28,9 +28,9 @@ data class User(
  * @property timestamp Timestamp when the track was added
  */
 data class Track(
-    val id: String = "",
-    val title: String = "",
-    val artist: String = "",
+    val id: String,
+    val title: String,
+    val artist: String,
     val imageUrl: String? = null,
     var votes: Int = 0,
     val addedBy: String = "",
@@ -38,26 +38,26 @@ data class Track(
 )
 
 /**
- * Data class representing a music room
+ * Data class representing a room in the application
  *
  * @property id Unique identifier for the room
  * @property name Name of the room
- * @property hostId ID of the host user
- * @property isPublic Whether the room is public
- * @property licenseType Type of license for the room
- * @property participants List of participant user IDs
+ * @property hostName Name of the host user
+ * @property currentTrack Currently playing track title
+ * @property currentArtist Currently playing artist name
+ * @property listeners Number of listeners currently in the room
+ * @property isLive Whether the room is currently live
  * @property playlist List of tracks in the room's playlist
- * @property connectedDevices List of devices connected to the room
  */
 data class Room(
-    val id: String = "",
-    val name: String = "",
-    val hostId: String = "",
-    val isPublic: Boolean = true,
-    val licenseType: LicenseType = LicenseType.OpenVote,
-    val participants: List<String> = emptyList(),
-    val playlist: List<Track> = emptyList(),
-    val connectedDevices: List<Device> = emptyList()
+    val id: String,
+    val name: String,
+    val hostName: String,
+    val currentTrack: String,
+    val currentArtist: String,
+    val listeners: Int,
+    val isLive: Boolean,
+    val playlist: List<Track> = emptyList()
 )
 
 /**

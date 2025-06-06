@@ -13,15 +13,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.musicroom.presentation.explore.ExploreScreen
 import com.example.musicroom.presentation.profile.ProfileScreen
 import com.example.musicroom.presentation.room.CreateRoomScreen
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.data.sample.SampleData
-import com.example.musicroom.presentation.room.RoomScreen
+import com.example.musicroom.presentation.theme.* 
+import com.example.musicroom.presentation.room.*
 
 /**
  * A simplified HomeScreen that is guaranteed not to crash
@@ -48,23 +49,16 @@ fun SimpleHomeScreen(user: User) {
             startDestination = "home",
             modifier = Modifier.padding(paddingValues)
         ) {
-            composable("home") { HomeTabScreen() }
+            composable("home") { HomeTabScreen(navController) }
             composable("explore") { ExploreScreen() }
             composable("create") { CreateRoomScreen() }
             composable("profile") { ProfileScreen(user) }
-            composable("room/{roomId}") { backStackEntry ->
+            composable(
+                route = "room/{roomId}",
+                arguments = listOf(navArgument("roomId") { type = NavType.StringType })
+            ) { backStackEntry ->
                 val roomId = backStackEntry.arguments?.getString("roomId")
-                roomId?.let { id ->
-                    val room = SampleData.rooms.find { it.id == id }
-                    room?.let {
-                        RoomScreen(
-                            room = it,
-                            onVote = { track, value -> /* Handle vote */ },
-                            onAddTrack = { /* Handle add track */ },
-                            onDevicePermissionChange = { device, permissions -> /* Handle permissions */ }
-                        )
-                    }
-                }
+                RoomDetailScreen(roomId = roomId, onBackClick = { navController.navigateUp() })
             }
         }
     }
