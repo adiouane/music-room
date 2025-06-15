@@ -26,7 +26,7 @@ import com.example.musicroom.presentation.room.CreateRoomScreen
 import com.example.musicroom.presentation.theme.* 
 import com.example.musicroom.presentation.room.*
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
-import com.example.musicroom.presentation.home.HomeTabScreen
+import com.example.musicroom.presentation.home.HomeScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +52,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             modifier = Modifier.padding(paddingValues)
         ) {
             composable("home") { 
-                HomeTabScreen(navController = navController)  // Pass the main navController for playlist navigation
+                HomeScreen(navController = navController)  // Pass the main navController for playlist navigation
             }
             composable("explore") { 
                 ExploreScreen() 
@@ -68,8 +68,11 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 route = "room/{roomId}",
                 arguments = listOf(navArgument("roomId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val roomId = backStackEntry.arguments?.getString("roomId")
-                RoomDetailScreen(roomId = roomId, onBackClick = { innerNavController.navigateUp() })
+                val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
+                RoomDetailScreen(
+                    roomId = roomId,
+                    navController = innerNavController  // Use correct parameter name
+                )
             }
             
             composable(

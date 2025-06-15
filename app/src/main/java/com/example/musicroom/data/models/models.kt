@@ -38,6 +38,48 @@ data class Track(
 )
 
 /**
+ * Data class representing an artist
+ *
+ * @property id Unique identifier for the artist
+ * @property name Artist name
+ * @property image URL to the artist's image
+ * @property website Artist's website URL
+ * @property joindate Date when the artist joined the platform
+ * @property shorturl Short URL to artist's profile
+ * @property shareurl Share URL to artist's profile
+ */
+data class Artist(
+    val id: String,
+    val name: String,
+    val image: String,
+    val website: String,
+    val joindate: String,
+    val shorturl: String,
+    val shareurl: String
+)
+
+/**
+ * Data classes for API responses
+ */
+data class ArtistsApiResponse(
+    val popular_artists: PopularArtists
+)
+
+data class PopularArtists(
+    val headers: ApiHeaders,
+    val results: List<Artist>
+)
+
+data class ApiHeaders(
+    val status: String,
+    val code: Int,
+    val error_message: String,
+    val warnings: String,
+    val results_count: Int,
+    val next: String?
+)
+
+/**
  * Data class representing a room in the application
  *
  * @property id Unique identifier for the room

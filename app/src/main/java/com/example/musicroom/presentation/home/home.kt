@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
@@ -40,72 +39,70 @@ import com.example.musicroom.data.models.MusicRoom
 import com.example.musicroom.data.models.activeRooms
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.style.TextAlign
+import android.util.Log
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
+import com.example.musicroom.data.models.Artist
+import androidx.compose.runtime.getValue
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 
 // Data model
 data class Album(val title: String, val artist: String, val imageRes: Int)
 
-data class Artist(val name: String, val imageRes: Int)
-
 data class Playlist(val id: String, val name: String, val trackCount: Int, val imageRes: Int)
 data class Event(val name: String, val date: String, val venue: String, val imageRes: Int)
 
+// Remove the duplicate Song data class since it already exists in models
+
 // Dummy data
+val recentPlaylists = listOf(
+    Playlist("1", "Today's Top Hits", 50, R.drawable.todays_hits),
+    Playlist("2", "Rock Classics", 42, R.drawable.rock_classics),
+    Playlist("3", "Hip Hop Central", 38, R.drawable.hiphop_central)
+)
+
+val upcomingEvents = listOf(
+    Event("Summer Music Festival", "Aug 10", "Central Park", R.drawable.summer_festival),
+    Event("Jazz Night", "Aug 20", "Blue Note", R.drawable.jazz_night),
+    Event("Indie Rock Concert", "Aug 25", "The Venue", R.drawable.indie_concert)
+)
+
 val continueAlbums = listOf(
     Album("Short 'n Sweet", "Sabrina Carpenter", R.drawable.short_sweet),
     Album("Fireworks & Rollerblades", "Benson Boone", R.drawable.fireworks_rollerblades),
     Album("BRAT", "Charli XCX", R.drawable.brat)
 )
 
-val trackList = listOf(
-    Album("Wake Up", "Imagine Dragons", R.drawable.wake_up),
-    Album("LUNCH", "Billie Eilish", R.drawable.lunch),
-    Album("Good Luck, Babe!", "Chappell Roan", R.drawable.good_luck_babe),
-    Album("Espresso", "Sabrina Carpenter", R.drawable.espresso)
-)
-
-val popularArtists = listOf(
-    Artist("LFERDA", R.drawable.short_sweet),
-    Artist("Figoshin", R.drawable.fireworks_rollerblades),
-    Artist("Cheb Mami", R.drawable.brat)
-)
-
-val userPlaylists = listOf(
-    Playlist("1", "My Favorites", 25, R.drawable.short_sweet),
-    Playlist("2", "Workout Mix", 18, R.drawable.fireworks_rollerblades),
-    Playlist("3", "Chill Vibes", 32, R.drawable.brat)
-)
-
-val recentlyListened = listOf(
-    Album("Short 'n Sweet", "Sabrina Carpenter", R.drawable.short_sweet),
-    Album("Fireworks & Rollerblades", "Benson Boone", R.drawable.fireworks_rollerblades),
-    Album("BRAT", "Charli XCX", R.drawable.brat)
-)
-
-val recommendedSongs = listOf(
-    Album("Espresso", "Sabrina Carpenter", R.drawable.espresso),
-    Album("Good Luck, Babe!", "Chappell Roan", R.drawable.good_luck_babe),
-    Album("LUNCH", "Billie Eilish", R.drawable.lunch)
-)
-
-val popularSongs = listOf(
-    Album("Wake Up", "Imagine Dragons", R.drawable.wake_up),
-    Album("LUNCH", "Billie Eilish", R.drawable.lunch),
-    Album("Good Luck, Babe!", "Chappell Roan", R.drawable.good_luck_babe)
-)
-
-val upcomingEvents = listOf(
-    Event("Summer Music Festival", "July 15, 2024", "Central Park", R.drawable.short_sweet),
-    Event("Jazz Night", "July 20, 2024", "Blue Note", R.drawable.fireworks_rollerblades),
-    Event("Rock Concert", "July 25, 2024", "Madison Square Garden", R.drawable.brat)
-)
+// Image state sealed class
+sealed class ImageState {
+    object Loading : ImageState()
+    object Success : ImageState()
+    object Error : ImageState()
+}
 
 @Composable
-fun HomeTabScreen(navController: NavController) {
+fun HomeScreen(navController: NavController) {
+    val viewModel: HomeViewModel = viewModel()
+    val apiArtists by viewModel.popularArtists.collectAsState()
+    val recommendedSongs by viewModel.recommendedSongs.collectAsState()
+    val populardSongs by viewModel.popularSongs.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Welcome header
         item {
@@ -136,167 +133,386 @@ fun HomeTabScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 1. User Playlists Section
+        // 2. Your Playlists Section
         item {
-            Text(
-                "Your Playlists",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Text("Your Playlists", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(userPlaylists) { playlist ->
+                items(recentPlaylists) { playlist ->
                     PlaylistCard(playlist = playlist, navController = navController)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 2. Recommended Songs Section (Vertical list)
+        // 3. Recommended Songs Section
         item {
-            Text(
-                "Recommended for You",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        items(recommendedSongs) { track -> 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-                    Image(
-                        painter = painterResource(id = track.imageRes),
-                        contentDescription = track.title,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(MaterialTheme.shapes.medium)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            track.title,
-                            color = TextPrimary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            track.artist,
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-                    IconButton(onClick = { }) {
-                        Icon(
-                            Icons.Default.FavoriteBorder,
-                            contentDescription = null,
-                            tint = TextPrimary
+            Text("Recommended Songs", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (recommendedSongs.isEmpty()) {
+                Text(
+                    "No songs available",
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(8.dp)
+                )
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    items(recommendedSongs) { song -> 
+                        SongItem(
+                            song = song,
+                            onSongClick = {
+                                // Handle song click - maybe navigate to player or start playing
+                                navController.navigate("player/${song.id}")
+                            }
                         )
                     }
                 }
             }
-        }
-
-        item {
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 3. Popular Songs Section (Horizontal scrollable)
+        // 4. Popular Songs Section
         item {
             Text("Popular Songs", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(popularSongs) { track -> 
-                    Card(
-                        modifier = Modifier.width(260.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(
-                                    painter = painterResource(id = track.imageRes),
-                                    contentDescription = track.title,
-                                    modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(track.title, color = TextPrimary, fontSize = 14.sp)
-                                    Text(track.artist, color = TextSecondary, fontSize = 12.sp)
-                                    Text("Trending", color = TextSecondary, fontSize = 12.sp)
-                                }
-                                IconButton(onClick = { }) {
-                                    Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = TextPrimary)
-                                }
+            
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (populardSongs.isEmpty()) {
+                Text(
+                    "No songs available",
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(8.dp)
+                )
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    items(populardSongs) { song -> 
+                        SongItem(
+                            song = song,
+                            onSongClick = {
+                                // Handle song click - maybe navigate to player or start playing
+                                navController.navigate("player/${song.id}")
                             }
-                        }
+                        )
                     }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 4. Recently Listened Section
+        // 5. Recently Listened Section
         item {
-            Text(
-                "Recently Listened",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(recentlyListened) { track ->
-                    TrackCard(track = track)
+            Text("Recently Listened", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(continueAlbums) { album ->
+                    AlbumCard(album = album)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 5. Popular Artists Section
+        // 6. Popular Artists Section
         item {
             Text("Popular Artists", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(popularArtists) { artist -> 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = artist.imageRes),
-                            contentDescription = artist.name,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape)
+            
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (apiArtists.isEmpty()) {
+                Text(
+                    "No artists available",
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(8.dp)
+                )
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    items(apiArtists) { artist -> 
+                        ArtistItem(
+                            artist = artist,
+                            onArtistClick = {
+                                // Handle artist click - maybe navigate to artist details
+                                navController.navigate("artist/${artist.id}")
+                            }
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(artist.name, color = TextPrimary, fontSize = 12.sp)
                     }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
+
 
         // 6. Events Section
         item {
             Text("Events", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(upcomingEvents) { event ->
-                    EventCard(event = event)
+                items(activeRooms.take(5)) { room ->
+                    RoomCard(room = room, navController = navController)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
+
     }
 }
+
+// Helper function to truncate text if longer than specified length
+fun truncateText(text: String, maxLength: Int = 14): String {
+    return if (text.length > maxLength) {
+        text.take(maxLength) + "..."
+    } else {
+        text
+    }
+}
+
+@Composable
+fun SongItem(
+    song: com.example.musicroom.data.models.Song,
+    onSongClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(180.dp)
+            .height(260.dp)
+            .clickable(onClick = onSongClick)
+    ) {
+        // Album cover image
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Gray.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            var imageState by remember { mutableStateOf<ImageState>(ImageState.Loading) }
+            
+            when (imageState) {
+                is ImageState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(30.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                }
+                is ImageState.Error -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.default_album_image),
+                        contentDescription = "Default album",
+                        modifier = Modifier.size(50.dp),
+                        tint = Color.Gray
+                    )
+                }
+                is ImageState.Success -> {
+                    // This will be shown when AsyncImage loads successfully
+                }
+            }
+            
+            // Load the actual image
+            if (song.image.isNotEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(song.image)
+                        .crossfade(true)
+                        .listener(
+                            onStart = { imageState = ImageState.Loading },
+                            onSuccess = { _, _ -> imageState = ImageState.Success },
+                            onError = { _, _ -> imageState = ImageState.Error }
+                        )
+                        .build(),
+                    contentDescription = song.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LaunchedEffect(Unit) {
+                    imageState = ImageState.Error
+                }
+            }
+            
+            // Play button overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(40.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.6f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_play_arrow),
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Song name - truncated if longer than 14 characters
+        Text(
+            text = truncateText(song.name, 14),
+            color = TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Artist name - truncated if longer than 14 characters
+        Text(
+            text = truncateText(song.artistName, 14),
+            color = TextSecondary,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(2.dp))
+        
+        // Duration
+        Text(
+            text = formatDuration(song.duration),
+            color = TextSecondary,
+            fontSize = 11.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+// Helper function to format duration
+fun formatDuration(seconds: Int): String {
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format("%d:%02d", minutes, remainingSeconds)
+}
+
+@Composable
+fun ArtistItem(
+    artist: Artist,
+    onArtistClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .padding(4.dp)
+            .clickable(onClick = onArtistClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Artist image
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(Color.Gray.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            var imageState by remember { mutableStateOf<ImageState>(ImageState.Loading) }
+            
+            when (imageState) {
+                is ImageState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(30.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                }
+                is ImageState.Error -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.default_album_image),
+                        contentDescription = "Default artist",
+                        modifier = Modifier.size(40.dp),
+                        tint = Color.Gray
+                    )
+                }
+                is ImageState.Success -> {
+                    // This will be shown when AsyncImage loads successfully
+                }
+            }
+            
+            // Load the actual image
+            if (artist.image.isNotEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(artist.image)
+                        .crossfade(true)
+                        .listener(
+                            onStart = { imageState = ImageState.Loading },
+                            onSuccess = { _, _ -> imageState = ImageState.Success },
+                            onError = { _, _ -> imageState = ImageState.Error }
+                        )
+                        .build(),
+                    contentDescription = artist.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LaunchedEffect(Unit) {
+                    imageState = ImageState.Error
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Artist name
+        Text(
+            text = artist.name,
+            color = TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 
 @Composable
 fun LiveIndicator(isLive: Boolean = false) {
@@ -333,90 +549,72 @@ fun LiveIndicator(isLive: Boolean = false) {
 @Composable
 private fun RoomCard(
     room: MusicRoom,
-    navController: NavController,
-    modifier: Modifier = Modifier
+    navController: NavController
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    
-    val cardWidth = when {
-        screenWidth > 600.dp -> screenWidth * 0.3f
-        screenWidth > 400.dp -> screenWidth * 0.45f
-        else -> screenWidth * 0.75f
-    }
-
     Card(
-        modifier = modifier
+        modifier = Modifier
+            .width(280.dp)
+            .height(180.dp)
             .clickable { 
-                navController.navigate("room/${room.id}")
-            }
-            .width(cardWidth)
-            .height(160.dp)
-            .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp)
+                navController.navigate("room_detail/${room.id}")
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Live Indicator Badge
-            if (room.isLive) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                ) {
-                    LiveIndicator(isLive = room.isLive)
-                }
-            }
-
-            // Content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = room.name,
+                        room.name,
                         color = TextPrimary,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = "Hosted by ${room.hostName}",
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        maxLines = 1
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = room.currentTrack,
-                        color = TextSecondary,
-                        fontSize = 13.sp,
                         maxLines = 1,
-                        modifier = Modifier.fillMaxWidth()
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "${room.listeners} listening",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                    Text(
+                        "Hosted by ${room.host}",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
+                LiveIndicator(room.isLive)
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                "♪ ${room.currentTrack ?: "No track playing"}",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${room.listeners} listening",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }
@@ -578,7 +776,7 @@ private fun EventCard(
                                         CircleShape
                                     )
                             )
-                            // Main circle
+                            // Inner circle
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
@@ -589,13 +787,13 @@ private fun EventCard(
                         Text(
                             "LIVE",
                             color = Color.Green,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
-
+            
             // Content
             Column(
                 modifier = Modifier
@@ -603,49 +801,83 @@ private fun EventCard(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column {
                     Text(
-                        text = event.name,
+                        event.name,
                         color = TextPrimary,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "at ${event.venue}",
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        maxLines = 1
+                        event.date,
+                        color = PrimaryPurple,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = event.date,
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                
+                Column {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = "View Details",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
                         Icon(
-                            imageVector = Icons.Default.ChevronRight,
+                            painter = painterResource(id = R.drawable.ic_location),
                             contentDescription = null,
                             tint = TextSecondary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            event.venue,
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AlbumCard(album: Album) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .height(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Image(
+                painter = painterResource(id = album.imageRes),
+                contentDescription = album.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                album.title,
+                color = TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                album.artist,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
