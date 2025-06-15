@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +24,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import com.example.musicroom.R
 import com.example.musicroom.presentation.theme.*
 import androidx.compose.material.icons.filled.ChevronRight
@@ -42,6 +45,9 @@ import androidx.navigation.navArgument
 data class Album(val title: String, val artist: String, val imageRes: Int)
 
 data class Artist(val name: String, val imageRes: Int)
+
+data class Playlist(val id: String, val name: String, val trackCount: Int, val imageRes: Int)
+data class Event(val name: String, val date: String, val venue: String, val imageRes: Int)
 
 // Dummy data
 val continueAlbums = listOf(
@@ -63,6 +69,36 @@ val popularArtists = listOf(
     Artist("Cheb Mami", R.drawable.brat)
 )
 
+val userPlaylists = listOf(
+    Playlist("1", "My Favorites", 25, R.drawable.short_sweet),
+    Playlist("2", "Workout Mix", 18, R.drawable.fireworks_rollerblades),
+    Playlist("3", "Chill Vibes", 32, R.drawable.brat)
+)
+
+val recentlyListened = listOf(
+    Album("Short 'n Sweet", "Sabrina Carpenter", R.drawable.short_sweet),
+    Album("Fireworks & Rollerblades", "Benson Boone", R.drawable.fireworks_rollerblades),
+    Album("BRAT", "Charli XCX", R.drawable.brat)
+)
+
+val recommendedSongs = listOf(
+    Album("Espresso", "Sabrina Carpenter", R.drawable.espresso),
+    Album("Good Luck, Babe!", "Chappell Roan", R.drawable.good_luck_babe),
+    Album("LUNCH", "Billie Eilish", R.drawable.lunch)
+)
+
+val popularSongs = listOf(
+    Album("Wake Up", "Imagine Dragons", R.drawable.wake_up),
+    Album("LUNCH", "Billie Eilish", R.drawable.lunch),
+    Album("Good Luck, Babe!", "Chappell Roan", R.drawable.good_luck_babe)
+)
+
+val upcomingEvents = listOf(
+    Event("Summer Music Festival", "July 15, 2024", "Central Park", R.drawable.short_sweet),
+    Event("Jazz Night", "July 20, 2024", "Blue Note", R.drawable.fireworks_rollerblades),
+    Event("Rock Concert", "July 25, 2024", "Madison Square Garden", R.drawable.brat)
+)
+
 @Composable
 fun HomeTabScreen(navController: NavController) {
     LazyColumn(
@@ -71,6 +107,7 @@ fun HomeTabScreen(navController: NavController) {
             .background(DarkBackground)
             .padding(16.dp)
     ) {
+        // Welcome header
         item {
             Box(
                 modifier = Modifier
@@ -99,58 +136,39 @@ fun HomeTabScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // 1. User Playlists Section
         item {
             Text(
-                "Live Rooms",
+                "Your Playlists",
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(activeRooms) { room ->
-                    RoomCard(room = room, navController = navController)
+                items(userPlaylists) { playlist ->
+                    PlaylistCard(playlist = playlist, navController = navController)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
+        // 2. Recommended Songs Section (Vertical list)
         item {
             Text(
-                "Expand your recent listening",
+                "Recommended for You",
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(continueAlbums) { album ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = album.imageRes),
-                            contentDescription = album.title,
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(MaterialTheme.shapes.medium)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(album.title, color = TextPrimary, fontSize = 12.sp)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        item {
-            Text("Made For You", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(trackList) { track -> 
+        items(recommendedSongs) { track -> 
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = DarkSurface)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
@@ -187,11 +205,15 @@ fun HomeTabScreen(navController: NavController) {
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Discover picks for you", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // 3. Popular Songs Section (Horizontal scrollable)
+        item {
+            Text("Popular Songs", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(trackList) { track -> 
+                items(popularSongs) { track -> 
                     Card(
                         modifier = Modifier.width(260.dp),
                         shape = RoundedCornerShape(16.dp),
@@ -209,7 +231,8 @@ fun HomeTabScreen(navController: NavController) {
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(track.title, color = TextPrimary, fontSize = 14.sp)
-                                    Text("Hand-picked for you", color = TextSecondary, fontSize = 12.sp)
+                                    Text(track.artist, color = TextSecondary, fontSize = 12.sp)
+                                    Text("Trending", color = TextSecondary, fontSize = 12.sp)
                                 }
                                 IconButton(onClick = { }) {
                                     Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = TextPrimary)
@@ -219,10 +242,28 @@ fun HomeTabScreen(navController: NavController) {
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
+        // 4. Recently Listened Section
         item {
+            Text(
+                "Recently Listened",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(recentlyListened) { track ->
+                    TrackCard(track = track)
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // 5. Popular Artists Section
+        item {
             Text("Popular Artists", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -240,6 +281,19 @@ fun HomeTabScreen(navController: NavController) {
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // 6. Events Section
+        item {
+            Text("Events", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(upcomingEvents) { event ->
+                    EventCard(event = event)
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -352,6 +406,234 @@ private fun RoomCard(
                     ) {
                         Text(
                             text = "${room.listeners} listening",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCard(playlist: Playlist, navController: NavController) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .height(180.dp)
+            .clickable { 
+                navController.navigate("playlist_details/${playlist.id}")
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Image(
+                painter = painterResource(id = playlist.imageRes),
+                contentDescription = playlist.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                playlist.name,
+                color = TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "${playlist.trackCount} tracks",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrackCard(track: Album) {
+    Card(
+        modifier = Modifier
+            .width(140.dp)
+            .height(160.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Image(
+                painter = painterResource(id = track.imageRes),
+                contentDescription = track.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                track.title,
+                color = TextPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = TextSecondary,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventCard(
+    event: Event,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    val cardWidth = when {
+        screenWidth > 600.dp -> screenWidth * 0.3f
+        screenWidth > 400.dp -> screenWidth * 0.45f
+        else -> screenWidth * 0.75f
+    }
+
+    // Animation for the live indicator
+    val infiniteTransition = rememberInfiniteTransition(label = "live_animation")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha_animation"
+    )
+    
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale_animation"
+    )
+
+    Card(
+        modifier = modifier
+            .clickable { 
+                // Navigate to event details
+            }
+            .width(cardWidth)
+            .height(160.dp)
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Event Type Badge with animated live indicator
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Outer glow effect
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .scale(scale)
+                                    .alpha(alpha * 0.3f)
+                                    .background(
+                                        Color.Green.copy(alpha = 0.3f), 
+                                        CircleShape
+                                    )
+                            )
+                            // Main circle
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .alpha(alpha)
+                                    .background(Color.Green, CircleShape)
+                            )
+                        }
+                        Text(
+                            "LIVE",
+                            color = Color.Green,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = event.name,
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "at ${event.venue}",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = event.date,
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "View Details",
                             color = TextSecondary,
                             fontSize = 12.sp
                         )

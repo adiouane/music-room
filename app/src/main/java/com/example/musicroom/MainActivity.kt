@@ -11,11 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.musicroom.data.models.User
-import com.example.musicroom.presentation.home.SimpleHomeScreen
+import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen // Updated import
 import com.example.musicroom.presentation.theme.MusicRoomTheme
 import dagger.hilt.android.AndroidEntryPoint
-import com.example.musicroom.presentation.home.SimpleHomeScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -26,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.musicroom.presentation.splash.SplashScreen
 import com.example.musicroom.presentation.onboarding.OnboardingScreen
+import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -70,7 +72,19 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     composable("home") {
-                        user?.let { SimpleHomeScreen(user = it) }
+                        user?.let { SimpleHomeScreen(user = it, navController = navController) }
+                    }
+                    
+                    // Add the playlist details route here
+                    composable(
+                        route = "playlist_details/{playlistId}",
+                        arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
+                        PlaylistDetailsScreen(
+                            playlistId = playlistId,
+                            navController = navController
+                        )
                     }
                 }
             }
