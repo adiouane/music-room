@@ -1,5 +1,7 @@
 package com.example.musicroom.presentation.auth
 
+import android.util.Patterns
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,16 +24,39 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.musicroom.presentation.theme.*
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-fun SignUpScreen(
-    onSignUpClick: (name: String, email: String, password: String) -> Unit,
-    onBackToLoginClick: () -> Unit
+fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: String) -> Unit,
+    onBackToLoginClick: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var nameError by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf("") }
+    var showSuccessMessage by remember { mutableStateOf(false) }
+    
+    val authState by viewModel.authState.collectAsState()
+    
+    // Handle auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> {
+                showSuccessMessage = true
+                // Success is handled by AuthContainer, no need to call onSignUpClick here
+            }
+            is AuthState.Error -> {
+                showSuccessMessage = false
+            }
+            else -> {
+                showSuccessMessage = false
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -47,36 +72,46 @@ fun SignUpScreen(
             SignUpHeader()
             
             Spacer(modifier = Modifier.height(32.dp))
-            
-            CustomTextField(
+              CustomTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = { 
+                    name = it
+                    nameError = "" // Clear error when user types
+                },
                 label = "Full Name",
-                icon = Icons.Default.Person
+                icon = Icons.Default.Person,
+                errorMessage = nameError
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             CustomTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = { 
+                    email = it
+                    emailError = "" // Clear error when user types
+                },
                 label = "Email",
                 icon = Icons.Default.Email,
-                keyboardType = KeyboardType.Email
+                keyboardType = KeyboardType.Email,
+                errorMessage = emailError
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             CustomTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { 
+                    password = it
+                    passwordError = "" // Clear error when user types
+                },
                 label = "Password",
                 icon = Icons.Default.Lock,
-                keyboardType = KeyboardType.Password,
-                visualTransformation = if (passwordVisible) 
+                keyboardType = KeyboardType.Password,                visualTransformation = if (passwordVisible) 
                     VisualTransformation.None 
                 else 
                     PasswordVisualTransformation(),
+                errorMessage = passwordError,
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -86,22 +121,93 @@ fun SignUpScreen(
                                 Icons.Default.VisibilityOff,
                             contentDescription = null
                         )
-                    }
-                }
+                    }                }
             )
 
             PasswordStrengthIndicator(password)
             
+            // Show success message
+            if (showSuccessMessage) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Text(
+                        text = "Account created successfully! Redirecting...",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+              // Show error message if there's an authentication error
+            if (authState is AuthState.Error) {
+                val errorState = authState as AuthState.Error
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Text(
+                        text = errorState.message,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            
             Spacer(modifier = Modifier.weight(1f))
             
             Button(
-                onClick = { onSignUpClick(name, email, password) },
+                onClick = { 
+                    // Clear previous errors
+                    nameError = ""
+                    emailError = ""
+                    passwordError = ""
+                    
+                    // Validate inputs
+                    var isValid = true
+                    
+                    if (name.isBlank()) {
+                        nameError = "Name is required"
+                        isValid = false
+                    }
+                    
+                    if (email.isBlank()) {
+                        emailError = "Email is required"
+                        isValid = false
+                    } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        emailError = "Please enter a valid email"
+                        isValid = false
+                    }
+                    
+                    if (password.isBlank()) {
+                        passwordError = "Password is required"
+                        isValid = false
+                    } else if (password.length < 6) {
+                        passwordError = "Password must be at least 6 characters"
+                        isValid = false
+                    }
+                    
+                    if (isValid) {
+                        viewModel.signUp(email, password, name)
+                    }
+                },
+                enabled = authState !is AuthState.Loading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
             ) {
-                Text("Sign Up")
+                if (authState is AuthState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Sign Up")
+                }
             }
             
             TextButton(onClick = onBackToLoginClick) {
@@ -169,24 +275,39 @@ private fun CustomTextField(
     icon: ImageVector,
     keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: @Composable (() -> Unit)? = null
+    trailingIcon: @Composable (() -> Unit)? = null,
+    errorMessage: String = "",
+    isError: Boolean = errorMessage.isNotEmpty()
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        leadingIcon = { Icon(icon, contentDescription = null) },
-        trailingIcon = trailingIcon,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = ImeAction.Next
-        ),
-        visualTransformation = visualTransformation,
-        modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = PrimaryPurple,
-            unfocusedBorderColor = TextSecondary
+    Column {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            leadingIcon = { Icon(icon, contentDescription = null) },
+            trailingIcon = trailingIcon,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction = ImeAction.Next
+            ),
+            visualTransformation = visualTransformation,
+            modifier = Modifier.fillMaxWidth(),
+            isError = isError,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryPurple,
+                unfocusedBorderColor = TextSecondary,
+                errorBorderColor = MaterialTheme.colorScheme.error
+            )
         )
-    )
+        
+        if (isError) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
+    }
 }

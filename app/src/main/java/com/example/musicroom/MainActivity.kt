@@ -20,8 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.musicroom.presentation.auth.LoginScreen
-import com.example.musicroom.presentation.auth.SignUpScreen
+import com.example.musicroom.presentation.auth.AuthContainer
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -85,44 +84,8 @@ class MainActivity : ComponentActivity() {
                             playlistId = playlistId,
                             navController = navController
                         )
-                    }
-                }
+                    }                }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AuthContainer(onLoginSuccess: (User) -> Unit) {
-    val navController = rememberNavController()
-
-    NavHost(navController = navController, startDestination = "login") {
-        composable("login") {
-            LoginScreen(
-                onLoginClick = { email, password -> /* Handle login */
-                    val mockUser = User(
-                        id = "test-123",
-                        name = "Test User",
-                        username = "testuser",
-                        photoUrl = "https://example.com/test-avatar.jpg",
-                        email = email
-                    )
-                    onLoginSuccess(mockUser) // Simulate successful login
-                },
-                onSignUpClick = {
-                    navController.navigate("signup")
-                },
-                onForgotPasswordClick = { /* Handle forgot password */ }
-            )
-        }
-        composable("signup") {
-            SignUpScreen(
-                onSignUpClick = { name, email, password -> /* Handle sign up */ },
-                onBackToLoginClick = {
-                    navController.navigateUp()
-                }
-            )
         }
     }
 }

@@ -39,11 +39,27 @@ import com.example.musicroom.presentation.theme.*
 fun LoginScreen(
     onLoginClick: (email: String, password: String) -> Unit,
     onSignUpClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit
+    onForgotPasswordClick: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    
+    val authState by viewModel.authState.collectAsState()
+    
+    // Handle auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> {
+                onLoginClick(email, password) // This will trigger navigation
+            }
+            is AuthState.Error -> {
+                // Show error message (you can add a Snackbar here)
+            }
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -136,8 +152,8 @@ fun LoginScreen(
 
                         ActionButtons(
                             onForgotPasswordClick = onForgotPasswordClick,
-                            onLoginClick = { onLoginClick(email, password) },
-                            isLoading = false
+                            onLoginClick = { viewModel.signIn(email, password) },
+                            isLoading = authState is AuthState.Loading
                         )
                     }
                 }
