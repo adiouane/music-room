@@ -41,13 +41,12 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
     var showSuccessMessage by remember { mutableStateOf(false) }
     
     val authState by viewModel.authState.collectAsState()
-    
-    // Handle auth state changes
+      // Handle auth state changes
     LaunchedEffect(authState) {
         when (authState) {
-            is AuthState.Success -> {
+            is AuthState.SignUpSuccess -> {
                 showSuccessMessage = true
-                // Success is handled by AuthContainer, no need to call onSignUpClick here
+                // The AuthContainer will handle navigation back to login
             }
             is AuthState.Error -> {
                 showSuccessMessage = false
@@ -124,22 +123,23 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                     }                }
             )
 
-            PasswordStrengthIndicator(password)
-            
-            // Show success message
+            PasswordStrengthIndicator(password)            // Show success message
             if (showSuccessMessage) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Text(
-                        text = "Account created successfully! Redirecting...",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                val currentState = authState
+                if (currentState is AuthState.SignUpSuccess) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Text(
+                            text = currentState.message,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
               // Show error message if there's an authentication error

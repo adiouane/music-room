@@ -19,8 +19,7 @@ class AuthViewModel @Inject constructor(
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
-    
-    fun signUp(email: String, password: String, fullName: String) {
+      fun signUp(email: String, password: String, fullName: String) {
         Log.d("AuthViewModel", "signUp called with email: $email, name: $fullName")
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -30,8 +29,8 @@ class AuthViewModel @Inject constructor(
             Log.d("AuthViewModel", "Repository result: ${result.isSuccess}")
             
             _authState.value = if (result.isSuccess) {
-                Log.d("AuthViewModel", "Success! User: ${result.getOrNull()}")
-                AuthState.Success(result.getOrNull()!!)
+                Log.d("AuthViewModel", "Signup successful! User needs to confirm email")
+                AuthState.SignUpSuccess("Account created successfully! Please check your email to confirm your account. and then log in.")
             } else {
                 val error = result.exceptionOrNull()?.message ?: "Sign up failed"
                 Log.e("AuthViewModel", "Error: $error")
@@ -101,6 +100,22 @@ class AuthViewModel @Inject constructor(
         }
     }
     
+    fun confirmEmail(accessToken: String) {
+        Log.d("AuthViewModel", "confirmEmail called with token: ${accessToken.take(20)}...")
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authRepository.confirmEmail(accessToken)
+            _authState.value = if (result.isSuccess) {
+                Log.d("AuthViewModel", "Email confirmation successful")
+                AuthState.Success(result.getOrNull()!!)
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Email confirmation failed"
+                Log.e("AuthViewModel", "Email confirmation failed: $errorMessage")
+                AuthState.Error(errorMessage)
+            }
+        }
+    }
+    
     fun clearError() {
         _authState.value = AuthState.Idle
     }
@@ -110,6 +125,7 @@ sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
     data class Success(val user: User) : AuthState()
+    data class SignUpSuccess(val message: String) : AuthState()
     data class Error(val message: String) : AuthState()
     data class PasswordResetSent(val message: String) : AuthState()
 }

@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,11 +17,24 @@ import com.example.musicroom.data.models.User
 fun AuthContainer(onLoginSuccess: (User) -> Unit) {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
-    val authState by authViewModel.authState.collectAsState()    // Handle successful authentication
+    val authState by authViewModel.authState.collectAsState()
+    var signupSuccessMessage by remember { mutableStateOf<String?>(null) }// Handle successful authentication (only for actual login, not signup)
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             val successState = authState as AuthState.Success
             onLoginSuccess(successState.user)
+            authViewModel.clearError()
+        }
+    }    // Handle signup success - redirect to login with message
+    LaunchedEffect(authState) {
+        val currentState = authState
+        if (currentState is AuthState.SignUpSuccess) {
+            // Store the success message and navigate back to login
+            signupSuccessMessage = currentState.message
+            navController.navigate(AuthScreen.Login.route) {
+                popUpTo(AuthScreen.Login.route) { inclusive = true }
+            }
+            // Clear the auth state after handling
             authViewModel.clearError()
         }
     }
@@ -26,10 +42,11 @@ fun AuthContainer(onLoginSuccess: (User) -> Unit) {
     NavHost(
         navController = navController,
         startDestination = AuthScreen.Login.route
-    ) {
-        composable(route = AuthScreen.Login.route) {
+    ) {        composable(route = AuthScreen.Login.route) {
             LoginScreen(
                 onLoginClick = { email, password -> 
+                    // Clear any signup message when user attempts login
+                    signupSuccessMessage = null
                     authViewModel.signIn(email, password)
                 },
                 onSignUpClick = {
@@ -38,7 +55,8 @@ fun AuthContainer(onLoginSuccess: (User) -> Unit) {
                 onForgotPasswordClick = {
                     navController.navigate(AuthScreen.ForgotPassword.route)
                 },
-                viewModel = authViewModel
+                viewModel = authViewModel,
+                signupSuccessMessage = signupSuccessMessage
             )
         }
 

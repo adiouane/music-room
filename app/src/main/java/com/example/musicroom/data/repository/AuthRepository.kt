@@ -301,4 +301,47 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun confirmEmail(accessToken: String): Result<User> {
+        Log.d("AuthRepository", "Starting email confirmation with access token")
+        return try {
+            Log.d("AuthRepository", "Access token: ${accessToken.take(20)}...")
+            
+            // Validate the access token format
+            if (!accessToken.startsWith("eyJ")) {
+                Log.e("AuthRepository", "Invalid access token format - should be JWT starting with 'eyJ'")
+                return Result.failure(Exception("Invalid confirmation token format"))
+            }
+            
+            // Use retrieveUser to confirm the email and establish session
+            Log.d("AuthRepository", "Confirming email with access token...")
+            SupabaseClient.client.auth.retrieveUser(accessToken)
+            
+            // Get the current user after email confirmation
+            val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+            if (currentUser != null) {
+                val fullName = currentUser.userMetadata?.get("full_name")?.toString() ?: ""
+                val user = User(
+                    id = currentUser.id,
+                    name = fullName,
+                    username = currentUser.email?.substringBefore("@") ?: "",
+                    photoUrl = "",
+                    email = currentUser.email ?: ""
+                )
+                
+                // Check if email is confirmed
+                val isEmailConfirmed = currentUser.emailConfirmedAt != null
+                Log.d("AuthRepository", "Email confirmation status: $isEmailConfirmed")
+                Log.d("AuthRepository", "Email confirmed successfully for user: $user")
+                
+                Result.success(user)
+            } else {
+                Log.e("AuthRepository", "Email confirmation failed - currentUser is null")
+                Result.failure(Exception("Email confirmation failed - unable to retrieve user"))
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Exception during email confirmation: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }

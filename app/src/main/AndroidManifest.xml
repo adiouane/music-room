@@ -27,14 +27,22 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-              <!-- Deep link for password reset -->
+            </intent-filter>            <!-- Deep link for password reset -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="musicroom" 
                       android:host="new-password" />
+            </intent-filter>
+            
+            <!-- Deep link for email confirmation -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="musicroom" 
+                      android:host="confirm-email" />
             </intent-filter>
         </activity>
     </application>

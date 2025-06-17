@@ -34,6 +34,7 @@ import com.example.musicroom.presentation.onboarding.OnboardingScreen
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
 import com.example.musicroom.presentation.auth.ResetPasswordScreen
 import com.example.musicroom.presentation.auth.NewPasswordScreen
+import com.example.musicroom.presentation.auth.EmailConfirmationScreen
 import com.example.musicroom.data.auth.DeepLinkManager
 
 @AndroidEntryPoint
@@ -142,6 +143,20 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    
+                    // Email confirmation route
+                    composable("confirm_email") {
+                        Log.d("MainActivity", "EmailConfirmationScreen route accessed")
+                        
+                        EmailConfirmationScreen(
+                            onConfirmationComplete = {
+                                Log.d("MainActivity", "Email confirmation completed, navigating to auth")
+                                navController.navigate("auth") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -162,8 +177,9 @@ class MainActivity : ComponentActivity() {
             Log.d("MainActivity", "Fragment: ${data.fragment}")
             Log.d("MainActivity", "Query: ${data.query}")
             Log.d("MainActivity", "Full URL: ${data.toString()}")
-              if (data.scheme == "musicroom" && (data.host == "reset-password" || data.host == "new-password")) {
-                Log.d("MainActivity", "✅ Password reset deep link detected! Host: ${data.host}")
+            
+            if (data.scheme == "musicroom" && (data.host == "reset-password" || data.host == "new-password" || data.host == "confirm-email")) {
+                Log.d("MainActivity", "✅ Deep link detected! Host: ${data.host}")
                 
                 // Extract tokens from URL fragment or query parameters
                 val fragment = data.fragment
@@ -194,30 +210,48 @@ class MainActivity : ComponentActivity() {
                 
                 Log.d("MainActivity", "Final tokens - Access: ${accessToken?.take(20)}..., Refresh: ${refreshToken?.take(20)}..., Type: $type")
                 
-                if (accessToken != null && type == "recovery") {
-                    Log.d("MainActivity", "🚀 Navigating to password reset screen")
-                    
-                    // Store tokens in DeepLinkManager
-                    DeepLinkManager.setPasswordResetTokens(accessToken, refreshToken, type)
-                    
-                    try {
-                        // Navigate to appropriate screen based on host
-                        val route = if (data.host == "new-password") "new_password" else "reset_password"
-                        Log.d("MainActivity", "Using route: $route for host: ${data.host}")
-                        
-                        navController?.navigate(route) {
-                            // Clear back stack to prevent going back to link handling
-                            popUpTo(0) { inclusive = true }
+                if (accessToken != null) {
+                    // Determine the route based on type and host
+                    val route = when {
+                        data.host == "confirm-email" && type == "signup" -> {
+                            Log.d("MainActivity", "🚀 Navigating to email confirmation screen")
+                            "confirm_email"
                         }
-                        Log.d("MainActivity", "✅ Navigation successful")
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "❌ Navigation failed: ${e.message}", e)
+                        data.host == "new-password" && type == "recovery" -> {
+                            Log.d("MainActivity", "🚀 Navigating to new password screen")
+                            "new_password"
+                        }
+                        data.host == "reset-password" && type == "recovery" -> {
+                            Log.d("MainActivity", "🚀 Navigating to reset password screen")
+                            "reset_password"
+                        }
+                        else -> {
+                            Log.w("MainActivity", "❌ Unknown deep link type or host combination. Host: ${data.host}, Type: $type")
+                            null
+                        }
+                    }
+                    
+                    if (route != null) {
+                        // Store tokens in DeepLinkManager
+                        DeepLinkManager.setPasswordResetTokens(accessToken, refreshToken, type)
+                        
+                        try {
+                            Log.d("MainActivity", "Using route: $route for host: ${data.host}")
+                            
+                            navController?.navigate(route) {
+                                // Clear back stack to prevent going back to link handling
+                                popUpTo(0) { inclusive = true }
+                            }
+                            Log.d("MainActivity", "✅ Navigation successful")
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "❌ Navigation failed: ${e.message}", e)
+                        }
                     }
                 } else {
-                    Log.w("MainActivity", "❌ Missing required tokens or wrong type. Access token: ${accessToken != null}, Type: $type")
+                    Log.w("MainActivity", "❌ Missing access token")
                 }
             } else {
-                Log.d("MainActivity", "❌ Not a password reset deep link")
+                Log.d("MainActivity", "❌ Not a recognized deep link")
             }
         } else {
             Log.d("MainActivity", "❌ No intent data found")
