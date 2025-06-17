@@ -29,14 +29,12 @@ class GoogleAuthUiClient @Inject constructor(
     fun getSignInIntent(): Intent {
         Log.d("GoogleAuthUiClient", "Creating Google Sign-In intent")
         return googleSignInClient.signInIntent
-    }
-
-    fun signInWithIntent(data: Intent?): GoogleSignInResult {
+    }    fun signInWithIntent(data: Intent?): GoogleSignInResult {
         Log.d("GoogleAuthUiClient", "Processing Google Sign-In result")
         return try {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             val account = task.getResult(ApiException::class.java)
-              Log.d("GoogleAuthUiClient", "Google Sign-In successful for: ${account?.email}")
+            Log.d("GoogleAuthUiClient", "Google Sign-In successful for: ${account?.email}")
             GoogleSignInResult(
                 data = GoogleUserInfo(
                     userId = account?.id ?: "",

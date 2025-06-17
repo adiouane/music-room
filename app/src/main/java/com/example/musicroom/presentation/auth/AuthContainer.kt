@@ -51,18 +51,17 @@ fun AuthContainer(onLoginSuccess: (User) -> Unit) {
                     navController.navigateUp()
                 },
                 viewModel = authViewModel
-            )
-        }
-
+            )        }
+        
         composable(route = AuthScreen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onBackToLoginClick = { 
                     navController.popBackStack() 
                 },
                 onResetPassword = { email ->
-                    // Handle reset password
-                    navController.popBackStack()
-                }
+                    // This is now handled by the ViewModel
+                },
+                viewModel = authViewModel
             )
         }
     }

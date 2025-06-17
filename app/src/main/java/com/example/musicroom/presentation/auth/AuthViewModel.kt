@@ -70,6 +70,37 @@ class AuthViewModel @Inject constructor(
         }
     }
     
+    fun resetPassword(email: String) {
+        Log.d("AuthViewModel", "resetPassword called with email: $email")
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authRepository.resetPassword(email)
+            _authState.value = if (result.isSuccess) {
+                Log.d("AuthViewModel", "Password reset successful")
+                AuthState.PasswordResetSent(result.getOrNull()!!)
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Password reset failed"
+                Log.e("AuthViewModel", "Password reset failed: $errorMessage")
+                AuthState.Error(errorMessage)
+            }
+        }
+    }
+      fun updatePassword(accessToken: String, newPassword: String) {
+        Log.d("AuthViewModel", "updatePassword called")
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authRepository.updatePassword(newPassword, accessToken)
+            _authState.value = if (result.isSuccess) {
+                Log.d("AuthViewModel", "Password updated successfully")
+                AuthState.Success(result.getOrNull()!!)
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Password update failed"
+                Log.e("AuthViewModel", "Password update failed: $errorMessage")
+                AuthState.Error(errorMessage)
+            }
+        }
+    }
+    
     fun clearError() {
         _authState.value = AuthState.Idle
     }
@@ -80,4 +111,5 @@ sealed class AuthState {
     object Loading : AuthState()
     data class Success(val user: User) : AuthState()
     data class Error(val message: String) : AuthState()
+    data class PasswordResetSent(val message: String) : AuthState()
 }

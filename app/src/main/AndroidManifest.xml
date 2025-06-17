@@ -17,16 +17,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MusicRoom"
         android:usesCleartextTraffic="true"
-        tools:targetApi="31">
-        <activity
+        tools:targetApi="31">        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.MusicRoom">
+            android:theme="@style/Theme.MusicRoom"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+              <!-- Deep link for password reset -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="musicroom" 
+                      android:host="new-password" />
             </intent-filter>
         </activity>
     </application>

@@ -6,6 +6,7 @@ import com.example.musicroom.data.models.User
 import com.example.musicroom.data.remote.SupabaseClient
 import com.example.musicroom.data.auth.GoogleAuthUiClient
 import com.example.musicroom.data.auth.GoogleSignInResult
+import com.example.musicroom.data.auth.DeepLinkManager
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.providers.builtin.IDToken
@@ -227,6 +228,77 @@ class AuthRepository @Inject constructor(
             )
         } else {
             null
+        }
+    }    suspend fun resetPassword(email: String): Result<String> {
+        Log.d("AuthRepository", "Starting password reset for email: $email")
+        return try {
+            // Note: The redirect URL should be configured in Supabase dashboard
+            // under Authentication -> URL Configuration -> Redirect URLs
+            SupabaseClient.client.auth.resetPasswordForEmail(email)
+            Log.d("AuthRepository", "Password reset email sent successfully")
+            Result.success("Password reset instructions sent to your email")
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Exception during password reset: ${e.message}", e)
+            Result.failure(e)
+        }
+    }suspend fun updatePassword(newPassword: String, accessToken: String): Result<User> {
+        Log.d("AuthRepository", "Starting password update with access token")
+        return try {
+            Log.d("AuthRepository", "Access token: ${accessToken.take(20)}...")
+            Log.d("AuthRepository", "Full access token length: ${accessToken.length}")
+            
+            // Validate the access token format
+            if (!accessToken.startsWith("eyJ")) {
+                Log.e("AuthRepository", "Invalid access token format - should be JWT starting with 'eyJ'")
+                return Result.failure(Exception("Invalid access token format"))
+            }
+            
+            // For password reset, we try different approaches to establish session context
+            try {
+                // Method 1: Try to use retrieveUser to set context
+                Log.d("AuthRepository", "Attempting to set user context with access token")
+                SupabaseClient.client.auth.retrieveUser(accessToken)
+                
+                // Now update the password
+                Log.d("AuthRepository", "Updating password...")
+                SupabaseClient.client.auth.updateUser {
+                    password = newPassword
+                }
+                
+                // Get the current user after password update
+                val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                if (currentUser != null) {
+                    val fullName = currentUser.userMetadata?.get("full_name")?.toString() ?: ""
+                    val user = User(
+                        id = currentUser.id,
+                        name = fullName,
+                        username = currentUser.email?.substringBefore("@") ?: "",
+                        photoUrl = "",
+                        email = currentUser.email ?: ""
+                    )
+                    Log.d("AuthRepository", "Password updated successfully for user: $user")
+                    Result.success(user)
+                } else {
+                    Log.d("AuthRepository", "Password update completed but currentUser is null")
+                    // Password might have been updated successfully but session not established
+                    // This is actually common with password reset flows
+                    Result.success(User(
+                        id = "password_reset_success",
+                        name = "Password Reset",
+                        username = "success",
+                        photoUrl = "",
+                        email = "reset@success.com"
+                    ))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Password update failed: ${e.message}")
+                Result.failure(e)
+            }
+            
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Exception during password update: ${e.message}", e)
+            Result.failure(e)
         }
     }
 }

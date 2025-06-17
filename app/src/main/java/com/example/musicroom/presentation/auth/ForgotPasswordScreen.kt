@@ -16,10 +16,21 @@ import com.example.musicroom.presentation.theme.*
 @Composable
 fun ForgotPasswordScreen(
     onBackToLoginClick: () -> Unit,
-    onResetPassword: (String) -> Unit
+    onResetPassword: (String) -> Unit,
+    viewModel: AuthViewModel
 ) {
     var email by remember { mutableStateOf("") }
-    var isEmailSent by remember { mutableStateOf(false) }
+    val authState by viewModel.authState.collectAsState()
+    
+    // Handle auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.PasswordResetSent -> {
+                // Success message will be shown in UI
+            }
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -83,31 +94,74 @@ fun ForgotPasswordScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Reset Button
+            Spacer(modifier = Modifier.height(24.dp))            // Reset Button
             Button(
                 onClick = { 
-                    onResetPassword(email)
-                    isEmailSent = true
+                    if (email.isNotBlank()) {
+                        viewModel.resetPassword(email)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryPurple
-                )
+                ),
+                enabled = email.isNotBlank() && authState !is AuthState.Loading
             ) {
-                Text("Reset Password")
+                if (authState is AuthState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Reset Password")
+                }
+            }            // Show success message
+            when (val state = authState) {
+                is AuthState.PasswordResetSent -> {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = state.message,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                else -> {}
             }
 
-            if (isEmailSent) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Reset instructions sent to your email",
-                    color = TextPrimary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            // Show error message
+            when (val state = authState) {
+                is AuthState.Error -> {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = state.message,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                else -> {}
             }
 
             Spacer(modifier = Modifier.weight(1f))
