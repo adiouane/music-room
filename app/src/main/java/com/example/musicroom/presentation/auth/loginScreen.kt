@@ -57,19 +57,7 @@ fun LoginScreen(
     ) { result ->
         viewModel.handleGoogleSignInResult(result.data)
     }
-    
-    // Handle auth state changes
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Success -> {
-                onLoginClick(email, password) // This will trigger navigation
-            }
-            is AuthState.Error -> {
-                // Show error message (you can add a Snackbar here)
-            }
-            else -> {}
-        }
-    }
+      // Note: Navigation on auth success is handled by AuthContainer, not here
 
     Box(
         modifier = Modifier
