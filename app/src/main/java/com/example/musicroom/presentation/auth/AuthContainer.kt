@@ -26,8 +26,7 @@ fun AuthContainer(onLoginSuccess: (User) -> Unit) {
     NavHost(
         navController = navController,
         startDestination = AuthScreen.Login.route
-    ) {
-        composable(route = AuthScreen.Login.route) {
+    ) {        composable(route = AuthScreen.Login.route) {
             LoginScreen(
                 onLoginClick = { email, password -> 
                     authViewModel.signIn(email, password)
@@ -37,7 +36,8 @@ fun AuthContainer(onLoginSuccess: (User) -> Unit) {
                 },
                 onForgotPasswordClick = {
                     navController.navigate(AuthScreen.ForgotPassword.route)
-                }            )
+                }
+            )
         }
 
         composable(route = AuthScreen.SignUp.route) {

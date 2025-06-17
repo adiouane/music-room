@@ -1,18 +1,25 @@
 package com.example.musicroom.data.repository
 
+import android.content.Intent
 import android.util.Log
 import com.example.musicroom.data.models.User
 import com.example.musicroom.data.remote.SupabaseClient
+import com.example.musicroom.data.auth.GoogleAuthUiClient
+import com.example.musicroom.data.auth.GoogleSignInResult
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.gotrue.providers.builtin.IDToken
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AuthRepository @Inject constructor() {
-      suspend fun signUp(email: String, password: String, fullName: String): Result<User> {
+class AuthRepository @Inject constructor(
+    private val googleAuthUiClient: GoogleAuthUiClient
+) {
+    
+    suspend fun signUp(email: String, password: String, fullName: String): Result<User> {
         Log.d("AuthRepository", "Starting signUp for email: $email")
         return try {
             Log.d("AuthRepository", "Calling Supabase signUpWith")
@@ -58,7 +65,8 @@ class AuthRepository @Inject constructor() {
             Result.failure(e)
         }
     }
-      suspend fun signIn(email: String, password: String): Result<User> {
+    
+    suspend fun signIn(email: String, password: String): Result<User> {
         Log.d("AuthRepository", "Starting signIn for email: $email")
         return try {
             SupabaseClient.client.auth.signInWith(Email) {
@@ -87,12 +95,121 @@ class AuthRepository @Inject constructor() {
             Result.failure(e)
         }
     }
-    
+
     suspend fun signOut(): Result<Unit> {
         return try {
             SupabaseClient.client.auth.signOut()
+            googleAuthUiClient.signOut()
             Result.success(Unit)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun getGoogleSignInIntent() = googleAuthUiClient.getSignInIntent()
+
+    suspend fun handleGoogleSignInResult(data: Intent?): Result<User> {
+        Log.d("AuthRepository", "Handling Google Sign-In result")
+        return try {
+            val googleSignInResult = googleAuthUiClient.signInWithIntent(data)
+            
+            if (googleSignInResult.data != null) {
+                val googleUser = googleSignInResult.data
+                Log.d("AuthRepository", "Google user data: ${googleUser.username}, ${googleUser.email}")
+                
+                // Try to authenticate with Supabase using Google ID token
+                if (googleUser.idToken != null) {
+                    Log.d("AuthRepository", "Attempting Supabase authentication with Google ID token")
+                    try {
+                        // Authenticate with Supabase using Google ID token
+                        SupabaseClient.client.auth.signInWith(IDToken) {
+                            this.idToken = googleUser.idToken!!
+                        }
+                        
+                        // Get the authenticated user from Supabase
+                        val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                        if (currentUser != null) {
+                            val user = User(
+                                id = currentUser.id,
+                                name = googleUser.username ?: currentUser.userMetadata?.get("full_name")?.toString() ?: "",
+                                username = googleUser.email?.substringBefore("@") ?: "",
+                                photoUrl = googleUser.profilePictureUrl ?: "",
+                                email = googleUser.email ?: currentUser.email ?: ""
+                            )
+                            Log.d("AuthRepository", "Google Sign-In with Supabase successful: $user")
+                            return Result.success(user)
+                        } else {
+                            Log.e("AuthRepository", "Failed to get user from Supabase after Google authentication")
+                        }
+                    } catch (supabaseError: Exception) {
+                        Log.e("AuthRepository", "Supabase authentication with ID token failed: ${supabaseError.message}", supabaseError)
+                    }
+                }
+                
+                // Fallback: Create user in Supabase using email/password approach
+                Log.d("AuthRepository", "Fallback: Creating user in Supabase with email/password")
+                try {
+                    // Generate a unique password for Google users
+                    val tempPassword = "google_${googleUser.userId}_${System.currentTimeMillis()}"
+                    
+                    // Try to sign up first (in case user doesn't exist)
+                    try {
+                        SupabaseClient.client.auth.signUpWith(Email) {
+                            this.email = googleUser.email ?: ""
+                            this.password = tempPassword
+                            this.data = buildJsonObject {
+                                put("full_name", googleUser.username ?: "")
+                                put("google_id", googleUser.userId)
+                                put("profile_picture", googleUser.profilePictureUrl ?: "")
+                                put("auth_provider", "google")
+                            }
+                        }
+                        Log.d("AuthRepository", "Created new user in Supabase via Google Sign-In")
+                    } catch (signUpError: Exception) {
+                        Log.d("AuthRepository", "User might already exist, trying sign in: ${signUpError.message}")
+                        // If signup fails, try to sign in (user might already exist)
+                        SupabaseClient.client.auth.signInWith(Email) {
+                            this.email = googleUser.email ?: ""
+                            this.password = tempPassword
+                        }
+                    }
+                    
+                    // Get the authenticated user from Supabase
+                    val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+                    if (currentUser != null) {
+                        val user = User(
+                            id = currentUser.id,
+                            name = googleUser.username ?: currentUser.userMetadata?.get("full_name")?.toString() ?: "",
+                            username = googleUser.email?.substringBefore("@") ?: "",
+                            photoUrl = googleUser.profilePictureUrl ?: "",
+                            email = googleUser.email ?: currentUser.email ?: ""
+                        )
+                        Log.d("AuthRepository", "Google user saved to Supabase successfully: $user")
+                        return Result.success(user)
+                    } else {
+                        Log.e("AuthRepository", "Failed to authenticate user with Supabase after creation")
+                    }
+                } catch (fallbackError: Exception) {
+                    Log.e("AuthRepository", "Fallback Supabase authentication failed: ${fallbackError.message}", fallbackError)
+                }
+                
+                // Last resort: return local user (but this won't be saved to database)
+                val user = User(
+                    id = googleUser.userId,
+                    name = googleUser.username ?: "",
+                    username = googleUser.email?.substringBefore("@") ?: "",
+                    photoUrl = googleUser.profilePictureUrl ?: "",
+                    email = googleUser.email ?: ""
+                )
+                Log.w("AuthRepository", "Returning local user (not saved to database): $user")
+                Result.success(user)
+            } else {
+                val errorMessage = googleSignInResult.errorMessage ?: "Google Sign-In failed"
+                Log.e("AuthRepository", errorMessage)
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Exception during Google Sign-In result handling: ${e.message}", e)
             Result.failure(e)
         }
     }

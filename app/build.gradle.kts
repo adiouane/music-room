@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    // Google services plugin removed
+    id("com.google.gms.google-services")
     id("dagger.hilt.android.plugin")
     id("kotlin-kapt")
 }
@@ -79,14 +79,16 @@ dependencies {
     // Retrofit dependencies
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    
-    // Supabase
+      // Supabase
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.6.0")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.0")
     implementation("io.ktor:ktor-client-android:2.3.12")
     implementation("io.ktor:ktor-client-core:2.3.12")
     implementation("io.ktor:ktor-utils:2.3.12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+      // Google Sign-In
+    implementation(libs.play.services.auth)
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
     
     // Testing
     testImplementation(libs.junit)

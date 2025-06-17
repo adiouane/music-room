@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "605192910913",
-    "project_id": "musicroom-7e327",
-    "storage_bucket": "musicroom-7e327.firebasestorage.app"
+    "project_number": "755120962798",
+    "project_id": "mineral-bonus-459521-n2",
+    "storage_bucket": "mineral-bonus-459521-n2.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:605192910913:android:d75bf24875d3acf545eec0",
+        "mobilesdk_app_id": "1:755120962798:android:abcdef123456",
         "android_client_info": {
           "package_name": "com.example.musicroom"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "755120962798-9j6mvrfjmues9t7a155rhb7ffr6ott55.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.musicroom",
+            "certificate_hash": "B6:86:D3:8F:39:7C:ED:07:3F:5A:FE:D2:BB:1B:2D:89:30:43:7E:B9"
+          }
+        },
+        {
+          "client_id": "755120962798-4kmvvefagu9oa1o7rl3gn7t1hampaob6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBV1Xzs6Wc_TepYjEv_yGhyV8S_C2h9MnY"
+          "current_key": "AIzaSyDummyKeyForDevelopment"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "755120962798-4kmvvefagu9oa1o7rl3gn7t1hampaob6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

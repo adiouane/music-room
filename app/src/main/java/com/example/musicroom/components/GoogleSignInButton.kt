@@ -1,5 +1,6 @@
 package com.example.musicroom.components
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +29,10 @@ fun GoogleButton(
     text: String = "Sign in with Google"
 ) {
     OutlinedButton(
-        onClick = onClick,
+        onClick = {
+            Log.d("GoogleButton", "Google Sign-In button clicked")
+            onClick()
+        },
         modifier = modifier,
         enabled = enabled,
         shape = RoundedCornerShape(4.dp),

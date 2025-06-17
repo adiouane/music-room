@@ -1,5 +1,6 @@
 package com.example.musicroom.presentation.auth
 
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,8 +39,7 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
-    
-    fun signIn(email: String, password: String) {
+      fun signIn(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             val result = authRepository.signIn(email, password)
@@ -47,6 +47,25 @@ class AuthViewModel @Inject constructor(
                 AuthState.Success(result.getOrNull()!!)
             } else {
                 AuthState.Error(result.exceptionOrNull()?.message ?: "Sign in failed")
+            }
+        }
+    }    fun getGoogleSignInIntent(): Intent {
+        Log.d("AuthViewModel", "Getting Google Sign-In intent")
+        return authRepository.getGoogleSignInIntent()
+    }
+
+    fun handleGoogleSignInResult(data: Intent?) {
+        Log.d("AuthViewModel", "Handling Google Sign-In result")
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authRepository.handleGoogleSignInResult(data)
+            _authState.value = if (result.isSuccess) {
+                Log.d("AuthViewModel", "Google Sign-In successful")
+                AuthState.Success(result.getOrNull()!!)
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Google Sign in failed"
+                Log.e("AuthViewModel", "Google Sign-In failed: $errorMessage")
+                AuthState.Error(errorMessage)
             }
         }
     }

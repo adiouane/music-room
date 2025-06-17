@@ -1,5 +1,8 @@
 package com.example.musicroom.presentation.auth
 
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +50,13 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     
     val authState by viewModel.authState.collectAsState()
+
+    // Google Sign-In launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.handleGoogleSignInResult(result.data)
+    }
     
     // Handle auth state changes
     LaunchedEffect(authState) {
@@ -143,16 +153,25 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                cursorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,                            cursorColor = MaterialTheme.colorScheme.primary,
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
                             )
                         )
-
-                        ActionButtons(
+                          ActionButtons(
                             onForgotPasswordClick = onForgotPasswordClick,
                             onLoginClick = { viewModel.signIn(email, password) },
+                            onGoogleSignInClick = { 
+                                Log.d("LoginScreen", "Google Sign-In button clicked")
+                                try {
+                                    val intent = viewModel.getGoogleSignInIntent()
+                                    Log.d("LoginScreen", "Got Google Sign-In intent: $intent")
+                                    googleSignInLauncher.launch(intent)
+                                    Log.d("LoginScreen", "Launched Google Sign-In intent")
+                                } catch (e: Exception) {
+                                    Log.e("LoginScreen", "Error launching Google Sign-In", e)
+                                }
+                            },
                             isLoading = authState is AuthState.Loading
                         )
                     }
@@ -212,6 +231,7 @@ private fun HeaderSection(modifier: Modifier = Modifier) {
 private fun ActionButtons(
     onForgotPasswordClick: () -> Unit,
     onLoginClick: () -> Unit,
+    onGoogleSignInClick: () -> Unit,
     isLoading: Boolean = false
 ) {
     Row(
@@ -249,13 +269,15 @@ private fun ActionButtons(
 
     // Social Login Section
     SocialLoginSection(
-        onGoogleSignInClick = { /* Handle Google Sign-In */ }
+        onGoogleSignInClick = onGoogleSignInClick
     )
     Spacer(modifier = Modifier.height(16.dp))
 }
 
 @Composable
-private fun SocialLoginSection(onGoogleSignInClick: () -> Unit) {
+private fun SocialLoginSection(
+    onGoogleSignInClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
