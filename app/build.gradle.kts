@@ -10,15 +10,18 @@ plugins {
 android {
     namespace = "com.example.musicroom"
     compileSdk = 35
-
+    
     defaultConfig {
-        applicationId = "com.example.musicroom"
+        applicationId = "com.example.musicroom" 
         minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // YouTube API Key (replace with your actual YouTube Data API v3 key)
+        buildConfigField("String", "YOUTUBE_API_KEY", "\"AIzaSyA9TDmdouJUHb2TzcMSc9oxnNnf5jZ2qmI\"")
     }
 
     buildTypes {
@@ -27,18 +30,21 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
-            )
-        }
+            )        }
     }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    
     kotlinOptions {
         jvmTarget = "11"
     }
+    
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -72,21 +78,29 @@ dependencies {
     // Material Icons Extended
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.material.icons.extended.v150)
-
+    
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
     
     // Retrofit dependencies
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-      // Supabase
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    
+    // YouTube API integration
+    implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
+    implementation("com.squareup.moshi:moshi:1.15.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
+    
+    // Supabase
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.6.0")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.0")
     implementation("io.ktor:ktor-client-android:2.3.12")
     implementation("io.ktor:ktor-client-core:2.3.12")
     implementation("io.ktor:ktor-utils:2.3.12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-      // Google Sign-In
+    
+    // Google Sign-In
     implementation(libs.play.services.auth)
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     

@@ -103,8 +103,7 @@ fun HomeScreen(navController: NavController) {
             .background(DarkBackground)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Welcome header
+    ) {        // Welcome header
         item {
             Box(
                 modifier = Modifier
@@ -119,18 +118,29 @@ fun HomeScreen(navController: NavController) {
                     Text(
                         text = "Welcome to MusicRoom",
                         color = TextPrimary,
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Discover and share your favorite music",
+                        text = "Discover, create, and share music together",
                         color = TextSecondary,
-                        fontSize = 14.sp
+                        fontSize = 16.sp
                     )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                      // Temporary Test Button for YouTube API
+                    Button(
+                        onClick = { 
+                            // Navigate to main navController (not innerNavController)
+                            navController.navigate("music_search")
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🎵 Test Music Search (YouTube API)")
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 2. Your Playlists Section

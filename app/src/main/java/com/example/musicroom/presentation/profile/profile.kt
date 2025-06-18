@@ -3,214 +3,278 @@ package com.example.musicroom.presentation.profile
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.material3.Divider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicroom.data.models.User
+import com.example.musicroom.data.models.UserProfile
+import com.example.musicroom.data.models.PublicInfo
+import com.example.musicroom.data.models.FriendsInfo
+import com.example.musicroom.data.models.PrivateInfo
+import com.example.musicroom.data.models.MusicPreferences
 import com.example.musicroom.presentation.theme.*
 
-data class Track(
-    val title: String,
-    val artist: String,
-    val imageUrl: String? = null
-)
-
-data class SettingsItem(
-    val title: String,
-    val icon: ImageVector
-)
+enum class ProfileSection {
+    PUBLIC,
+    FRIENDS_INFO,
+    PRIVATE,
+    MUSIC_PREFERENCES
+}
 
 @Composable
 fun ProfileScreen(user: User) {
-    var showEditDialog by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
+    var selectedSection by remember { mutableStateOf<ProfileSection?>(null) }
+      // Mock user profile - in real app this would come from repository
+    var userProfile by remember {
+        mutableStateOf(
+            UserProfile(
+                userId = user.id,
+                publicInfo = PublicInfo(
+                    displayName = user.name,
+                    username = user.username,
+                    bio = "Music lover and playlist creator",
+                    profilePictureUrl = user.photoUrl
+                ),
+                friendsInfo = FriendsInfo(
+                    email = user.email,
+                    realName = user.name,
+                    location = "New York, NY"
+                ),
+                privateInfo = PrivateInfo(
+                    phoneNumber = "+1 (555) 123-4567",
+                    birthDate = "January 15, 1995",
+                    notes = "Private thoughts about music..."
+                ),
+                musicPreferences = MusicPreferences(
+                    favoriteGenres = listOf("Rock", "Pop", "Jazz", "Electronic"),
+                    favoriteArtists = listOf("The Beatles", "Daft Punk", "Miles Davis"),
+                    musicMood = "Mixed",
+                    explicitContent = false
+                )
+            )
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
-    ) {
-        // Header Section with Edit Button
+    ) {        // Header Section
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(brush = purpleGradient)
-                    .padding(16.dp)
-            ) {
-                IconButton(
-                    onClick = { showSettingsDialog = true },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = TextPrimary
-                    )
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Profile Picture with Edit Option
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(DarkSurface)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(64.dp)
-                                .align(Alignment.Center),
-                            tint = TextPrimary
-                        )
-                        IconButton(
-                            onClick = { showEditDialog = true },
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Profile",
-                                tint = TextPrimary
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(text = user.name, style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
-                    Text(text = "@${user.username}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                }
-            }
-        }
-
-        // Privacy Settings Section
-        item {
-            SettingsSection(
-                title = "Privacy Settings",
-                items = listOf(
-                    SettingsItem("Profile Visibility", Icons.Default.Visibility),
-                    SettingsItem("Who Can See My Activity", Icons.Default.People),
-                    SettingsItem("Blocked Users", Icons.Default.Block)
-                )
+            ProfileHeader(
+                userProfile = userProfile
             )
         }
 
-        // Account Settings Section
+        // Profile Information Sections
         item {
-            SettingsSection(
-                title = "Account Settings",
-                items = listOf(
-                    SettingsItem("Change Password", Icons.Default.Lock),
-                    SettingsItem("Connected Devices", Icons.Default.Devices),
-                    SettingsItem("Notification Settings", Icons.Default.Notifications)
-                )
+            ProfileInfoSection(
+                title = "Public Information",
+                subtitle = "Visible to everyone",                icon = Icons.Default.Public,
+                onClick = { selectedSection = ProfileSection.PUBLIC }
             )
         }
 
-        // Music Preferences Section
         item {
-            SettingsSection(
+            ProfileInfoSection(
+                title = "Friends Only Information",
+                subtitle = "Only your friends can see this",
+                icon = Icons.Default.People,
+                onClick = { selectedSection = ProfileSection.FRIENDS_INFO }
+            )
+        }
+
+        item {
+            ProfileInfoSection(
+                title = "Private Information",
+                subtitle = "Only visible to you",
+                icon = Icons.Default.Lock,
+                onClick = { selectedSection = ProfileSection.PRIVATE }
+            )
+        }
+
+        item {
+            ProfileInfoSection(
                 title = "Music Preferences",
-                items = listOf(
-                    SettingsItem("Favorite Genres", Icons.Default.Favorite),
-                    SettingsItem("Listening History", Icons.Default.History),
-                    SettingsItem("Playlists", Icons.AutoMirrored.Filled.QueueMusic)
-                )
+                subtitle = "Your musical tastes and settings",
+                icon = Icons.Default.MusicNote,
+                onClick = { selectedSection = ProfileSection.MUSIC_PREFERENCES }
             )
         }
 
         // Logout Button
         item {
+            Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = { /* Handle logout */ },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Log Out")
             }
-        }
-    }
-}
+        }    }
 
-@Composable
-private fun SettingsSection(title: String, items: List<SettingsItem>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = TextPrimary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface)
-        ) {
-            Column {
-                items.forEachIndexed { index, item ->
-                    SettingsItemRow(item)
-                    if (index < items.size - 1) {
-                        Divider(color = TextSecondary.copy(alpha = 0.2f))
+    // Section Detail Dialogs
+    selectedSection?.let { section ->        when (section) {
+            ProfileSection.PUBLIC -> {
+                EditPublicInfoDialog(
+                    publicInfo = userProfile.publicInfo,
+                    onDismiss = { selectedSection = null },
+                    onSave = { updatedInfo ->
+                        userProfile = userProfile.copy(publicInfo = updatedInfo)
+                        selectedSection = null
                     }
-                }
+                )
+            }
+            ProfileSection.FRIENDS_INFO -> {
+                EditFriendsInfoDialog(
+                    friendsInfo = userProfile.friendsInfo,
+                    onDismiss = { selectedSection = null },
+                    onSave = { updatedInfo ->
+                        userProfile = userProfile.copy(friendsInfo = updatedInfo)
+                        selectedSection = null
+                    }
+                )
+            }
+            ProfileSection.PRIVATE -> {
+                EditPrivateInfoDialog(
+                    privateInfo = userProfile.privateInfo,
+                    onDismiss = { selectedSection = null },
+                    onSave = { updatedInfo ->
+                        userProfile = userProfile.copy(privateInfo = updatedInfo)
+                        selectedSection = null
+                    }
+                )
+            }
+            ProfileSection.MUSIC_PREFERENCES -> {
+                MusicPreferencesDialog(
+                    musicPreferences = userProfile.musicPreferences,
+                    onDismiss = { selectedSection = null },
+                    onSave = { updatedPreferences ->
+                        userProfile = userProfile.copy(musicPreferences = updatedPreferences)
+                        selectedSection = null
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SettingsItemRow(item: SettingsItem) {
-    Row(
+private fun ProfileHeader(
+    userProfile: UserProfile
+) {    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(brush = purpleGradient)
+            .padding(16.dp)
     ) {
-        Icon(
-            imageVector = item.icon,
-            contentDescription = null,
-            tint = TextPrimary
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = TextSecondary
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Profile Picture
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(DarkSurface)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .align(Alignment.Center),
+                    tint = TextPrimary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+              Text(
+                text = userProfile.publicInfo.displayName,
+                style = MaterialTheme.typography.headlineMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "@${userProfile.publicInfo.username}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+            
+            if (userProfile.publicInfo.bio.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = userProfile.publicInfo.bio,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoSection(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = PrimaryPurple,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextSecondary            )
+        }
     }
 }

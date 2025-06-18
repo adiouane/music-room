@@ -19,6 +19,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.musicroom.data.models.User
 import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen // Updated import
+import com.example.musicroom.presentation.music.MusicSearchScreen
 import com.example.musicroom.presentation.theme.MusicRoomTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.getValue
@@ -100,9 +101,13 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    
-                    composable("home") {
+                      composable("home") {
                         user?.let { SimpleHomeScreen(user = it, navController = navController) }
+                    }
+                    
+                    // Music Search Screen (for testing YouTube API)
+                    composable("music_search") {
+                        MusicSearchScreen()
                     }
                       // Add the playlist details route here
                     composable(

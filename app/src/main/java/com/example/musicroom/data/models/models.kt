@@ -17,27 +17,6 @@ data class User(
 )
 
 /**
- * Data class representing a music track
- *
- * @property id Unique identifier for the track
- * @property title Title of the track
- * @property artist Artist name
- * @property imageUrl URL to the album art image
- * @property votes Number of votes the track has received
- * @property addedBy User ID of the person who added the track
- * @property timestamp Timestamp when the track was added
- */
-data class Track(
-    val id: String,
-    val title: String,
-    val artist: String,
-    val imageUrl: String? = null,
-    var votes: Int = 0,
-    val addedBy: String = "",
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-/**
  * Data class representing an artist
  *
  * @property id Unique identifier for the artist
@@ -130,6 +109,43 @@ data class DevicePermissions(
     val canPause: Boolean = false,
     val canSkip: Boolean = false,
     val canAdjustVolume: Boolean = false
+)
+
+/**
+ * Profile-related data classes
+ */
+data class UserProfile(
+    val userId: String,
+    val publicInfo: PublicInfo,
+    val friendsInfo: FriendsInfo,
+    val privateInfo: PrivateInfo,
+    val musicPreferences: MusicPreferences
+)
+
+data class PublicInfo(
+    val displayName: String,
+    val username: String,
+    val bio: String,
+    val profilePictureUrl: String = ""
+)
+
+data class FriendsInfo(
+    val email: String,
+    val realName: String,
+    val location: String
+)
+
+data class PrivateInfo(
+    val phoneNumber: String,
+    val birthDate: String,
+    val notes: String
+)
+
+data class MusicPreferences(
+    val favoriteGenres: List<String>,
+    val favoriteArtists: List<String>,
+    val musicMood: String,
+    val explicitContent: Boolean
 )
 
 /**
