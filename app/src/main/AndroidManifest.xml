@@ -28,7 +28,7 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>            <!-- Deep link for password reset -->
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -37,7 +37,7 @@
             </intent-filter>
             
             <!-- Deep link for email confirmation -->
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

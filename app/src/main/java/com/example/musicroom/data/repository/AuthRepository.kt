@@ -287,11 +287,11 @@ class AuthRepository @Inject constructor(
         } else {
             null
         }
-    }    suspend fun resetPassword(email: String): Result<String> {
+    }    
+    suspend fun resetPassword(email: String): Result<String> {
         Log.d("AuthRepository", "Starting password reset for email: $email")
         return try {
-            // Note: The redirect URL should be configured in Supabase dashboard
-            // under Authentication -> URL Configuration -> Redirect URLs
+            // Send password reset email (redirect URL is configured in Supabase dashboard)
             SupabaseClient.client.auth.resetPasswordForEmail(email)
             Log.d("AuthRepository", "Password reset email sent successfully")
             Result.success("Password reset instructions sent to your email")
@@ -299,33 +299,33 @@ class AuthRepository @Inject constructor(
             Log.e("AuthRepository", "Exception during password reset: ${e.message}", e)
             Result.failure(e)
         }
-    }suspend fun updatePassword(newPassword: String, accessToken: String): Result<User> {
-        Log.d("AuthRepository", "Starting password update with access token")
+    }
+    suspend fun updatePassword(newPassword: String, accessToken: String): Result<User> {
+        Log.d("AuthRepository", "Starting password update with recovery token")
         return try {
-            Log.d("AuthRepository", "Access token: ${accessToken.take(20)}...")
-            Log.d("AuthRepository", "Full access token length: ${accessToken.length}")
+            Log.d("AuthRepository", "Recovery token: ${accessToken.take(20)}...")
+            Log.d("AuthRepository", "Token length: ${accessToken.length}")
             
-            // Validate the access token format
-            if (!accessToken.startsWith("eyJ")) {
-                Log.e("AuthRepository", "Invalid access token format - should be JWT starting with 'eyJ'")
-                return Result.failure(Exception("Invalid access token format"))
-            }
-            
-            // For password reset, we try different approaches to establish session context
+            // For password reset tokens, we need to establish the session differently
             try {
-                // Method 1: Try to use retrieveUser to set context
-                Log.d("AuthRepository", "Attempting to set user context with access token")
+                Log.d("AuthRepository", "🔑 Setting session with recovery token...")
+                
+                // The token from password reset is an access token that needs to be set as session
+                // First, try to establish session with the recovery token
                 SupabaseClient.client.auth.retrieveUser(accessToken)
                 
-                // Now update the password
-                Log.d("AuthRepository", "Updating password...")
-                SupabaseClient.client.auth.updateUser {
-                    password = newPassword
-                }
-                
-                // Get the current user after password update
+                // Check if we have a valid session now
                 val currentUser = SupabaseClient.client.auth.currentUserOrNull()
                 if (currentUser != null) {
+                    Log.d("AuthRepository", "✅ Session established, updating password...")
+                    
+                    // Now update the password
+                    SupabaseClient.client.auth.updateUser {
+                        password = newPassword
+                    }
+                    
+                    Log.d("AuthRepository", "✅ Password updated successfully")
+                    
                     val fullName = currentUser.userMetadata?.get("full_name")?.toString() ?: ""
                     val user = User(
                         id = currentUser.id,
@@ -334,29 +334,32 @@ class AuthRepository @Inject constructor(
                         photoUrl = "",
                         email = currentUser.email ?: ""
                     )
-                    Log.d("AuthRepository", "Password updated successfully for user: $user")
+                    
                     Result.success(user)
                 } else {
-                    Log.d("AuthRepository", "Password update completed but currentUser is null")
-                    // Password might have been updated successfully but session not established
-                    // This is actually common with password reset flows
-                    Result.success(User(
-                        id = "password_reset_success",
-                        name = "Password Reset",
-                        username = "success",
-                        photoUrl = "",
-                        email = "reset@success.com"
-                    ))
+                    Log.e("AuthRepository", "❌ Failed to establish session with recovery token")
+                    Result.failure(Exception("Invalid password reset token. Please request a new password reset."))
                 }
                 
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Password update failed: ${e.message}")
-                Result.failure(e)
+            } catch (sessionError: Exception) {
+                Log.e("AuthRepository", "❌ Session establishment failed: ${sessionError.message}")
+                
+                // Handle the specific "missing sub claim" error
+                val userFriendlyMessage = when {
+                    sessionError.message?.contains("missing sub claim", true) == true -> 
+                        "Invalid password reset link. Please request a new password reset email."
+                    sessionError.message?.contains("expired", true) == true -> 
+                        "Password reset link has expired. Please request a new one."
+                    sessionError.message?.contains("invalid", true) == true -> 
+                        "Invalid password reset link. Please request a new password reset."
+                    else -> "Unable to process password reset. Please request a new password reset email."
+                }
+                
+                Result.failure(Exception(userFriendlyMessage))
             }
-            
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Exception during password update: ${e.message}", e)
-            Result.failure(e)
+              } catch (e: Exception) {
+            Log.e("AuthRepository", "❌ Exception during password update: ${e.message}", e)
+            Result.failure(Exception("Password update failed: ${e.message ?: "Unknown error"}"))
         }
     }
 
@@ -396,8 +399,7 @@ class AuthRepository @Inject constructor(
             } else {
                 Log.e("AuthRepository", "Email confirmation failed - currentUser is null")
                 Result.failure(Exception("Email confirmation failed - unable to retrieve user"))
-            }
-        } catch (e: Exception) {
+            }        } catch (e: Exception) {
             Log.e("AuthRepository", "Exception during email confirmation: ${e.message}", e)
             Result.failure(e)
         }
