@@ -81,18 +81,17 @@ fun NewPasswordScreen(
         }
         return confirmPasswordError.isEmpty()
     }
-    
-    fun resetPassword() {
+      fun resetPassword() {
         val isPasswordValid = validatePassword()
         val isConfirmPasswordValid = validateConfirmPassword()
-          if (isPasswordValid && isConfirmPasswordValid && !accessToken.isNullOrEmpty()) {
+        if (isPasswordValid && isConfirmPasswordValid && !accessToken.isNullOrEmpty()) {
             Log.d("NewPasswordScreen", "Updating password with token: ${accessToken.take(20)}...")
             viewModel.updatePassword(accessToken, newPassword)
         } else if (accessToken.isNullOrEmpty()) {
             Log.e("NewPasswordScreen", "No access token available")
-        }
-    }
-      Box(
+        }    }
+    
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(

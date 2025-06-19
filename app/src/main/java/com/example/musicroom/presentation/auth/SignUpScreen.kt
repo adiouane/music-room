@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.example.musicroom.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -141,8 +142,7 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                         )
                     }
                 }
-            }
-              // Show error message if there's an authentication error
+            }            // Show error message if there's an authentication error
             if (authState is AuthState.Error) {
                 val errorState = authState as AuthState.Error
                 Card(
@@ -151,12 +151,56 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                         .padding(vertical = 8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Text(
-                        text = errorState.message,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Sign Up Error",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = errorState.message,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        // Enhanced Debug information section
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Debug Information (for troubleshooting):",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Text(
+                            text = "• Error: ${errorState.message}",
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "• Error Type: ${errorState::class.simpleName}",
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "• Email: $email",
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "• Timestamp: ${System.currentTimeMillis()}",
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Please screenshot this error and report it if the issue persists.",
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
                 }
             }
             

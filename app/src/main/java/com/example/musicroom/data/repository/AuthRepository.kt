@@ -12,6 +12,7 @@ import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.providers.builtin.IDToken
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,25 +20,36 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val googleAuthUiClient: GoogleAuthUiClient
 ) {
-    
-    suspend fun signUp(email: String, password: String, fullName: String): Result<User> {
-        Log.d("AuthRepository", "Starting signUp for email: $email")
+      suspend fun signUp(email: String, password: String, fullName: String): Result<User> {
+        Log.d("AuthRepository", "=== STARTING SIGNUP ===")
+        Log.d("AuthRepository", "Email: $email")
+        Log.d("AuthRepository", "Full Name: $fullName")
+        Log.d("AuthRepository", "Password length: ${password.length}")
+        
         return try {
-            Log.d("AuthRepository", "Calling Supabase signUpWith")
+            Log.d("AuthRepository", "Calling Supabase signUpWith...")
             
             // Call signUp - this creates the user in Supabase
-            SupabaseClient.client.auth.signUpWith(Email) {
+            val signUpResult = SupabaseClient.client.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
-                data = buildJsonObject {
+                this.data = buildJsonObject {
                     put("full_name", fullName)
+                    put("username", email.substringBefore("@"))
                 }
             }
+            
             Log.d("AuthRepository", "Supabase signUp completed successfully")
+            Log.d("AuthRepository", "SignUp result: $signUpResult")
+            
+            // Give the database trigger time to create profile data
+            delay(1000)
             
             // After signup, try to get the current user session
             val currentUser = SupabaseClient.client.auth.currentUserOrNull()
-            Log.d("AuthRepository", "Current user after signup: $currentUser")
+            Log.d("AuthRepository", "Current user after signup: ${currentUser?.id}")
+            Log.d("AuthRepository", "User email confirmed: ${currentUser?.emailConfirmedAt}")
+            Log.d("AuthRepository", "User metadata: ${currentUser?.userMetadata}")
             
             if (currentUser != null) {
                 val user = User(
@@ -51,7 +63,7 @@ class AuthRepository @Inject constructor(
                 Result.success(user)
             } else {
                 // This is common with Supabase - user might need email verification
-                Log.w("AuthRepository", "User created but not immediately available - might need email verification")
+                Log.w("AuthRepository", "User created but not immediately available - likely needs email verification")
                 val user = User(
                     id = "pending_${System.currentTimeMillis()}", // Temporary ID
                     name = fullName,
@@ -59,23 +71,52 @@ class AuthRepository @Inject constructor(
                     photoUrl = "",
                     email = email
                 )
+                Log.d("AuthRepository", "Returning pending user: $user")
                 Result.success(user)
             }
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Exception during signUp: ${e.message}", e)
-            Result.failure(e)
+            Log.e("AuthRepository", "=== SIGNUP FAILED ===")
+            Log.e("AuthRepository", "Exception type: ${e::class.simpleName}")
+            Log.e("AuthRepository", "Exception message: ${e.message}")
+            Log.e("AuthRepository", "Stack trace: ${e.stackTraceToString()}")
+            
+            // Parse the error message to provide better user feedback
+            val userFriendlyMessage = when {
+                e.message?.contains("already registered", true) == true -> 
+                    "An account with this email already exists. Please try signing in instead."
+                e.message?.contains("invalid", true) == true -> 
+                    "Invalid email or password format. Please check your input."
+                e.message?.contains("network", true) == true || e.message?.contains("connection", true) == true -> 
+                    "Network error. Please check your internet connection and try again."
+                e.message?.contains("database", true) == true -> 
+                    "Database error occurred while creating your account. Please try again."
+                else -> "Sign up failed: ${e.message ?: "Unknown error"}"
+            }
+            
+            Log.e("AuthRepository", "User-friendly error: $userFriendlyMessage")
+            Result.failure(Exception(userFriendlyMessage))
         }
     }
-    
-    suspend fun signIn(email: String, password: String): Result<User> {
-        Log.d("AuthRepository", "Starting signIn for email: $email")
+      suspend fun signIn(email: String, password: String): Result<User> {
+        Log.d("AuthRepository", "=== STARTING SIGNIN ===")
+        Log.d("AuthRepository", "Email: $email")
+        Log.d("AuthRepository", "Password length: ${password.length}")
+        
         return try {
+            Log.d("AuthRepository", "Calling Supabase signInWith...")
+            
             SupabaseClient.client.auth.signInWith(Email) {
                 this.email = email
                 this.password = password
             }
             
+            Log.d("AuthRepository", "Supabase signIn completed successfully")
+            
             val currentUser = SupabaseClient.client.auth.currentUserOrNull()
+            Log.d("AuthRepository", "Current user after signin: ${currentUser?.id}")
+            Log.d("AuthRepository", "User email confirmed: ${currentUser?.emailConfirmedAt}")
+            Log.d("AuthRepository", "User metadata: ${currentUser?.userMetadata}")
+            
             if (currentUser != null) {
                 val fullName = currentUser.userMetadata?.get("full_name")?.toString() ?: ""
                 val user = User(
@@ -89,11 +130,29 @@ class AuthRepository @Inject constructor(
                 Result.success(user)
             } else {
                 Log.e("AuthRepository", "Sign in failed - currentUser is null")
-                Result.failure(Exception("Sign in failed"))
+                Result.failure(Exception("Sign in failed - unable to retrieve user session"))
             }
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Exception during signIn: ${e.message}", e)
-            Result.failure(e)
+            Log.e("AuthRepository", "=== SIGNIN FAILED ===")
+            Log.e("AuthRepository", "Exception type: ${e::class.simpleName}")
+            Log.e("AuthRepository", "Exception message: ${e.message}")
+            Log.e("AuthRepository", "Stack trace: ${e.stackTraceToString()}")
+            
+            // Parse the error message to provide better user feedback
+            val userFriendlyMessage = when {
+                e.message?.contains("invalid login credentials", true) == true -> 
+                    "Invalid email or password. Please check your credentials and try again."
+                e.message?.contains("email not confirmed", true) == true -> 
+                    "Please check your email and confirm your account before signing in."
+                e.message?.contains("network", true) == true || e.message?.contains("connection", true) == true -> 
+                    "Network error. Please check your internet connection and try again."
+                e.message?.contains("too many requests", true) == true -> 
+                    "Too many login attempts. Please wait a moment and try again."
+                else -> "Sign in failed: ${e.message ?: "Unknown error"}"
+            }
+            
+            Log.e("AuthRepository", "User-friendly error: $userFriendlyMessage")
+            Result.failure(Exception(userFriendlyMessage))
         }
     }
 
@@ -146,8 +205,7 @@ class AuthRepository @Inject constructor(
                         Log.e("AuthRepository", "Supabase authentication with ID token failed: ${supabaseError.message}", supabaseError)
                     }
                 }
-                
-                // Fallback: Create user in Supabase using email/password approach
+                  // Fallback: Create user in Supabase using email/password approach
                 Log.d("AuthRepository", "Fallback: Creating user in Supabase with email/password")
                 try {
                     // Generate a unique password for Google users
