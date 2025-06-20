@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.musicroom.data.models.Track
 import com.example.musicroom.presentation.theme.*
@@ -23,6 +24,7 @@ import com.example.musicroom.presentation.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MusicSearchScreen(
+    navController: NavController,
     viewModel: MusicSearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -79,11 +81,18 @@ fun MusicSearchScreen(
                 val successState = uiState as MusicSearchUiState.Success
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(successState.tracks) { track ->
+                ) {                    items(successState.tracks) { track ->
                         TrackItem(
                             track = track,
-                            onTrackClick = { /* TODO: Handle track click */ }
+                            onTrackClick = { clickedTrack ->
+                                // Navigate to now playing screen with track data
+                                val encodedTitle = java.net.URLEncoder.encode(clickedTrack.title, "UTF-8")
+                                val encodedArtist = java.net.URLEncoder.encode(clickedTrack.artist, "UTF-8")
+                                val encodedThumbnailUrl = java.net.URLEncoder.encode(clickedTrack.thumbnailUrl, "UTF-8")
+                                val encodedDuration = java.net.URLEncoder.encode(clickedTrack.duration, "UTF-8")
+                                
+                                navController.navigate("now_playing/${clickedTrack.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration")
+                            }
                         )
                     }
                 }

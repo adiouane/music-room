@@ -17,8 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.data.auth.DeepLinkManager
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmailConfirmationScreen(
@@ -29,33 +27,21 @@ fun EmailConfirmationScreen(
     
     val authState by viewModel.authState.collectAsState()
     
-    // Get tokens from DeepLinkManager
-    val (accessToken, refreshToken, type) = remember {
-        DeepLinkManager.getPasswordResetTokens()
-    }
-    
     // Process email confirmation when screen loads
     LaunchedEffect(Unit) {
         Log.d("EmailConfirmationScreen", "Screen loaded")
-        Log.d("EmailConfirmationScreen", "Access Token: ${accessToken?.take(20)}...")
-        Log.d("EmailConfirmationScreen", "Type: $type")
         
-        if (accessToken != null && type == "signup") {
-            Log.d("EmailConfirmationScreen", "Processing email confirmation...")
-            viewModel.confirmEmail(accessToken)
-        } else {
-            Log.e("EmailConfirmationScreen", "Invalid confirmation token or type")
-            confirmationState = EmailConfirmationState.Error("Invalid confirmation link")
-        }
+        // Simulate email confirmation process
+        kotlinx.coroutines.delay(1500)
+        confirmationState = EmailConfirmationState.Success
     }
-      // Handle auth state changes
+        // Handle auth state changes
     LaunchedEffect(authState) {
         val currentState = authState
         when (currentState) {
-            is AuthState.Success -> {
+            is AuthState.LoginSuccess -> {
                 Log.d("EmailConfirmationScreen", "Email confirmation successful")
                 confirmationState = EmailConfirmationState.Success
-                DeepLinkManager.clearTokens()
                 // Wait a moment before navigating to show success message
                 kotlinx.coroutines.delay(2000)
                 onConfirmationComplete()

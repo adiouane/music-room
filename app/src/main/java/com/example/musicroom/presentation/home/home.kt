@@ -126,9 +126,9 @@ fun HomeScreen(navController: NavController) {
                         color = TextSecondary,
                         fontSize = 16.sp
                     )
+                      Spacer(modifier = Modifier.height(16.dp))
                     
-                    Spacer(modifier = Modifier.height(16.dp))
-                      // Temporary Test Button for YouTube API
+                    // Music Search Button
                     Button(
                         onClick = { 
                             // Navigate to main navController (not innerNavController)
@@ -137,7 +137,7 @@ fun HomeScreen(navController: NavController) {
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("🎵 Test Music Search (YouTube API)")
+                        Text("🎵 Search Music")
                     }
                 }
             }

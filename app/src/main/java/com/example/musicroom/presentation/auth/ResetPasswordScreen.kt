@@ -17,8 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.data.auth.DeepLinkManager
-
 @Composable
 fun ResetPasswordScreen(
     accessToken: String?,
@@ -35,27 +33,15 @@ fun ResetPasswordScreen(
     
     val authState by viewModel.authState.collectAsState()
     
-    // Get tokens from DeepLinkManager if not provided as parameters
-    val (deepLinkAccessToken, deepLinkRefreshToken, deepLinkType) = remember {
-        DeepLinkManager.getPasswordResetTokens()
-    }
-    
-    val actualAccessToken = accessToken ?: deepLinkAccessToken
-    val actualRefreshToken = refreshToken ?: deepLinkRefreshToken
-      // Log the received tokens for debugging
+    // Log the received tokens for debugging
     LaunchedEffect(Unit) {
         Log.d("ResetPasswordScreen", "Screen loaded")
-        Log.d("ResetPasswordScreen", "Access Token (param): $accessToken")
-        Log.d("ResetPasswordScreen", "Access Token (deeplink): $deepLinkAccessToken")
-        Log.d("ResetPasswordScreen", "Final Access Token: ${actualAccessToken?.take(20)}...")
-        Log.d("ResetPasswordScreen", "Deep link type: $deepLinkType")
+        Log.d("ResetPasswordScreen", "Access Token: ${accessToken?.take(20)}...")
     }
-    
-    // Handle auth state changes
+      // Handle auth state changes
     LaunchedEffect(authState) {
         when (authState) {
-            is AuthState.Success -> {
-                DeepLinkManager.clearTokens() // Clear tokens after successful reset
+            is AuthState.LoginSuccess -> {
                 onPasswordResetComplete()
             }
             else -> {}
@@ -197,19 +183,17 @@ fun ResetPasswordScreen(
                         passwordError = "Password must be at least 6 characters"
                         isValid = false
                     }
-                    
-                    if (confirmPassword.isBlank()) {
+                      if (confirmPassword.isBlank()) {
                         confirmPasswordError = "Please confirm your password"
                         isValid = false
                     } else if (newPassword != confirmPassword) {
                         confirmPasswordError = "Passwords do not match"
                         isValid = false
                     }
-                      if (isValid && actualAccessToken != null) {
-                        viewModel.updatePassword(newPassword, actualAccessToken)
-                    } else if (actualAccessToken == null) {
-                        Log.e("ResetPasswordScreen", "No access token available for password reset")
-                        // You might want to show an error message here
+                      if (isValid) {
+                        // Password update functionality will be implemented when backend is ready
+                        // For now, just navigate back indicating success
+                        onPasswordResetComplete()
                     }
                 },
                 modifier = Modifier

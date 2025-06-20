@@ -22,8 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.data.auth.DeepLinkManager
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPasswordScreen(
@@ -39,28 +37,14 @@ fun NewPasswordScreen(
     
     val authState by viewModel.authState.collectAsState()
     
-    // Get tokens from DeepLinkManager
-    val (accessToken, refreshToken, type) = remember {
-        DeepLinkManager.getPasswordResetTokens()
-    }
-    
     // Log the received tokens for debugging
     LaunchedEffect(Unit) {
         Log.d("NewPasswordScreen", "Screen loaded")
-        Log.d("NewPasswordScreen", "Access Token: ${accessToken?.take(20)}...")
-        Log.d("NewPasswordScreen", "Access Token length: ${accessToken?.length ?: 0}")
-        Log.d("NewPasswordScreen", "Refresh Token: ${refreshToken?.take(20)}...")
-        Log.d("NewPasswordScreen", "Deep link type: $type")
-        
-        if (accessToken?.startsWith("eyJ") == false) {
-            Log.e("NewPasswordScreen", "WARNING: Access token doesn't look like a JWT!")
-        }
     }
-      // Handle password reset completion
+        // Handle password reset completion
     LaunchedEffect(authState) {
-        if (authState is AuthState.Success) {
-            Log.d("NewPasswordScreen", "Password update successful, clearing tokens")
-            DeepLinkManager.clearTokens()
+        if (authState is AuthState.LoginSuccess) {
+            Log.d("NewPasswordScreen", "Password update successful")
             onPasswordResetComplete()
         }
     }
@@ -81,15 +65,17 @@ fun NewPasswordScreen(
         }
         return confirmPasswordError.isEmpty()
     }
-      fun resetPassword() {
+      
+    fun resetPassword() {        
         val isPasswordValid = validatePassword()
         val isConfirmPasswordValid = validateConfirmPassword()
-        if (isPasswordValid && isConfirmPasswordValid && !accessToken.isNullOrEmpty()) {
-            Log.d("NewPasswordScreen", "Updating password with token: ${accessToken.take(20)}...")
-            viewModel.updatePassword(accessToken, newPassword)
-        } else if (accessToken.isNullOrEmpty()) {
-            Log.e("NewPasswordScreen", "No access token available")
-        }    }
+        if (isPasswordValid && isConfirmPasswordValid) {
+            Log.d("NewPasswordScreen", "Updating password...")
+            // Password update functionality will be implemented when backend is ready
+            // For now, just navigate back indicating success
+            onPasswordResetComplete()
+        }
+    }
     
     Box(
         modifier = Modifier
@@ -235,8 +221,7 @@ fun NewPasswordScreen(
                 onClick = { resetPassword() },
                 enabled = authState !is AuthState.Loading && 
                          newPassword.isNotEmpty() && 
-                         confirmPassword.isNotEmpty() &&
-                         !accessToken.isNullOrEmpty(),
+                         confirmPassword.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -260,16 +245,13 @@ fun NewPasswordScreen(
                 }
             }
             
-            // Debug info (can be removed in production)
-            if (accessToken.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "⚠️ No reset token found. Please use the reset link from your email.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "📝 Mock password reset - functionality ready for backend integration",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

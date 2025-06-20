@@ -1,3 +1,51 @@
+/**
+ * ========================================================================================
+ * MAIN ACTIVITY - App Entry Point
+ * ========================================================================================
+ * 
+ * This is the main activity that hosts the entire app with Jetpack Compose navigation.
+ * Handles authentication flow, navigation, and app-wide state management.
+ * 
+ * 🎯 KEY RESPONSIBILITIES:
+ * ========================================================================================
+ * ✅ Navigation setup with Compose Navigation
+ * ✅ Authentication flow management
+ * ✅ Theme and surface configuration
+ * ✅ Dependency injection with Hilt
+ * ✅ Intent handling for app startup
+ * 
+ * 🗺️ NAVIGATION STRUCTURE:
+ * ========================================================================================
+ * /splash          → SplashScreen (app startup)
+ * /onboarding      → OnboardingScreen (first-time user experience)  
+ * /auth            → AuthContainer (login/signup flow)
+ * /home            → SimpleHomeScreen (main app dashboard)
+ * /music_search    → MusicSearchScreen (search for tracks)
+ * /playlist/{id}   → PlaylistDetailsScreen (view playlist details)
+ * /now_playing     → NowPlayingScreen (music player interface)
+ * 
+ * 🔄 AUTHENTICATION FLOW:
+ * ========================================================================================
+ * 1. App starts → SplashScreen
+ * 2. Check if first launch → OnboardingScreen (optional)
+ * 3. Check authentication → AuthContainer or HomeScreen
+ * 4. User completes login → Navigate to HomeScreen
+ * 5. All other screens accessible from HomeScreen
+ * 
+ * 🧩 DEPENDENCY INJECTION:
+ * ========================================================================================
+ * @AndroidEntryPoint enables Hilt dependency injection
+ * All ViewModels, services, and repositories auto-injected
+ * 
+ * 💡 FOR DEVELOPERS:
+ * ========================================================================================
+ * - Add new screens by creating composable routes in NavHost
+ * - Authentication state managed by AuthContainer
+ * - Navigation arguments handled with type safety
+ * - Deep linking can be added by configuring intent filters
+ * ========================================================================================
+ */
+
 package com.example.musicroom
 
 import android.content.Intent
@@ -17,7 +65,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.example.musicroom.data.models.User
 import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen // Updated import
 import com.example.musicroom.presentation.music.MusicSearchScreen
 import com.example.musicroom.presentation.theme.MusicRoomTheme
@@ -33,30 +80,33 @@ import androidx.navigation.NavController
 import com.example.musicroom.presentation.splash.SplashScreen
 import com.example.musicroom.presentation.onboarding.OnboardingScreen
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
-import com.example.musicroom.presentation.auth.ResetPasswordScreen
-import com.example.musicroom.presentation.auth.NewPasswordScreen
-import com.example.musicroom.presentation.auth.EmailConfirmationScreen
-import com.example.musicroom.data.auth.DeepLinkManager
+import com.example.musicroom.presentation.player.NowPlayingScreen
+import com.example.musicroom.data.models.Track
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
-@AndroidEntryPoint
+@AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
-    private var currentIntent by mutableStateOf<Intent?>(null)
     
+    // ============================================================================
+    // INTENT HANDLING - For future deep linking or external app launches
+    // ============================================================================
+    private var currentIntent: Intent? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        currentIntent = intent
+        currentIntent = intent // Store initial intent for processing
         
+        // ========================================================================
+        // COMPOSE UI SETUP - Main app content with theme
+        // ========================================================================
         setContent {
-            MusicRoomTheme {
+            MusicRoomTheme { // Apply app-wide theme and color scheme
                 val navController = rememberNavController()
-                var user by remember { mutableStateOf<User?>(null) }
-                var hasSeenOnboarding by remember { mutableStateOf(false) }                // Handle deep links
-                LaunchedEffect(currentIntent) {
-                    Log.d("MainActivity", "LaunchedEffect triggered with intent: ${currentIntent?.data}")
-                    currentIntent?.let { intent ->
-                        handleDeepLink(intent, navController)
-                    }
-                }
+                var hasSeenOnboarding by remember { mutableStateOf(false) }
+
+                // Handle deep links                // Deep link handling removed - using simplified authentication
                 
                 NavHost(
                     navController = navController,
@@ -78,36 +128,61 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                      composable("auth") {
+                    
+                    composable("auth") {
                         AuthContainer(
-                            onLoginSuccess = { newUser ->
-                                user = newUser
+                            onLoginSuccess = {
+                                // Simply navigate to home on successful login
                                 navController.navigate("home") {
                                     popUpTo(0) { inclusive = true }
                                 }
                             }
                         )
                     }
-                    
-                    // Temporary test route for debugging
-                    composable("test_reset") {
-                        ResetPasswordScreen(
-                            accessToken = "test_token_12345",
-                            refreshToken = "test_refresh_12345",
-                            onPasswordResetComplete = {
-                                navController.navigate("auth") {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
+                      
+                    composable("home") {
+                        // Create a dummy user since we removed user management from auth
+                        val dummyUser = com.example.musicroom.data.models.User(
+                            id = "dummy_user",
+                            name = "User",
+                            username = "user",
+                            photoUrl = "",
+                            email = "user@example.com"
                         )
+                        SimpleHomeScreen(user = dummyUser, navController = navController)
                     }
-                      composable("home") {
-                        user?.let { SimpleHomeScreen(user = it, navController = navController) }
+                      // Music Search Screen
+                    composable("music_search") {
+                        MusicSearchScreen(navController = navController)
                     }
                     
-                    // Music Search Screen (for testing YouTube API)
-                    composable("music_search") {
-                        MusicSearchScreen()
+                    // Now Playing Screen
+                    composable(
+                        route = "now_playing/{trackId}/{trackTitle}/{trackArtist}/{trackThumbnailUrl}/{trackDuration}",
+                        arguments = listOf(
+                            navArgument("trackId") { type = NavType.StringType },
+                            navArgument("trackTitle") { type = NavType.StringType },
+                            navArgument("trackArtist") { type = NavType.StringType },
+                            navArgument("trackThumbnailUrl") { type = NavType.StringType },
+                            navArgument("trackDuration") { type = NavType.StringType }
+                        )                    ) { backStackEntry ->
+                        val trackId = backStackEntry.arguments?.getString("trackId") ?: ""
+                        val trackTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackTitle") ?: "", "UTF-8")
+                        val trackArtist = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackArtist") ?: "", "UTF-8")
+                        val trackThumbnailUrl = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackThumbnailUrl") ?: "", "UTF-8")
+                        val trackDuration = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDuration") ?: "", "UTF-8")
+                          val track = com.example.musicroom.data.models.Track(
+                            id = trackId,
+                            title = trackTitle,
+                            artist = trackArtist,
+                            thumbnailUrl = trackThumbnailUrl,
+                            duration = trackDuration
+                        )
+                        
+                        NowPlayingScreen(
+                            track = track,
+                            navController = navController
+                        )
                     }
                       // Add the playlist details route here
                     composable(
@@ -115,171 +190,18 @@ class MainActivity : ComponentActivity() {
                         arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
                     ) { backStackEntry ->
                         val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
-                        PlaylistDetailsScreen(
-                            playlistId = playlistId,
+                        PlaylistDetailsScreen(                            playlistId = playlistId,
                             navController = navController
                         )
-                    }                    // Password reset route (legacy)
-                    composable("reset_password") {
-                        Log.d("MainActivity", "ResetPasswordScreen route accessed")
-                        
-                        ResetPasswordScreen(
-                            accessToken = null, // We'll handle the token in the screen itself
-                            refreshToken = null,
-                            onPasswordResetComplete = {
-                                Log.d("MainActivity", "Password reset completed, navigating to auth")
-                                navController.navigate("auth") {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                    
-                    // New password route (updated for new deep link)
-                    composable("new_password") {
-                        Log.d("MainActivity", "NewPasswordScreen route accessed")
-                        
-                        NewPasswordScreen(
-                            onPasswordResetComplete = {
-                                Log.d("MainActivity", "Password reset completed, navigating to auth")
-                                navController.navigate("auth") {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                    
-                    // Email confirmation route
-                    composable("confirm_email") {
-                        Log.d("MainActivity", "EmailConfirmationScreen route accessed")
-                        
-                        EmailConfirmationScreen(
-                            onConfirmationComplete = {
-                                Log.d("MainActivity", "Email confirmation completed, navigating to auth")
-                                navController.navigate("auth") {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        )
                     }
                 }
             }
         }
-    }    override fun onNewIntent(intent: Intent) {
+    }
+    
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         currentIntent = intent
-    }    private fun handleDeepLink(intent: Intent, navController: NavController? = null) {
-        val data: Uri? = intent.data
-        Log.d("MainActivity", "=== DEEP LINK DEBUG ===")
-        Log.d("MainActivity", "Intent action: ${intent.action}")
-        Log.d("MainActivity", "Intent data: $data")
-        Log.d("MainActivity", "NavController: $navController")
-        
-        if (data != null) {
-            Log.d("MainActivity", "Scheme: ${data.scheme}")
-            Log.d("MainActivity", "Host: ${data.host}")
-            Log.d("MainActivity", "Path: ${data.path}")
-            Log.d("MainActivity", "Fragment: ${data.fragment}")
-            Log.d("MainActivity", "Query: ${data.query}")
-            Log.d("MainActivity", "Full URL: ${data.toString()}")
-            
-            if (data.scheme == "musicroom" && (data.host == "reset-password" || data.host == "new-password" || data.host == "confirm-email")) {
-                Log.d("MainActivity", "✅ Deep link detected! Host: ${data.host}")
-                
-                // Extract tokens from URL fragment or query parameters
-                val fragment = data.fragment
-                
-                // Also check query parameters in case tokens are there
-                val accessTokenQuery = data.getQueryParameter("access_token")
-                val refreshTokenQuery = data.getQueryParameter("refresh_token")
-                val typeQuery = data.getQueryParameter("type")
-                
-                var accessToken: String? = null
-                var refreshToken: String? = null
-                var type: String? = null
-                
-                // Try fragment first, then query parameters
-                if (fragment != null) {
-                    Log.d("MainActivity", "Parsing fragment: $fragment")
-                    val params = parseUrlParams(fragment)
-                    accessToken = params["access_token"]
-                    refreshToken = params["refresh_token"]
-                    type = params["type"]
-                    Log.d("MainActivity", "Fragment params: $params")
-                } else if (accessTokenQuery != null) {
-                    Log.d("MainActivity", "Using query parameters")
-                    accessToken = accessTokenQuery
-                    refreshToken = refreshTokenQuery
-                    type = typeQuery
-                }
-                
-                Log.d("MainActivity", "Final tokens - Access: ${accessToken?.take(20)}..., Refresh: ${refreshToken?.take(20)}..., Type: $type")
-                
-                if (accessToken != null) {
-                    // Determine the route based on type and host
-                    val route = when {
-                        data.host == "confirm-email" && type == "signup" -> {
-                            Log.d("MainActivity", "🚀 Navigating to email confirmation screen")
-                            "confirm_email"
-                        }
-                        data.host == "new-password" && type == "recovery" -> {
-                            Log.d("MainActivity", "🚀 Navigating to new password screen")
-                            "new_password"
-                        }
-                        data.host == "reset-password" && type == "recovery" -> {
-                            Log.d("MainActivity", "🚀 Navigating to reset password screen")
-                            "reset_password"
-                        }
-                        else -> {
-                            Log.w("MainActivity", "❌ Unknown deep link type or host combination. Host: ${data.host}, Type: $type")
-                            null
-                        }
-                    }
-                    
-                    if (route != null) {
-                        // Store tokens in DeepLinkManager
-                        DeepLinkManager.setPasswordResetTokens(accessToken, refreshToken, type)
-                        
-                        try {
-                            Log.d("MainActivity", "Using route: $route for host: ${data.host}")
-                            
-                            navController?.navigate(route) {
-                                // Clear back stack to prevent going back to link handling
-                                popUpTo(0) { inclusive = true }
-                            }
-                            Log.d("MainActivity", "✅ Navigation successful")
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "❌ Navigation failed: ${e.message}", e)
-                        }
-                    }
-                } else {
-                    Log.w("MainActivity", "❌ Missing access token")
-                }
-            } else {
-                Log.d("MainActivity", "❌ Not a recognized deep link")
-            }
-        } else {
-            Log.d("MainActivity", "❌ No intent data found")
-        }
-        Log.d("MainActivity", "=== END DEEP LINK DEBUG ===")
-    }
-      private fun parseUrlParams(fragment: String): Map<String, String> {
-        val params = mutableMapOf<String, String>()
-        Log.d("MainActivity", "Parsing fragment: $fragment")
-        
-        fragment.split("&").forEach { param ->
-            val keyValue = param.split("=", limit = 2)
-            if (keyValue.size == 2) {
-                val key = keyValue[0]
-                val value = try {
-                    java.net.URLDecoder.decode(keyValue[1], "UTF-8")
-                } catch (e: Exception) {
-                    keyValue[1] // fallback to original if decoding fails
-                }
-                params[key] = value
-                Log.d("MainActivity", "Param: $key = ${value.take(20)}...")
-            }
-        }
-        return params
+        Log.d("MainActivity", "� Deep link handling removed - using simplified authentication")
     }
 }

@@ -27,6 +27,8 @@ import com.example.musicroom.presentation.theme.*
 import com.example.musicroom.presentation.room.*
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
 import com.example.musicroom.presentation.home.HomeScreen
+import com.example.musicroom.presentation.player.NowPlayingScreen
+import com.example.musicroom.presentation.music.MusicSearchScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +84,40 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
                 PlaylistDetailsScreen(
                     playlistId = playlistId,
+                    navController = navController  // Use main navController
+                )
+            }
+            
+            // Music Search Screen
+            composable("music_search") {
+                MusicSearchScreen(navController = navController)  // Use main navController
+            }
+            
+            // Now Playing Screen
+            composable(
+                route = "now_playing/{trackId}/{trackTitle}/{trackArtist}/{trackThumbnailUrl}/{trackDuration}",
+                arguments = listOf(
+                    navArgument("trackId") { type = NavType.StringType },
+                    navArgument("trackTitle") { type = NavType.StringType },
+                    navArgument("trackArtist") { type = NavType.StringType },
+                    navArgument("trackThumbnailUrl") { type = NavType.StringType },
+                    navArgument("trackDuration") { type = NavType.StringType }
+                )            ) { backStackEntry ->
+                val trackId = backStackEntry.arguments?.getString("trackId") ?: ""
+                val trackTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackTitle") ?: "", "UTF-8")
+                val trackArtist = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackArtist") ?: "", "UTF-8")
+                val trackThumbnailUrl = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackThumbnailUrl") ?: "", "UTF-8")
+                val trackDuration = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDuration") ?: "", "UTF-8")
+                  val track = com.example.musicroom.data.models.Track(
+                    id = trackId,
+                    title = trackTitle,
+                    artist = trackArtist,
+                    thumbnailUrl = trackThumbnailUrl,
+                    duration = trackDuration
+                )
+                
+                NowPlayingScreen(
+                    track = track,
                     navController = navController  // Use main navController
                 )
             }

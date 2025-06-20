@@ -28,7 +28,7 @@ import com.example.musicroom.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: String) -> Unit,
+fun SignUpScreen(
     onBackToLoginClick: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
@@ -42,12 +42,12 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
     var showSuccessMessage by remember { mutableStateOf(false) }
     
     val authState by viewModel.authState.collectAsState()
-      // Handle auth state changes
+      // Handle auth state changes - simplified for our new auth system
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.SignUpSuccess -> {
                 showSuccessMessage = true
-                // The AuthContainer will handle navigation back to login
+                // The AuthContainer will handle navigation to home screen
             }
             is AuthState.Error -> {
                 showSuccessMessage = false
@@ -57,7 +57,7 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
             }
         }
     }
-
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -72,7 +72,8 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
             SignUpHeader()
             
             Spacer(modifier = Modifier.height(32.dp))
-              CustomTextField(
+            
+            CustomTextField(
                 value = name,
                 onValueChange = { 
                     name = it
@@ -107,7 +108,8 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                 },
                 label = "Password",
                 icon = Icons.Default.Lock,
-                keyboardType = KeyboardType.Password,                visualTransformation = if (passwordVisible) 
+                keyboardType = KeyboardType.Password,
+                visualTransformation = if (passwordVisible) 
                     VisualTransformation.None 
                 else 
                     PasswordVisualTransformation(),
@@ -121,28 +123,13 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                                 Icons.Default.VisibilityOff,
                             contentDescription = null
                         )
-                    }                }
-            )
-
-            PasswordStrengthIndicator(password)            // Show success message
-            if (showSuccessMessage) {
-                val currentState = authState
-                if (currentState is AuthState.SignUpSuccess) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Text(
-                            text = currentState.message,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
                 }
-            }            // Show error message if there's an authentication error
+            )
+            
+            PasswordStrengthIndicator(password)
+            
+            // Show error message if there's an authentication error
             if (authState is AuthState.Error) {
                 val errorState = authState as AuthState.Error
                 Card(
@@ -164,10 +151,10 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                             style = MaterialTheme.typography.bodyMedium
                         )
                         
-                        // Enhanced Debug information section
+                        // Simplified Debug information for API-based auth
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Debug Information (for troubleshooting):",
+                            text = "Debug Information:",
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.padding(bottom = 4.dp)
@@ -178,27 +165,14 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "• Error Type: ${errorState::class.simpleName}",
-                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
                             text = "• Email: $email",
                             color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "• Timestamp: ${System.currentTimeMillis()}",
+                            text = "• Auth Type: Simple API",
                             color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodySmall
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Please screenshot this error and report it if the issue persists.",
-                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
                 }
@@ -236,8 +210,9 @@ fun SignUpScreen(    onSignUpClick: (name: String, email: String, password: Stri
                         passwordError = "Password must be at least 6 characters"
                         isValid = false
                     }
-                    
-                    if (isValid) {
+                      if (isValid) {
+                        // Call the API through ViewModel
+                        Log.d("SignUpScreen", "Calling signup API for: $email")
                         viewModel.signUp(email, password, name)
                     }
                 },
@@ -289,7 +264,7 @@ private fun PasswordStrengthIndicator(password: String) {
         password.isNotEmpty() -> 1
         else -> 0
     }
-
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -299,13 +274,13 @@ private fun PasswordStrengthIndicator(password: String) {
         repeat(3) { index ->
             Box(
                 modifier = Modifier
-                .weight(1f)
-                .height(4.dp)
-                .background(
-                    color = if (index < strength) PrimaryPurple 
-                           else TextSecondary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(2.dp)
-                )
+                    .weight(1f)
+                    .height(4.dp)
+                    .background(
+                        color = if (index < strength) PrimaryPurple 
+                               else TextSecondary.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(2.dp)
+                    )
             )
         }
     }
