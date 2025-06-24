@@ -1,0 +1,173 @@
+import requests
+from django.conf import settings
+from events.models import Events
+
+
+JAMENDO_BASE_URL = "https://api.jamendo.com/v3.0"
+CLIENT_ID = settings.JAMENDO_CLIENT_ID  # Store this in your .env
+
+
+def get_jamendo_artists(limit=5):
+    url = f"{JAMENDO_BASE_URL}/artists"
+    params = {
+        "client_id": CLIENT_ID,
+        "format": "json",
+        "limit": limit
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+def get_jamendo_related(user_id, limit=5):
+    try:
+        from users.models import User
+        
+        # Get the user
+        user = User.objects.get(id=user_id)
+        
+        # Get user's preferred genre from database
+        # Assuming you have a genre field or preferred_genres field in User model
+        user_genre = getattr(user, 'preferred_genre', None) or getattr(user, 'genre', None)
+        
+        # If no genre preference, default to 'rock'
+        if not user_genre:
+            user_genre = 'rock'
+        
+        url = f"{JAMENDO_BASE_URL}/tracks"
+        params = {
+            "client_id": CLIENT_ID,
+            "format": "json",
+            "tags": user_genre,
+            "limit": limit,
+        }
+        response = requests.get(url, params=params)
+        return response.json()
+        
+    except User.DoesNotExist:
+        print(f"User {user_id} not found, using default genre")
+        # Fallback to default genre if user not found
+        url = f"{JAMENDO_BASE_URL}/tracks"
+        params = {
+            "client_id": CLIENT_ID,
+            "format": "json",
+            "tags": 'rock',
+            "limit": limit,
+        }
+        response = requests.get(url, params=params)
+        return response.json()
+    except Exception as e:
+        print(f"Error fetching user related tracks: {e}")
+        return {"results": []}
+
+def get_user_playlists(user_id, limit):
+    try:
+        from users.models import User
+        from music.models import Playlist
+        
+        # Get the user
+        user = User.objects.get(id=user_id)
+        
+        # Get user's owned playlists
+        user_playlists = user.owned_playlists.all()[:limit]
+        
+        playlists_data = {}
+        for playlist in user_playlists:
+            playlist_data = {
+                'id': playlist.id,
+                'name': playlist.name,
+                'owner': playlist.owner.name,
+                'track_count': len(playlist.tracks),
+                'tracks': playlist.tracks,  # List of song IDs ["song1", "song2"]
+                'is_public': playlist.is_public,
+                'followers_count': playlist.followers.count(),
+                'created_at': playlist.created_at.isoformat() if hasattr(playlist, 'created_at') else None,
+            }
+            playlists_data[f"playlist_{playlist.id}"] = playlist_data
+        
+        return playlists_data
+        
+    except User.DoesNotExist:
+        print(f"User {user_id} not found")
+        return {}
+    except Exception as e:
+        print(f"Error fetching user playlists: {e}")
+        return {}
+
+def get_playlist_songs(playlist_id):
+    try:
+        from music.models import Playlist
+        
+        # Get the playlist from your database
+        playlist = Playlist.objects.get(id=playlist_id)
+        
+        # Get the track IDs from the playlist
+        track_ids = playlist.tracks  # This is your JSON array like ["2257799", "1834483", "1886257"]
+        
+        if not track_ids:
+            return {"results": []}
+        
+        # Convert list to comma-separated string for Jamendo API
+        ids_string = ",".join(track_ids)  # "2257799,1834483,1886257"
+        
+        # Fetch all tracks in one API call
+        url = f"{JAMENDO_BASE_URL}/tracks"
+        params = {
+            "client_id": CLIENT_ID,
+            "format": "json",
+            "id": ids_string,  # Multiple track IDs
+        }
+        response = requests.get(url, params=params)
+        return response.json()
+        
+    except Playlist.DoesNotExist:
+        print(f"Playlist {playlist_id} not found")
+        return {"results": []}
+    except Exception as e:
+        print(f"Error fetching playlist songs: {e}")
+        return {"results": []}
+
+def get_playlists(limit):
+    url = f"{JAMENDO_BASE_URL}/playlists"
+    params = {
+        "client_id": CLIENT_ID,
+        "format": "json",
+        "limit": limit
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+def get_popular_artists(limit):
+    url = f"{JAMENDO_BASE_URL}/artists"
+    params = {
+        "client_id": CLIENT_ID,
+        "format": "json",
+        "limit": limit
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+def get_events(limit):
+    try:
+        # Get only public events from database with limit
+        events = Events.objects.filter(is_public=True).select_related('organizer')[:limit]
+        
+        events_list = []
+        for event in events:
+            event_data = {
+                'id': event.id,
+                'name': event.name,
+                'event_start_time': event.event_start_time.isoformat(),
+                'event_end_time': event.event_end_time.isoformat(),
+                'date': event.date.isoformat(),
+                'location': event.location,
+                'organizer_name': event.organizer.name,
+                'attendees_count': event.attendees.count(),
+                'is_public': event.is_public,
+                'tracks': event.tracks,
+            }
+            events_list.append(event_data)
+        
+        return events_list
+        
+    except Exception as e:
+        print(f"Error fetching public events: {e}")
+        return []
