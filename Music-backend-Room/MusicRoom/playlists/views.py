@@ -289,15 +289,15 @@ def remove_collaborator(request, playlist_id, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+#@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Add track to playlist")
 def add_track_to_playlist(request, playlist_id, track_id):
     """Add a track to playlist"""
     try:
         playlist = get_object_or_404(Playlist, id=playlist_id)
         
-        if not check_playlist_permission(request, playlist, 'edit'):
-            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        #if not check_playlist_permission(request, playlist, 'edit'):
+        #    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
         if str(track_id) not in playlist.tracks:
             playlist.add_track(str(track_id))
@@ -329,16 +329,31 @@ def remove_track_from_playlist(request, playlist_id, track_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get playlist tracks")
+@swagger_auto_schema(operation_summary="Get playlist tracks with details")
 def get_playlist_tracks(request, playlist_id):
-    """Get tracks in a playlist"""
+    """Get tracks in a playlist with full details from Jamendo"""
     try:
         playlist = get_object_or_404(Playlist, id=playlist_id)
         
-        if not check_playlist_permission(request, playlist, 'view'):
-            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        #if not check_playlist_permission(request, playlist, 'view'):
+        #    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
         
-        return Response({'tracks': playlist.tracks})
+        # Get track details from Jamendo API
+        tracks_data = get_playlist_songs(playlist_id)
+        
+        # Return playlist info along with track details
+        response_data = {
+            'playlist_info': {
+                'id': playlist.id,
+                'name': playlist.name,
+                'owner': playlist.owner.name,
+                'track_count': len(playlist.tracks),
+                'is_public': playlist.is_public,
+                'followers_count': playlist.followers.count(),
+            },
+            'tracks': tracks_data.get('results', []) if tracks_data else []
+        }
+        return Response(response_data)
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

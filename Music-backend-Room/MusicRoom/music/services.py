@@ -94,8 +94,7 @@ def get_user_playlists(user_id, limit):
 
 def get_playlist_songs(playlist_id):
     try:
-        from music.models import Playlist
-        
+        from playlists.models import Playlist
         # Get the playlist from your database
         playlist = Playlist.objects.get(id=playlist_id)
         
@@ -105,16 +104,18 @@ def get_playlist_songs(playlist_id):
         if not track_ids:
             return {"results": []}
         
-        # Convert list to comma-separated string for Jamendo API
-        ids_string = ",".join(track_ids)  # "2257799,1834483,1886257"
+        # Use plus (+) instead of comma for multiple IDs in Jamendo API
+        ids_string = "+".join(track_ids)  # "2257799+1834483+1886257"
         
+        print(f'Fetching songs for playlist {playlist_id} with track IDs: {ids_string}')
         # Fetch all tracks in one API call
         url = f"{JAMENDO_BASE_URL}/tracks"
         params = {
             "client_id": CLIENT_ID,
             "format": "json",
-            "id": ids_string,  # Multiple track IDs
+            "id": ids_string,  # Multiple track IDs with + separator
         }
+        print(f'params :{params}')
         response = requests.get(url, params=params)
         return response.json()
         
@@ -123,6 +124,41 @@ def get_playlist_songs(playlist_id):
         return {"results": []}
     except Exception as e:
         print(f"Error fetching playlist songs: {e}")
+        return {"results": []}
+
+def get_playlist_songs_individual(playlist_id):
+    """Alternative method: fetch tracks individually if batch doesn't work"""
+    try:
+        from playlists.models import Playlist
+        playlist = Playlist.objects.get(id=playlist_id)
+        
+        track_ids = playlist.tracks
+        if not track_ids:
+            return {"results": []}
+        
+        all_tracks = []
+        for track_id in track_ids:
+            try:
+                url = f"{JAMENDO_BASE_URL}/tracks"
+                params = {
+                    "client_id": CLIENT_ID,
+                    "format": "json",
+                    "id": track_id,  # Single track ID
+                }
+                response = requests.get(url, params=params)
+                track_data = response.json()
+                
+                if track_data.get('results'):
+                    all_tracks.extend(track_data['results'])
+                    
+            except Exception as e:
+                print(f"Error fetching track {track_id}: {e}")
+                continue
+        
+        return {"results": all_tracks}
+        
+    except Exception as e:
+        print(f"Error: {e}")
         return {"results": []}
 
 def get_playlists(limit):
