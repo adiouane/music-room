@@ -15,13 +15,9 @@ SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '0.0.0.0',
-    'musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev',  # Remove https://
-    '*.app.github.dev',
-]
+# Get ALLOWED_HOSTS from environment variable
+ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
 
 # Application definition
 INSTALLED_APPS = [
@@ -46,7 +42,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',  # Keep only this one
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -136,9 +132,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Remove STATICFILES_DIRS since we don't have a static directory
-# STATICFILES_DIRS = []
-
 # Static files finders
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
@@ -160,14 +153,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings - Simplified
-# CORS_ALLOWED_ORIGINS = [
-#     "https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev",
-#     "http://localhost:8000",
-#     "http://127.0.0.1:8000",
-# ]
-
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# CORS settings from environment variables
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
@@ -199,11 +186,12 @@ CORS_EXPOSE_HEADERS = [
     'x-csrftoken',
 ]
 
-# Add CSRF trusted origins for Codespace
-CSRF_TRUSTED_ORIGINS = [
-    "https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev",
-    "https://*.app.github.dev",
-]
+# CSRF trusted origins from environment variable
+CSRF_TRUSTED_ORIGINS_ENV = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -211,11 +199,11 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # This should allow access
+        'rest_framework.permissions.AllowAny',
     ],
 }
 
-# Swagger settings
+# Swagger settings from environment variable
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -228,7 +216,7 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL': None,
     'LOGOUT_URL': None,
     'VALIDATOR_URL': None,
-    'DEFAULT_API_URL': 'https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev',  # Add this
+    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'http://localhost:8000'),
 }
 
 # Add REDOC settings too
