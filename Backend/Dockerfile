@@ -14,22 +14,25 @@ RUN apt-get update \
         build-essential \
         libpq-dev \
         gcc \
-        default-libmysqlclient-dev \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies FIRST
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Verify Django installation
+RUN python -c "import django; print(f'Django {django.get_version()} installed')"
 
 # Copy project
 COPY . /app/
 
-# Create staticfiles directory
+# Create staticfiles and static directories
 RUN mkdir -p /app/staticfiles
+RUN mkdir -p /app/static
 
 # Expose port
 EXPOSE 8000
