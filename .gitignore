@@ -1,0 +1,30 @@
+# Python
+Backend/
+MusicRoom/__pycache__/
+MusicRoom/*.py[cod]
+MusicRoom/*.egg
+MusicRoom/*.egg-info/
+MusicRoom/dist/
+MusicRoom/build/
+
+# Virtual environment
+venv/
+env/
+
+# Django secret & settings
+MusicRoom/*.sqlite3
+MusicRoom/*.log
+MusicRoom/*.pot
+MusicRoom/*.pyc
+MusicRoom/.DS_Store
+MusicRoom/db.sqlite3
+
+# Environment variables
+.env
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
