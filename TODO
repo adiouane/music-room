@@ -1,0 +1,69 @@
+🧑‍💻 1. User Management
+POST    /api/auth/register/
+POST    /api/auth/login/
+POST    /api/auth/logout/
+POST    /api/auth/password-reset/
+POST    /api/auth/verify-email/
+POST    /api/auth/social-link/  # Link Facebook/Google
+
+GET     /api/user/profile/
+PUT     /api/user/profile/update/
+
+🎵 2. Music Track Vote (Live Queue Voting System)
+POST    /api/events/create/
+GET     /api/events/public/
+GET     /api/events/private/
+POST    /api/events/{event_id}/join/
+POST    /api/events/{event_id}/tracks/suggest/
+POST    /api/events/{event_id}/tracks/{track_id}/vote/
+GET     /api/events/{event_id}/tracks/
+
+🕹️ 3. Music Control Delegation
+POST    /api/control/delegate/
+GET     /api/control/delegates/
+POST    /api/control/play/
+POST    /api/control/pause/
+POST    /api/control/skip/
+
+📃 4. Music Playlist Editor (Collaborative Playlists)
+POST    /api/playlists/create/
+GET     /api/playlists/public/
+GET     /api/playlists/private/
+POST    /api/playlists/{playlist_id}/invite/
+POST    /api/playlists/{playlist_id}/tracks/add/
+DELETE  /api/playlists/{playlist_id}/tracks/{track_id}/remove/
+POST    /api/playlists/{playlist_id}/tracks/reorder/
+GET     /api/playlists/{playlist_id}/tracks/
+
+📦 6. Optional (but likely needed)
+GET     /api/licenses/
+POST    /api/licenses/assign/
+
+the gpt link :
+https://chatgpt.com/share/6844587d-a6fc-800e-8a33-da5005e40e1c
+
+
+
+
+
+
+1- User Management:
+    first user should choose music genre after registration.
+    
+2- home screen:
+    -show related songs based on user genre.
+    -show popular songs.
+    -show rently lestened songs.
+    -show popular playlists.
+    -show popular artists.
+    -show events
+
+3- event:
+    -create event.
+    -join event.
+    -show event details.
+    -show event tracks.
+    -vote for tracks.
+    -suggest tracks.
+
+    
