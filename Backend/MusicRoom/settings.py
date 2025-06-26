@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.management.utils import get_random_secret_key
+
 load_dotenv()
 JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID")
 
@@ -8,7 +10,7 @@ JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
+SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
@@ -17,7 +19,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
-    'reimagined-dollop-wjwjvr79qg4h57v6-8000.app.github.dev',
+    'musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev',  # Remove https://
     '*.app.github.dev',
 ]
 
@@ -42,9 +44,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this as second middleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.common.CommonMiddleware',  # Keep only this one
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -159,8 +161,49 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings - Simplified
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = [
+#     "https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev",
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+# ]
+
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
+
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'expires',
+    'pragma',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+]
+
+# Add CSRF trusted origins for Codespace
+CSRF_TRUSTED_ORIGINS = [
+    "https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev",
+    "https://*.app.github.dev",
+]
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -181,7 +224,14 @@ SWAGGER_SETTINGS = {
             'in': 'header'
         }
     },
-    'USE_SESSION_AUTH': False,  # Add this line
-    'LOGIN_URL': None,          # Add this line
-    'LOGOUT_URL': None,         # Add this line
+    'USE_SESSION_AUTH': False,
+    'LOGIN_URL': None,
+    'LOGOUT_URL': None,
+    'VALIDATOR_URL': None,
+    'DEFAULT_API_URL': 'https://musical-giggle-49x9qj7g67pfj4jg-8000.app.github.dev',  # Add this
+}
+
+# Add REDOC settings too
+REDOC_SETTINGS = {
+    'LAZY_RENDERING': False,
 }
