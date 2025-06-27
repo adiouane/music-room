@@ -52,7 +52,7 @@ def create_user_view(request):
     data = request.data
     name = data.get('name')
     email = data.get('email')
-    avatar = data.get('avatar')
+    avatar = 'data.get)'
     password = data.get('password')
 
     if not all([name, email, password]):

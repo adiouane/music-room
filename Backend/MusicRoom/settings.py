@@ -25,7 +25,11 @@ print(f"DEBUG: ALLOWED_HOSTS parsed: {ALLOWED_HOSTS}")
 
 # For development, allow all hosts when DEBUG is True
 if DEBUG:
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ['*',
+        'solid-train-jwxwrj54vrg25rv9-8000.app.github.dev',
+        '.app.github.dev',  # Allow all GitHub Codespaces domains
+
+    ]
     print("🔍 DEBUG mode: Allowing ALL hosts")
 
 # Application definition
@@ -244,7 +248,14 @@ if DEBUG:
         "http://10.32.130.109:8000",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "http://0.0.0.0:8000",
+        "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev",
     ]
+
+    
+    # Ensure HTTPS is handled properly
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_TLS = True
     
     # Disable CSRF for API views in development
     CSRF_COOKIE_SECURE = False
