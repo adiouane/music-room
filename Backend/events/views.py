@@ -782,20 +782,48 @@ def remove_user_role_from_event(request, event_id, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# @api_view(['GET'])
+# @swagger_auto_schema(
+#     operation_summary="Get available event locations",
+#     operation_description="Get list of all available locations for events",
+#     responses={
+#         200: openapi.Response(
+#             description="Available locations retrieved successfully",
+#             examples={
+#                 'application/json': {
+#                     'locations': [
+#                         {'value': 'E1', 'label': 'E1'},
+#                         {'value': 'E2', 'label': 'E2'},
+#                         {'value': 'P1', 'label': 'P1'},
+#                         # ... other locations
+#                     ]
+#                 }
+#             }
+#         )
+#     }
+# )
 @api_view(['GET'])
 @swagger_auto_schema(
     operation_summary="Get available event locations",
-    operation_description="Get list of all available locations for events",
+    operation_description="Get list of all predefined locations available for event creation",
     responses={
         200: openapi.Response(
-            description="Available locations retrieved successfully",
+            description="List of available locations",
             examples={
                 'application/json': {
                     'locations': [
                         {'value': 'E1', 'label': 'E1'},
                         {'value': 'E2', 'label': 'E2'},
                         {'value': 'P1', 'label': 'P1'},
-                        # ... other locations
+                        {'value': 'P2', 'label': 'P2'},
+                        {'value': 'C3', 'label': 'C3'},
+                        {'value': 'C4', 'label': 'C4'},
+                        {'value': 'Agora', 'label': 'Agora'},
+                        {'value': 'E3', 'label': 'E3'},
+                        {'value': 'C3-Room', 'label': 'C3-Room'},
+                        {'value': 'C3-Relax', 'label': 'C3-Relax'},
+                        {'value': 'C4-rooms', 'label': 'C4-rooms'},
+                        {'value': 'Elevator-room', 'label': 'Elevator-room'}
                     ]
                 }
             }
@@ -805,8 +833,8 @@ def remove_user_role_from_event(request, event_id, user_id):
 def get_available_locations(request):
     """Get list of all available locations for events"""
     try:
-        locations = Events.get_available_locations()
-        location_data = [{'value': loc[0], 'label': loc[1]} for loc in locations]
+        location_choices = Events.get_location_choices()
+        location_data = [{'value': loc[0], 'label': loc[1]} for loc in location_choices]
         
         return Response({
             'locations': location_data

@@ -120,8 +120,9 @@ def get_user_by_email_view(request):
     
     return Response(user, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
+
 @swagger_auto_schema(
+    method='post',
     operation_summary="User login",
     operation_description="Authenticate user with email and password",
     request_body=openapi.Schema(
@@ -185,6 +186,7 @@ def get_user_by_email_view(request):
         )
     }
 )
+@api_view(['POST'])
 def login_user_view(request):
     """Login user with email and password"""
     try:
