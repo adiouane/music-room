@@ -7,6 +7,9 @@ urlpatterns = [
     path('create/', views.create_event, name='create_event'),
     path('<int:event_id>/', views.event_detail, name='event_detail'),
     
+    # Event locations
+    path('locations/', views.get_available_locations, name='get_available_locations'),
+    
     # Event membership
     path('<int:event_id>/join/', views.join_event, name='join_event'),
     path('<int:event_id>/leave/', views.leave_event, name='leave_event'),

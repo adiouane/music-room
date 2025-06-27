@@ -30,11 +30,36 @@ def check_event_permission(request, events, action='view'):
     return False
 
 @api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get public events")
+@swagger_auto_schema(
+    operation_summary="Get public events",
+    operation_description="Get list of public events with optional location filtering",
+    manual_parameters=[
+        openapi.Parameter(
+            'location',
+            openapi.IN_QUERY,
+            description="Filter events by location",
+            type=openapi.TYPE_STRING,
+            required=False
+        ),
+    ]
+)
 def event_list(request):
-    """Get list of public events"""
+    """Get list of public events with optional location filtering"""
     try:
-        events = Events.objects.filter(is_public=True)[:20]
+        location_filter = request.GET.get('location')
+        events = Events.objects.filter(is_public=True)
+        
+        # Filter by location if provided
+        if location_filter:
+            # Validate location is in the predefined choices
+            valid_locations = [choice[0] for choice in Events.get_location_choices()]
+            if location_filter not in valid_locations:
+                return Response({
+                    'error': f'Invalid location filter. Must be one of: {", ".join(valid_locations)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            events = events.filter(location=location_filter)
+        
+        events = events[:20]
         events_data = []
         
         for event in events:
@@ -56,20 +81,43 @@ def event_list(request):
 @swagger_auto_schema(
     method='POST',
     operation_summary="Create new event",
+    operation_description="Create a new event with required location selection from predefined list",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
+        required=['title', 'location', 'event_start_time'],
         properties={
-            'title': openapi.Schema(type=openapi.TYPE_STRING),
-            'description': openapi.Schema(type=openapi.TYPE_STRING),
-            'location': openapi.Schema(type=openapi.TYPE_STRING),
-            'event_start_time': openapi.Schema(type=openapi.TYPE_STRING, format='datetime'),
-            'event_end_time': openapi.Schema(type=openapi.TYPE_STRING, format='datetime'),
-            'is_public': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+            'title': openapi.Schema(type=openapi.TYPE_STRING, description="Event title"),
+            'description': openapi.Schema(type=openapi.TYPE_STRING, description="Event description (optional)"),
+            'location': openapi.Schema(
+                type=openapi.TYPE_STRING, 
+                description="Event location (required). Must be one of: E1, E2, P1, P2, C3, C4, Agora, E3, C3-Room, C3-Relax, C4-rooms, Elevator-room",
+                enum=['E1', 'E2', 'P1', 'P2', 'C3', 'C4', 'Agora', 'E3', 'C3-Room', 'C3-Relax', 'C4-rooms', 'Elevator-room']
+            ),
+            'event_start_time': openapi.Schema(type=openapi.TYPE_STRING, format='datetime', description="Event start time (required)"),
+            'event_end_time': openapi.Schema(type=openapi.TYPE_STRING, format='datetime', description="Event end time (optional)"),
+            'is_public': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Whether event is public (default: true)"),
         }
     ),
     responses={
         201: openapi.Response(
-            description="Event created successfully",)}
+            description="Event created successfully",
+            examples={
+                'application/json': {
+                    'id': 1,
+                    'title': 'Music Night',
+                    'message': 'Event created successfully'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Bad request - missing required fields or invalid location",
+            examples={
+                'application/json': {
+                    'error': 'Location is required'
+                }
+            }
+        )
+    }
 )
 @api_view(['POST'])
 def create_event(request):
@@ -77,13 +125,23 @@ def create_event(request):
     try:
         title = request.data.get('title')
         description = request.data.get('description', '')
-        location = request.data.get('location', '')
+        location = request.data.get('location')
         event_start_time = request.data.get('event_start_time')
         event_end_time = request.data.get('event_end_time')
         is_public = request.data.get('is_public', True)
         
         if not title or not event_start_time:
             return Response({'error': 'Title and start time are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not location:
+            return Response({'error': 'Location is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate location is in the predefined choices
+        valid_locations = [choice[0] for choice in Events.get_location_choices()]
+        if location not in valid_locations:
+            return Response({
+                'error': f'Invalid location. Must be one of: {", ".join(valid_locations)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
         ss = User.objects.get(id=1)
         event = Events.objects.create(
             title=title,
@@ -720,6 +778,39 @@ def remove_user_role_from_event(request, event_id, user_id):
             return Response({'message': f'User {user_to_remove.name} removed from event successfully'})
         else:
             return Response({'error': 'User is not part of this event'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@swagger_auto_schema(
+    operation_summary="Get available event locations",
+    operation_description="Get list of all available locations for events",
+    responses={
+        200: openapi.Response(
+            description="Available locations retrieved successfully",
+            examples={
+                'application/json': {
+                    'locations': [
+                        {'value': 'E1', 'label': 'E1'},
+                        {'value': 'E2', 'label': 'E2'},
+                        {'value': 'P1', 'label': 'P1'},
+                        # ... other locations
+                    ]
+                }
+            }
+        )
+    }
+)
+def get_available_locations(request):
+    """Get list of all available locations for events"""
+    try:
+        locations = Events.get_available_locations()
+        location_data = [{'value': loc[0], 'label': loc[1]} for loc in locations]
+        
+        return Response({
+            'locations': location_data
+        }, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

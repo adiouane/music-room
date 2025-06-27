@@ -2,13 +2,29 @@ from django.db import models
 from django.utils import timezone
 from users.models import User
 
+# Predefined location choices
+LOCATION_CHOICES = [
+    ('E1', 'E1'),
+    ('E2', 'E2'),
+    ('P1', 'P1'),
+    ('P2', 'P2'),
+    ('C3', 'C3'),
+    ('C4', 'C4'),
+    ('Agora', 'Agora'),
+    ('E3', 'E3'),
+    ('C3-Room', 'C3-Room'),
+    ('C3-Relax', 'C3-Relax'),
+    ('C4-rooms', 'C4-rooms'),
+    ('Elevator-room', 'Elevator-room'),
+]
+
 # Create your models here.
 class Events(models.Model):
     title = models.CharField(max_length=255)
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organized_events')
     attendees = models.ManyToManyField(User, related_name='attended_events', blank=True)
     description = models.TextField(blank=True, null=True)    
-    location = models.CharField(max_length=255)
+    location = models.CharField(max_length=50, choices=LOCATION_CHOICES)
     image_url = models.URLField(blank=True, null=True)
     songs = models.JSONField(default=list)  # Stores array of song IDs
     managers = models.JSONField(default=list)  # Stores array of manager IDs
@@ -190,3 +206,13 @@ class Events(models.Model):
     @property
     def track_count(self):
         return len(self.songs)
+    
+    @classmethod
+    def get_available_locations(cls):
+        """Get list of all available locations"""
+        return [choice[0] for choice in LOCATION_CHOICES]
+    
+    @classmethod
+    def get_location_choices(cls):
+        """Get location choices for forms/API"""
+        return LOCATION_CHOICES
