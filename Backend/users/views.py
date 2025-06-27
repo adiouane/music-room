@@ -23,20 +23,27 @@ def get_all_users_view(request):
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
     return Response(users, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 @swagger_auto_schema(
+    method='post',
     operation_summary="Create a new user",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'name': openapi.Schema(type=openapi.TYPE_STRING),
-            'email': openapi.Schema(type=openapi.TYPE_STRING),
-            'avatar': openapi.Schema(type=openapi.TYPE_STRING),
-            'password': openapi.Schema(type=openapi.TYPE_STRING),
+            'name': openapi.Schema(type=openapi.TYPE_STRING, description="User's full name"),
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description="User's email address"),
+            'avatar': openapi.Schema(type=openapi.TYPE_STRING, description="URL to user's avatar"),
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description="User's password"),
         },
-        required=['name', 'email']
+        required=['name', 'email', 'password',]
     )
 )
+@api_view(['POST'])
 def create_user_view(request):
     """Create a new user"""
     data = request.data
@@ -49,11 +56,12 @@ def create_user_view(request):
         return Response({'error': 'Name and email are required'}, status=status.HTTP_400_BAD_REQUEST)
 
     user = create_user(name, email, avatar, password)
-    
+
     if 'error' in user:
         return Response(user, status=status.HTTP_400_BAD_REQUEST)
-    
+
     return Response(user, status=status.HTTP_201_CREATED)
+
 
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get user by ID")
@@ -64,8 +72,8 @@ def get_user_by_id_view(request, user_id):
         return Response(user, status=status.HTTP_404_NOT_FOUND)
     return Response(user, status=status.HTTP_200_OK)
 
-@api_view(['PUT'])
 @swagger_auto_schema(
+    method='put',
     operation_summary="Update user",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -75,6 +83,7 @@ def get_user_by_id_view(request, user_id):
         }
     )
 )
+@api_view(['PUT'])
 def update_user_view(request, user_id):
     """Update user information"""
     data = request.data

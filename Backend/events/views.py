@@ -52,9 +52,9 @@ def event_list(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
 #   @permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='POST',
     operation_summary="Create new event",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -66,8 +66,12 @@ def event_list(request):
             'event_end_time': openapi.Schema(type=openapi.TYPE_STRING, format='datetime'),
             'is_public': openapi.Schema(type=openapi.TYPE_BOOLEAN),
         }
-    )
+    ),
+    responses={
+        201: openapi.Response(
+            description="Event created successfully",)}
 )
+@api_view(['POST'])
 def create_event(request):
     """Create a new event"""
     try:
@@ -91,6 +95,9 @@ def create_event(request):
             is_public=is_public
         )
         
+        # Assign creator as owner
+        event.assign_role(ss.id, 'owner')
+        
         return Response({
             'id': event.id,
             'title': event.title,
@@ -101,7 +108,65 @@ def create_event(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get event details")
+@swagger_auto_schema(
+    operation_summary="Get event details",
+    operation_description="Get detailed information about a specific event including user roles",
+    manual_parameters=[
+        openapi.Parameter(
+            'event_id',
+            openapi.IN_PATH,
+            description="Event ID",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="Event details retrieved successfully",
+            examples={
+                'application/json': {
+                    'id': 1,
+                    'title': 'Summer Music Festival',
+                    'description': 'A great music event',
+                    'location': 'Central Park',
+                    'event_start_time': '2024-07-15T20:00:00Z',
+                    'event_end_time': '2024-07-15T23:00:00Z',
+                    'organizer': {
+                        'id': 1,
+                        'name': 'John Doe',
+                        'avatar': 'https://example.com/avatar.jpg'
+                    },
+                    'attendee_count': 25,
+                    'track_count': 10,
+                    'is_public': True,
+                    'songs': ['song1', 'song2'],
+                    'user_roles': {
+                        '1': 'owner',
+                        '2': 'editor',
+                        '3': 'listener'
+                    },
+                    'current_user_role': 'owner'
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Access denied",
+            examples={
+                'application/json': {
+                    'error': 'Access denied'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="Event not found",
+            examples={
+                'application/json': {
+                    'error': 'Event not found'
+                }
+            }
+        )
+    }
+)
 def event_detail(request, event_id):
     """Get specific event details"""
     try:
@@ -109,6 +174,11 @@ def event_detail(request, event_id):
 
         if not check_event_permission(request, event, 'view'):
             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get current user's role if authenticated
+        current_user_role = None
+        if request.user.is_authenticated:
+            current_user_role = event.get_user_role(request.user.id)
         
         event_data = {
             'id': event.id,
@@ -126,6 +196,8 @@ def event_detail(request, event_id):
             'track_count': event.track_count,
             'is_public': event.is_public,
             'songs': event.songs,
+            'user_roles': event.get_all_roles(),
+            'current_user_role': current_user_role,
         }
         
         return Response(event_data)
@@ -357,5 +429,297 @@ def event_attendees(request, event_id):
             })
         
         return Response(attendees)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Role Management Views
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@swagger_auto_schema(
+    operation_summary="Assign editor role to user",
+    operation_description="Assign 'editor' role to a user in the event. Only owners can assign editor roles.",
+    manual_parameters=[
+        openapi.Parameter(
+            'event_id',
+            openapi.IN_PATH,
+            description="Event ID",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        ),
+        openapi.Parameter(
+            'user_id',
+            openapi.IN_PATH,
+            description="User ID to assign editor role",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="Editor role assigned successfully",
+            examples={
+                'application/json': {
+                    'message': 'User assigned as editor successfully'
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Permission denied - only owners can assign editor roles",
+            examples={
+                'application/json': {
+                    'error': 'Only event owner can assign editor roles'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="Event or user not found",
+            examples={
+                'application/json': {
+                    'error': 'Event not found'
+                }
+            }
+        )
+    }
+)
+def assign_editor_role(request, event_id, user_id):
+    """Assign editor role to a user"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        user_to_assign = get_object_or_404(User, id=user_id)
+        
+        # Check if current user is the owner
+        if event.get_user_role(request.user.id) != 'owner':
+            return Response({'error': 'Only event owner can assign editor roles'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Assign editor role
+        if event.assign_editor_role(user_id):
+            return Response({'message': f'User {user_to_assign.name} assigned as editor successfully'})
+        else:
+            return Response({'error': 'Failed to assign editor role'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@swagger_auto_schema(
+    operation_summary="Transfer event ownership",
+    operation_description="Transfer ownership of the event to another user. Current owner becomes an editor.",
+    manual_parameters=[
+        openapi.Parameter(
+            'event_id',
+            openapi.IN_PATH,
+            description="Event ID",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        ),
+        openapi.Parameter(
+            'user_id',
+            openapi.IN_PATH,
+            description="User ID to transfer ownership to",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="Ownership transferred successfully",
+            examples={
+                'application/json': {
+                    'message': 'Ownership transferred successfully'
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Permission denied - only current owner can transfer ownership",
+            examples={
+                'application/json': {
+                    'error': 'Only current owner can transfer ownership'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="Event or user not found",
+            examples={
+                'application/json': {
+                    'error': 'User not found'
+                }
+            }
+        )
+    }
+)
+def transfer_event_ownership(request, event_id, user_id):
+    """Transfer ownership to another user"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        new_owner = get_object_or_404(User, id=user_id)
+        
+        # Check if current user is the owner
+        if event.get_user_role(request.user.id) != 'owner':
+            return Response({'error': 'Only current owner can transfer ownership'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Transfer ownership
+        if event.transfer_ownership(user_id, request.user.id):
+            return Response({'message': f'Ownership transferred to {new_owner.name} successfully'})
+        else:
+            return Response({'error': 'Failed to transfer ownership'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@swagger_auto_schema(
+    operation_summary="Get event user roles",
+    operation_description="Get all users and their roles in the event",
+    manual_parameters=[
+        openapi.Parameter(
+            'event_id',
+            openapi.IN_PATH,
+            description="Event ID",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="User roles retrieved successfully",
+            examples={
+                'application/json': {
+                    'user_roles': {
+                        '1': 'owner',
+                        '2': 'editor',
+                        '3': 'listener'
+                    },
+                    'users_by_role': {
+                        'owner': [{'id': 1, 'name': 'John Doe', 'role': 'owner'}],
+                        'editor': [{'id': 2, 'name': 'Jane Smith', 'role': 'editor'}],
+                        'listener': [{'id': 3, 'name': 'Bob Wilson', 'role': 'listener'}]
+                    }
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Access denied",
+            examples={
+                'application/json': {
+                    'error': 'Access denied'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="Event not found",
+            examples={
+                'application/json': {
+                    'error': 'Event not found'
+                }
+            }
+        )
+    }
+)
+def get_event_user_roles(request, event_id):
+    """Get all user roles in the event"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        
+        if not check_event_permission(request, event, 'view'):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all user roles
+        user_roles = event.get_all_roles()
+        
+        # Organize users by role with user details
+        users_by_role = {'owner': [], 'editor': [], 'listener': []}
+        
+        for user_id, role in user_roles.items():
+            try:
+                user = User.objects.get(id=int(user_id))
+                user_data = {
+                    'id': user.id,
+                    'name': user.name,
+                    'avatar': user.avatar,
+                    'role': role
+                }
+                users_by_role[role].append(user_data)
+            except User.DoesNotExist:
+                continue
+        
+        return Response({
+            'user_roles': user_roles,
+            'users_by_role': users_by_role
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@swagger_auto_schema(
+    operation_summary="Remove user role from event",
+    operation_description="Remove a user's role from the event (effectively removing them from the event)",
+    manual_parameters=[
+        openapi.Parameter(
+            'event_id',
+            openapi.IN_PATH,
+            description="Event ID",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        ),
+        openapi.Parameter(
+            'user_id',
+            openapi.IN_PATH,
+            description="User ID to remove from event",
+            type=openapi.TYPE_INTEGER,
+            required=True
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="User removed successfully",
+            examples={
+                'application/json': {
+                    'message': 'User removed from event successfully'
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Permission denied",
+            examples={
+                'application/json': {
+                    'error': 'Only owner or the user themselves can remove from event'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="Event or user not found",
+            examples={
+                'application/json': {
+                    'error': 'Event not found'
+                }
+            }
+        )
+    }
+)
+def remove_user_role_from_event(request, event_id, user_id):
+    """Remove user role from event"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        user_to_remove = get_object_or_404(User, id=user_id)
+        
+        # Check permissions: only owner can remove others, or user can remove themselves
+        current_user_role = event.get_user_role(request.user.id)
+        if current_user_role != 'owner' and request.user.id != int(user_id):
+            return Response({'error': 'Only owner or the user themselves can remove from event'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Cannot remove the owner unless they're removing themselves
+        if event.get_user_role(user_id) == 'owner' and request.user.id != int(user_id):
+            return Response({'error': 'Cannot remove the event owner'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Remove user from attendees and role
+        if event.remove_attendee(user_to_remove):
+            return Response({'message': f'User {user_to_remove.name} removed from event successfully'})
+        else:
+            return Response({'error': 'User is not part of this event'}, status=status.HTTP_400_BAD_REQUEST)
+        
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
