@@ -118,7 +118,7 @@ def login_user(email, password):
     """Authenticate user with email and password"""
     try:
         # Get user by email
-        user = User.objects.get(email=email, is_active=True)
+        user = User.objects.get(email=email, is_active=True, is_verified=True)
         
         # Check password
         if check_password(password, user.password):
@@ -138,6 +138,7 @@ def login_user(email, password):
                     'updated_at': user.updated_at
                 }
             }
+        
         else:
             return {'error': 'Invalid password'}
             
