@@ -19,6 +19,15 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
 
+# Debug print to see what's being loaded
+print(f"DEBUG: ALLOWED_HOSTS from env: {ALLOWED_HOSTS_ENV}")
+print(f"DEBUG: ALLOWED_HOSTS parsed: {ALLOWED_HOSTS}")
+
+# For development, allow all hosts when DEBUG is True
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+    print("🔍 DEBUG mode: Allowing ALL hosts")
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -223,3 +232,36 @@ SWAGGER_SETTINGS = {
 REDOC_SETTINGS = {
     'LAZY_RENDERING': False,
 }
+
+# Add these settings at the end for mobile app testing
+if DEBUG:
+    # More permissive CORS settings for development
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+    
+    # Add your mobile device's network to allowed origins
+    CORS_ALLOWED_ORIGINS = [
+        "http://10.32.130.109:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+    
+    # Disable CSRF for API views in development
+    CSRF_COOKIE_SECURE = False
+    CSRF_COOKIE_HTTPONLY = False
+    
+    # Additional CORS headers
+    CORS_ALLOW_HEADERS = [
+        'accept',
+        'accept-encoding',
+        'authorization',
+        'content-type',
+        'dnt',
+        'origin',
+        'user-agent',
+        'x-csrftoken',
+        'x-requested-with',
+        'cache-control',
+        'expires',
+        'pragma',
+    ]
