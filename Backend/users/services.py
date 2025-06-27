@@ -1,7 +1,7 @@
 from .models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 
 def get_all_users():
     """Get all active users"""
@@ -109,6 +109,38 @@ def delete_user(user_id):
         user.is_active = False
         user.save()
         return {'message': 'User deleted successfully'}
+    except User.DoesNotExist:
+        return {'error': 'User not found'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def login_user(email, password):
+    """Authenticate user with email and password"""
+    try:
+        # Get user by email
+        user = User.objects.get(email=email, is_active=True)
+        
+        # Check password
+        if check_password(password, user.password):
+            # Update last login
+            from django.utils import timezone
+            user.last_login = timezone.now()
+            user.save()
+            
+            return {
+                'success': True,
+                'user': {
+                    'id': str(user.id),
+                    'name': user.name,
+                    'email': user.email,
+                    'avatar': user.avatar,
+                    'created_at': user.created_at,
+                    'updated_at': user.updated_at
+                }
+            }
+        else:
+            return {'error': 'Invalid password'}
+            
     except User.DoesNotExist:
         return {'error': 'User not found'}
     except Exception as e:

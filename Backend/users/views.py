@@ -11,7 +11,8 @@ from .services import (
     get_user_by_email, 
     create_user, 
     update_user, 
-    delete_user
+    delete_user,
+    login_user
 )
 
 @api_view(['GET'])
@@ -118,3 +119,110 @@ def get_user_by_email_view(request):
         return Response(user, status=status.HTTP_404_NOT_FOUND)
     
     return Response(user, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@swagger_auto_schema(
+    operation_summary="User login",
+    operation_description="Authenticate user with email and password",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['email', 'password'],
+        properties={
+            'email': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="User's email address",
+                example="john.doe@example.com"
+            ),
+            'password': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="User's password",
+                example="securePassword123"
+            ),
+        }
+    ),
+    responses={
+        200: openapi.Response(
+            description="Login successful",
+            examples={
+                'application/json': {
+                    'success': True,
+                    'message': 'Login successful',
+                    'user': {
+                        'id': 1,
+                        'name': 'John Doe',
+                        'email': 'john.doe@example.com',
+                        'avatar': 'https://example.com/avatar.jpg'
+                    }
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Missing credentials",
+            examples={
+                'application/json': {
+                    'success': False,
+                    'error': 'Email and password are required'
+                }
+            }
+        ),
+        401: openapi.Response(
+            description="Invalid credentials",
+            examples={
+                'application/json': {
+                    'success': False,
+                    'error': 'Invalid email or password'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="User not found",
+            examples={
+                'application/json': {
+                    'success': False,
+                    'error': 'User not found'
+                }
+            }
+        )
+    }
+)
+def login_user_view(request):
+    """Login user with email and password"""
+    try:
+        data = request.data
+        email = data.get('email')
+        password = data.get('password')
+        
+        # Check if email and password are provided
+        if not email or not password:
+            return Response({
+                'success': False,
+                'error': 'Email and password are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Authenticate user
+        result = login_user(email, password)
+        
+        if 'error' in result:
+            if result['error'] == 'User not found':
+                return Response({
+                    'success': False,
+                    'error': 'User not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response({
+                    'success': False,
+                    'error': 'Invalid email or password'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Login successful
+        return Response({
+            'success': True,
+            'message': 'Login successful',
+            'user': result['user']
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

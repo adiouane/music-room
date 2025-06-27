@@ -9,6 +9,7 @@ urlpatterns = [
     path('<int:user_id>/update/', views.update_user_view, name='update_user'),
     path('<int:user_id>/delete/', views.delete_user_view, name='delete_user'),
     
-    # User search
+    # User search and authentication
     path('search/', views.get_user_by_email_view, name='get_user_by_email'),
+    path('login/', views.login_user_view, name='login_user'),
 ]
