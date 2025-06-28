@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 # Get ALLOWED_HOSTS from environment variable
-ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0')
+ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
 
 # Debug print to see what's being loaded
@@ -229,7 +229,7 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL': None,
     'LOGOUT_URL': None,
     'VALIDATOR_URL': None,
-    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'http://localhost:8000'),
+    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL'),
 }
 
 # Add REDOC settings too
