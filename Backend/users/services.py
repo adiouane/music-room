@@ -118,8 +118,10 @@ def login_user(email, password):
     """Authenticate user with email and password"""
     try:
         # Get user by email
-        user = User.objects.get(email=email, is_active=True, is_verified=True)
-        
+        user = User.objects.get(email=email, is_active=True)
+        print(f"User found: {user.name} with email {user.email}")
+        if user.is_verified is False:
+            return {'error': 'User is not verified'}
         # Check password
         if check_password(password, user.password):
             # Update last login
