@@ -19,7 +19,9 @@ sealed class AuthScreenState {
 fun AuthContainer(onLoginSuccess: () -> Unit) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.authState.collectAsState()
-    var currentScreen by remember { mutableStateOf<AuthScreenState>(AuthScreenState.Login) }    // Handle successful authentication
+    var currentScreen by remember { mutableStateOf<AuthScreenState>(AuthScreenState.Login) }
+    
+    // Handle successful authentication
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.LoginSuccess -> {
@@ -27,8 +29,8 @@ fun AuthContainer(onLoginSuccess: () -> Unit) {
                 authViewModel.clearState()
             }
             is AuthState.SignUpSuccess -> {
-                // For now, also navigate to home after successful signup
-                onLoginSuccess()
+                // Navigate back to login screen after successful signup
+                currentScreen = AuthScreenState.Login
                 authViewModel.clearState()
             }
             is AuthState.GoogleSignInSuccess -> {
@@ -39,10 +41,12 @@ fun AuthContainer(onLoginSuccess: () -> Unit) {
             else -> { /* No action needed */ }
         }
     }
-      when (currentScreen) {
+    
+    when (currentScreen) {
         AuthScreenState.Login -> {
             LoginScreen(
-                onLoginSuccess = onLoginSuccess,                onSignUpClick = { 
+                onLoginSuccess = onLoginSuccess,
+                onSignUpClick = { 
                     currentScreen = AuthScreenState.SignUp 
                 },
                 onForgotPasswordClick = { 
@@ -50,7 +54,9 @@ fun AuthContainer(onLoginSuccess: () -> Unit) {
                 },
                 viewModel = authViewModel
             )
-        }        AuthScreenState.SignUp -> {
+        }
+        
+        AuthScreenState.SignUp -> {
             SignUpScreen(
                 onBackToLoginClick = { 
                     currentScreen = AuthScreenState.Login 

@@ -22,8 +22,8 @@ fun MusicPreferencesDialog(
     onDismiss: () -> Unit,
     onSave: (MusicPreferences) -> Unit
 ) {
-    var favoriteGenres by remember { mutableStateOf(musicPreferences.favoriteGenres) }
-    var favoriteArtists by remember { mutableStateOf(musicPreferences.favoriteArtists) }
+    var favoriteGenres by remember { mutableStateOf(musicPreferences.favoriteGenres.toMutableList()) }
+    var favoriteArtists by remember { mutableStateOf(musicPreferences.favoriteArtists.toMutableList()) }
     var musicMood by remember { mutableStateOf(musicPreferences.musicMood) }
     var explicitContent by remember { mutableStateOf(musicPreferences.explicitContent) }
 
@@ -42,17 +42,24 @@ fun MusicPreferencesDialog(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = "Music Preferences",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = TextPrimary
-                )
-
-                Text(
-                    text = "Customize your music experience",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Music Preferences",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = TextPrimary
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = TextSecondary
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -62,7 +69,6 @@ fun MusicPreferencesDialog(
                     style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyRow(
@@ -72,14 +78,15 @@ fun MusicPreferencesDialog(
                     items(favoriteGenres) { genre ->
                         FilterChip(
                             onClick = {
-                                favoriteGenres = favoriteGenres - genre
+                                favoriteGenres.remove(genre)
+                                favoriteGenres = favoriteGenres.toMutableList()
                             },
                             label = { Text(genre) },
                             selected = true,
                             trailingIcon = {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Remove $genre",
+                                    contentDescription = "Remove",
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -101,14 +108,17 @@ fun MusicPreferencesDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
+                            focusedLabelColor = PrimaryPurple,
+                            unfocusedLabelColor = TextSecondary,
                             focusedBorderColor = PrimaryPurple,
                             unfocusedBorderColor = TextSecondary
                         )
                     )
                     Button(
                         onClick = {
-                            if (newGenre.isNotBlank() && newGenre !in favoriteGenres) {
-                                favoriteGenres = favoriteGenres + newGenre
+                            if (newGenre.isNotBlank() && !favoriteGenres.contains(newGenre)) {
+                                favoriteGenres.add(newGenre)
+                                favoriteGenres = favoriteGenres.toMutableList()
                                 newGenre = ""
                             }
                         },
@@ -118,7 +128,7 @@ fun MusicPreferencesDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Favorite Artists Section
                 Text(
@@ -126,7 +136,6 @@ fun MusicPreferencesDialog(
                     style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyRow(
@@ -136,14 +145,15 @@ fun MusicPreferencesDialog(
                     items(favoriteArtists) { artist ->
                         FilterChip(
                             onClick = {
-                                favoriteArtists = favoriteArtists - artist
+                                favoriteArtists.remove(artist)
+                                favoriteArtists = favoriteArtists.toMutableList()
                             },
                             label = { Text(artist) },
                             selected = true,
                             trailingIcon = {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Remove $artist",
+                                    contentDescription = "Remove",
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -156,7 +166,8 @@ fun MusicPreferencesDialog(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {                    OutlinedTextField(
+                ) {
+                    OutlinedTextField(
                         value = newArtist,
                         onValueChange = { newArtist = it },
                         label = { Text("Add Artist") },
@@ -164,14 +175,17 @@ fun MusicPreferencesDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
+                            focusedLabelColor = PrimaryPurple,
+                            unfocusedLabelColor = TextSecondary,
                             focusedBorderColor = PrimaryPurple,
                             unfocusedBorderColor = TextSecondary
                         )
                     )
                     Button(
                         onClick = {
-                            if (newArtist.isNotBlank() && newArtist !in favoriteArtists) {
-                                favoriteArtists = favoriteArtists + newArtist
+                            if (newArtist.isNotBlank() && !favoriteArtists.contains(newArtist)) {
+                                favoriteArtists.add(newArtist)
+                                favoriteArtists = favoriteArtists.toMutableList()
                                 newArtist = ""
                             }
                         },
@@ -181,72 +195,70 @@ fun MusicPreferencesDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Music Mood Selection
+                // Music Mood Section
                 Text(
                     text = "Music Mood",
                     style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val moods = listOf("Energetic", "Relaxed", "Happy", "Sad", "Focused", "Party")
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()                ) {
-                    val moods = listOf("Happy", "Chill", "Energetic", "Mixed")
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     items(moods) { mood ->
                         FilterChip(
                             onClick = { musicMood = mood },
                             label = { Text(mood) },
-                            selected = mood == musicMood
+                            selected = musicMood == mood
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Explicit Content Setting
+                // Explicit Content Section
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "Allow Explicit Content",
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         color = TextPrimary
                     )
                     Switch(
                         checked = explicitContent,
                         onCheckedChange = { explicitContent = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = PrimaryPurple,
-                            checkedTrackColor = PrimaryPurple.copy(alpha = 0.5f)
-                        )
+                        colors = SwitchDefaults.colors(checkedThumbColor = PrimaryPurple)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
+                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
                     ) {
-                        Text("Cancel", color = TextSecondary)
+                        Text("Cancel")
                     }
-
                     Button(
                         onClick = {
                             onSave(
                                 MusicPreferences(
-                                    favoriteGenres = favoriteGenres,
-                                    favoriteArtists = favoriteArtists,
+                                    favoriteGenres = favoriteGenres.toList(),
+                                    favoriteArtists = favoriteArtists.toList(),
                                     musicMood = musicMood,
                                     explicitContent = explicitContent
                                 )

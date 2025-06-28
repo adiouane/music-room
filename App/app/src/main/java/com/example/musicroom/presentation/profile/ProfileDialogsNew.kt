@@ -34,15 +34,9 @@ fun EditPublicInfoDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Edit Public Information",
+                    text = "Edit Public Info",
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary
-                )
-
-                Text(
-                    text = "This information is visible to everyone",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -97,13 +91,12 @@ fun EditPublicInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancel", color = TextSecondary)
+                        Text("Cancel")
                     }
-
                     Button(
                         onClick = {
                             onSave(
@@ -149,15 +142,9 @@ fun EditFriendsInfoDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Edit Friends Information",
+                    text = "Edit Friends Info",
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary
-                )
-
-                Text(
-                    text = "This information is visible to your friends only",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -211,13 +198,12 @@ fun EditFriendsInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancel", color = TextSecondary)
+                        Text("Cancel")
                     }
-
                     Button(
                         onClick = {
                             onSave(
@@ -262,15 +248,9 @@ fun EditPrivateInfoDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Edit Private Information",
+                    text = "Edit Private Info",
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary
-                )
-
-                Text(
-                    text = "This information is visible to you only",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -308,7 +288,7 @@ fun EditPrivateInfoDialog(
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Personal Notes") },
+                    label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -325,13 +305,12 @@ fun EditPrivateInfoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancel", color = TextSecondary)
+                        Text("Cancel")
                     }
-
                     Button(
                         onClick = {
                             onSave(

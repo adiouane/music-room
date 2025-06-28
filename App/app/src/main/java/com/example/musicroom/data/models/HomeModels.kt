@@ -1,0 +1,116 @@
+package com.example.musicroom.data.models
+
+/**
+ * Data models for the home screen API response
+ * Based on the backend /home/ endpoint structure
+ */
+
+/**
+ * Main response wrapper for home data
+ */
+data class HomeResponse(
+    val user_playlists: PlaylistsSection,
+    val recommended_songs: SongsSection,
+    val popular_songs: SongsSection,
+    val recently_listened: SongsSection,
+    val popular_artists: ArtistsSection,
+    val events: List<Event>
+)
+
+/**
+ * Common headers structure for API responses
+ */
+data class ApiHeaders(
+    val status: String,
+    val code: Int,
+    val error_message: String,
+    val warnings: String,
+    val results_count: Int,
+    val next: String?
+)
+
+/**
+ * Playlists section
+ */
+data class PlaylistsSection(
+    val headers: ApiHeaders,
+    val results: List<Playlist>
+)
+
+/**
+ * Playlist model
+ */
+data class Playlist(
+    val id: String,
+    val name: String,
+    val creationdate: String,
+    val user_id: String,
+    val user_name: String,
+    val zip: String?,
+    val shorturl: String,
+    val shareurl: String
+)
+
+/**
+ * Songs section
+ */
+data class SongsSection(
+    val headers: ApiHeaders,
+    val results: List<Song>
+)
+
+/**
+ * Song model
+ */
+data class Song(
+    val id: String,
+    val name: String,
+    val duration: Int,
+    val artist_id: String,
+    val artist_name: String,
+    val artist_idstr: String,
+    val album_name: String,
+    val album_id: String,
+    val license_ccurl: String?,
+    val position: Int,
+    val releasedate: String,
+    val album_image: String?,
+    val audio: String,
+    val audiodownload: String?,
+    val prourl: String?,
+    val shorturl: String,
+    val shareurl: String,
+    val waveform: String?,
+    val image: String?,
+    val audiodownload_allowed: Boolean?
+)
+
+/**
+ * Artists section
+ */
+data class ArtistsSection(
+    val headers: ApiHeaders,
+    val results: List<Artist>
+)
+
+/**
+ * Artist model
+ */
+data class Artist(
+    val id: String,
+    val name: String,
+    val website: String?,
+    val joindate: String,
+    val image: String?,
+    val shorturl: String,
+    val shareurl: String
+)
+
+/**
+ * Event model (currently empty in the response)
+ */
+data class Event(
+    val id: String?,
+    val name: String?,
+    val description: String?
+)

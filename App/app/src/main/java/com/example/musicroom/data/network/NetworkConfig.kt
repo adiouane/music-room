@@ -1,0 +1,100 @@
+package com.example.musicroom.data.network
+
+/**
+ * Network configuration for the MusicRoom app
+ * Centralized place to manage all API endpoints and network settings
+ */
+object NetworkConfig {
+    
+    // 🔧 ENVIRONMENT CONFIGURATION
+    private const val CURRENT_ENVIRONMENT = "DEVELOPMENT"
+    
+    // 🌐 BASE URLS FOR DIFFERENT ENVIRONMENTS
+    private const val CODESPACES_BASE_URL = "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev"
+    private const val LOCAL_BASE_URL_EMULATOR = "http://10.0.2.2:8000"        
+    private const val LOCAL_BASE_URL_PHYSICAL = "http://10.32.130.109:8000"   
+    private const val STAGING_BASE_URL = "https://staging-api.musicroom.com"
+    private const val PRODUCTION_BASE_URL = "https://api.musicroom.com"
+    
+    // 🎯 DEPLOYMENT TYPE
+    // Choose your deployment: "CODESPACES", "LOCAL", "STAGING", "PRODUCTION"
+    private const val DEPLOYMENT_TYPE = "CODESPACES"
+    
+    /**
+     * Get the base URL based on deployment type
+     */
+    val BASE_URL: String
+        get() = when (DEPLOYMENT_TYPE) {
+            "CODESPACES" -> CODESPACES_BASE_URL
+            "LOCAL" -> LOCAL_BASE_URL_PHYSICAL // or LOCAL_BASE_URL_EMULATOR for emulator
+            "STAGING" -> STAGING_BASE_URL
+            "PRODUCTION" -> PRODUCTION_BASE_URL
+            else -> CODESPACES_BASE_URL
+        }
+    
+    // 📡 API ENDPOINTS
+    object Endpoints {
+        // Auth endpoints - Updated to match your backend
+        const val LOGIN = "/api/users/login/"  // Fixed from "/api/users/login/"
+        const val SIGNUP = "/api/users/create/"
+        const val FORGOT_PASSWORD = "/auth/forgot-password/"
+        const val GOOGLE_SIGNIN = "/auth/google/"
+        
+        // Home endpoint
+        const val HOME = "/api/home/"  // New endpoint for home data
+        
+        // User endpoints
+        const val USER_PROFILE = "/users/profile/"
+        const val UPDATE_PROFILE = "/users/update/"
+        
+        // Music endpoints
+        const val SEARCH_MUSIC = "/music/search/"
+        const val GET_PLAYLISTS = "/playlists/"
+        const val CREATE_PLAYLIST = "/playlists/create/"
+        
+        // Events endpoints
+        const val GET_EVENTS = "/events/"
+        const val CREATE_EVENT = "/events/create/"
+        const val JOIN_EVENT = "/events/join/"
+    }
+    
+    // ⚙️ NETWORK SETTINGS
+    object Settings {
+        const val CONNECT_TIMEOUT = 30_000L // 30 seconds
+        const val READ_TIMEOUT = 30_000L    // 30 seconds
+        const val WRITE_TIMEOUT = 30_000L   // 30 seconds
+    }
+    
+    // 🔍 HELPER METHODS
+    /**
+     * Get full URL for an endpoint
+     */
+    fun getFullUrl(endpoint: String): String {
+        return "$BASE_URL$endpoint"
+    }
+    
+    /**
+     * Check if we're using Codespaces
+     */
+    fun isCodespaces(): Boolean = DEPLOYMENT_TYPE == "CODESPACES"
+    
+    /**
+     * Check if we're in development mode
+     */
+    fun isDevelopment(): Boolean = DEPLOYMENT_TYPE in listOf("CODESPACES", "LOCAL")
+    
+    /**
+     * Check if we're in production mode
+     */
+    fun isProduction(): Boolean = DEPLOYMENT_TYPE == "PRODUCTION"
+    
+    /**
+     * Get current deployment type
+     */
+    fun getDeploymentType(): String = DEPLOYMENT_TYPE
+    
+    /**
+     * Get current base URL for debugging
+     */
+    fun getCurrentBaseUrl(): String = BASE_URL
+}

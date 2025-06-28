@@ -26,7 +26,7 @@ import com.example.musicroom.presentation.room.CreateRoomScreen
 import com.example.musicroom.presentation.theme.* 
 import com.example.musicroom.presentation.room.*
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
-import com.example.musicroom.presentation.home.HomeScreen
+import com.example.musicroom.presentation.home.HomeScreen  // Updated import to use new HomeScreen
 import com.example.musicroom.presentation.player.NowPlayingScreen
 import com.example.musicroom.presentation.music.MusicSearchScreen
 
@@ -54,7 +54,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             modifier = Modifier.padding(paddingValues)
         ) {
             composable("home") { 
-                HomeScreen(navController = navController)  // Pass the main navController for playlist navigation
+                HomeScreen(navController = navController)  // Pass the main navController for navigation
             }
             composable("explore") { 
                 ExploreScreen() 
@@ -78,47 +78,13 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             }
             
             composable(
-                route = "playlist_details/{playlistId}",
+                route = "playlist/{playlistId}",
                 arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
                 PlaylistDetailsScreen(
                     playlistId = playlistId,
-                    navController = navController  // Use main navController
-                )
-            }
-            
-            // Music Search Screen
-            composable("music_search") {
-                MusicSearchScreen(navController = navController)  // Use main navController
-            }
-            
-            // Now Playing Screen
-            composable(
-                route = "now_playing/{trackId}/{trackTitle}/{trackArtist}/{trackThumbnailUrl}/{trackDuration}",
-                arguments = listOf(
-                    navArgument("trackId") { type = NavType.StringType },
-                    navArgument("trackTitle") { type = NavType.StringType },
-                    navArgument("trackArtist") { type = NavType.StringType },
-                    navArgument("trackThumbnailUrl") { type = NavType.StringType },
-                    navArgument("trackDuration") { type = NavType.StringType }
-                )            ) { backStackEntry ->
-                val trackId = backStackEntry.arguments?.getString("trackId") ?: ""
-                val trackTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackTitle") ?: "", "UTF-8")
-                val trackArtist = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackArtist") ?: "", "UTF-8")
-                val trackThumbnailUrl = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackThumbnailUrl") ?: "", "UTF-8")
-                val trackDuration = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDuration") ?: "", "UTF-8")
-                  val track = com.example.musicroom.data.models.Track(
-                    id = trackId,
-                    title = trackTitle,
-                    artist = trackArtist,
-                    thumbnailUrl = trackThumbnailUrl,
-                    duration = trackDuration
-                )
-                
-                NowPlayingScreen(
-                    track = track,
-                    navController = navController  // Use main navController
+                    navController = innerNavController
                 )
             }
         }
@@ -126,44 +92,64 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
 }
 
 @Composable
-private fun SimpleBottomNav(
+fun SimpleBottomNav(
     currentRoute: String?,
     onTabSelected: (String) -> Unit
 ) {
     NavigationBar(
-        containerColor = DarkBackground,
-        tonalElevation = 8.dp
+        containerColor = DarkSurface
     ) {
-        val items = listOf(
-            Triple("home", Icons.Default.Home, "Home"),
-            Triple("explore", Icons.Default.Search, "Explore"),
-            Triple("create", Icons.Default.Add, "Create"),
-            Triple("profile", Icons.Default.Person, "Profile")
-        )
-
-        items.forEach { (route, icon, label) ->
-            val selected = currentRoute == route
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = if (selected) TextPrimary else TextSecondary
-                    )
-                },
-                label = {
-                    Text(
-                        text = label,
-                        color = if (selected) TextPrimary else TextSecondary,
-                        fontSize = 12.sp
-                    )
-                },
-                selected = selected,
-                onClick = { onTabSelected(route) },
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = PrimaryPurple
-                )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+            label = { Text("Home") },
+            selected = currentRoute == "home",
+            onClick = { onTabSelected("home") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = PrimaryPurple,
+                selectedTextColor = PrimaryPurple,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary,
+                indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
             )
-        }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Search, contentDescription = "Explore") },
+            label = { Text("Explore") },
+            selected = currentRoute == "explore",
+            onClick = { onTabSelected("explore") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = PrimaryPurple,
+                selectedTextColor = PrimaryPurple,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary,
+                indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
+            )
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Add, contentDescription = "Create") },
+            label = { Text("Create") },
+            selected = currentRoute == "create",
+            onClick = { onTabSelected("create") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = PrimaryPurple,
+                selectedTextColor = PrimaryPurple,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary,
+                indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
+            )
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+            label = { Text("Profile") },
+            selected = currentRoute == "profile",
+            onClick = { onTabSelected("profile") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = PrimaryPurple,
+                selectedTextColor = PrimaryPurple,
+                unselectedIconColor = TextSecondary,
+                unselectedTextColor = TextSecondary,
+                indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
+            )
+        )
     }
 }

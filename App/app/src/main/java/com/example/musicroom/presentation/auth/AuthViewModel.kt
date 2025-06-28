@@ -8,6 +8,7 @@ import com.example.musicroom.data.service.LoginResponse
 import com.example.musicroom.data.service.SignUpResponse
 import com.example.musicroom.data.service.ForgotPasswordResponse
 import com.example.musicroom.data.service.GoogleSignInResponse
+import com.example.musicroom.data.auth.TokenManager  // Fixed import - changed from data.service to data.auth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ sealed class AuthState {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authApiService: AuthApiService
+    private val authApiService: AuthApiService,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -49,6 +51,12 @@ class AuthViewModel @Inject constructor(
                     val response = result.getOrNull()!!
                     if (response.success) {
                         Log.d("AuthViewModel", "✅ Login successful!")
+                        
+                        // Save tokens for future API calls
+                        response.token?.let { token ->
+                            tokenManager.saveToken(token)
+                        }
+                        
                         _authState.value = AuthState.LoginSuccess(response)
                     } else {
                         Log.d("AuthViewModel", "❌ Login failed: ${response.message}")
@@ -170,6 +178,17 @@ class AuthViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Logout function to clear stored tokens
+     */
+    fun logout() {
+        tokenManager.clearTokens()
+        _authState.value = AuthState.Idle
+    }
+    
+    /**
+     * Clear the current auth state
+     */
     fun clearState() {
         _authState.value = AuthState.Idle
     }

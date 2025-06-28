@@ -1,14 +1,18 @@
 package com.example.musicroom.data.service
 
 import android.util.Log
+import com.example.musicroom.data.network.NetworkConfig
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.net.ssl.HttpsURLConnection
 
 /**
  * ========================================================================================
@@ -58,9 +62,10 @@ data class LoginRequest(
  * Sign up request payload  
  */
 data class SignUpRequest(
+    val name: String,
     val email: String,
     val password: String,
-    val name: String
+    val avatar: String? = null
 )
 
 /**
@@ -79,13 +84,16 @@ data class GoogleSignInRequest(
 )
 
 /**
- * Login response model
+ * Login response model matching backend API
  */
 data class LoginResponse(
     val success: Boolean,
     val message: String,
     val token: String? = null,
-    val user: UserInfo? = null
+    val user: UserInfo? = null,
+    // Add any additional fields your backend returns on success
+    val refresh_token: String? = null,
+    val expires_in: Long? = null
 )
 
 /**
@@ -122,7 +130,9 @@ data class GoogleSignInResponse(
 data class UserInfo(
     val id: String,
     val email: String,
-    val name: String
+    val name: String,
+    val username: String? = null,
+    val avatar: String? = null
 )
 
 // ========================================================================================
@@ -132,119 +142,260 @@ data class UserInfo(
 @Singleton
 class AuthApiService @Inject constructor() {
     
-    // 🔧 CONFIGURATION - Update this URL for your backend
-    private val baseUrl = "YOUR_BACKEND_URL" // Replace with your actual backend URL
-    
     /**
-     * ========================================================================
-     * EMAIL/PASSWORD LOGIN API
-     * ========================================================================
-     * 
-     * Authenticates user with email and password credentials.
-     * 
-     * @param email User's email address
-     * @param password User's password
-     * @return Result<LoginResponse> - Success with token/user or failure
-     * 
-     * 🔄 BACKEND INTEGRATION:
-     * 1. Uncomment makeLoginApiCall() line
-     * 2. Remove mock data section
-     * 3. Ensure backend endpoint: POST /auth/login
-     * ========================================================================
-     */
-    suspend fun login(email: String, password: String): Result<LoginResponse> {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d("AuthAPI", "🔐 Attempting login for: $email")
-                
-                // ================================================================
-                // REAL API CALL (commented out - uncomment when backend is ready)
-                // ================================================================
-                // return makeLoginApiCall(email, password)
-                
-                // ================================================================
-                // 🧪 MOCK DATA FOR TESTING - Remove when backend is ready
-                // ================================================================
-                delay(1500) // Simulate realistic network delay
-                
-                // Mock success/failure logic for testing
-                val response = when {
-                    email == "fail@example.com" -> {
-                        LoginResponse(
-                            success = false,
-                            message = "Invalid email or password"
-                        )
-                    }
-                    email.isNotEmpty() && password.isNotEmpty() -> {
-                        LoginResponse(
-                            success = true,
-                            message = "Login successful",
-                            token = "mock_jwt_token_${System.currentTimeMillis()}",
-                            user = UserInfo(
-                                id = "user_${email.hashCode()}",
-                                email = email,
-                                name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
-                            )
-                        )
-                    }
-                    else -> {
-                        LoginResponse(
-                            success = false,
-                            message = "Please enter both email and password"
-                        )
-                    }
-                }
-                
-                Log.d("AuthAPI", "✅ Login response: ${response.success}")
-                Result.success(response)
-                
-            } catch (e: Exception) {
-                Log.e("AuthAPI", "❌ Login error: ${e.message}")
-                Result.failure(e)
-            }
-        }
-    }
-    
-    /**
-     * ========================================================================
-     * SIGN UP API
-     * ========================================================================
-     * 
-     * Creates a new user account with email, password, and name.
-     * ========================================================================
+     * SIGNUP API CALL TO BACKEND (Codespaces compatible)
      */
     suspend fun signUp(email: String, password: String, name: String): Result<SignUpResponse> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("AuthAPI", "📝 Attempting signup for: $email")
+                Log.d("AuthAPI", "🌐 Using base URL: ${NetworkConfig.getCurrentBaseUrl()}")
+                Log.d("AuthAPI", "🚀 Deployment: ${NetworkConfig.getDeploymentType()}")
                 
-                // Mock data for testing - replace with real API call
-                delay(1500)
-                
-                val response = if (email.isNotEmpty() && password.isNotEmpty() && name.isNotEmpty()) {
-                    SignUpResponse(
-                        success = true,
-                        message = "Account created successfully",
-                        token = "mock_jwt_token_${System.currentTimeMillis()}",
-                        user = UserInfo(
-                            id = "user_${email.hashCode()}",
-                            email = email,
-                            name = name
-                        )
-                    )
-                } else {
-                    SignUpResponse(
-                        success = false,
-                        message = "Please fill in all fields"
-                    )
+                // Create the signup request matching your backend API
+                val requestBody = JSONObject().apply {
+                    put("name", name)
+                    put("email", email)
+                    put("password", password)
                 }
                 
-                Log.d("AuthAPI", "✅ SignUp response: ${response.success}")
+                // Use NetworkConfig for URL construction
+                val fullUrl = NetworkConfig.getFullUrl(NetworkConfig.Endpoints.SIGNUP)
+                Log.d("AuthAPI", "📡 Full URL: $fullUrl")
+                
+                val url = URL(fullUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                
+                // Handle HTTPS for Codespaces
+                if (connection is HttpsURLConnection) {
+                    Log.d("AuthAPI", "🔒 Using HTTPS connection")
+                }
+                
+                connection.apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    doInput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("User-Agent", "MusicRoom-Android-App")
+                    
+                    // Add CORS headers for Codespaces
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev")
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                }
+                
+                Log.d("AuthAPI", "📤 Sending request body: ${requestBody.toString()}")
+                
+                // Send the request
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(requestBody.toString())
+                    writer.flush()
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("AuthAPI", "📨 Response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("AuthAPI", "📨 Response body: $responseText")
+                
+                val response = when (responseCode) {
+                    201 -> {
+                        // Parse successful response
+                        try {
+                            val jsonResponse = JSONObject(responseText)
+                            SignUpResponse(
+                                success = true,
+                                message = "Account created successfully",
+                                token = jsonResponse.optString("token", null),
+                                user = UserInfo(
+                                    id = jsonResponse.optString("id", ""),
+                                    email = jsonResponse.optString("email", email),
+                                    name = jsonResponse.optString("name", name)
+                                )
+                            )
+                        } catch (e: Exception) {
+                            Log.w("AuthAPI", "Could not parse success response as JSON, treating as success")
+                            SignUpResponse(
+                                success = true,
+                                message = "Account created successfully",
+                                token = null,
+                                user = UserInfo(id = "", email = email, name = name)
+                            )
+                        }
+                    }
+                    400 -> {
+                        // Parse error response
+                        val errorMessage = try {
+                            val jsonResponse = JSONObject(responseText)
+                            // Try different possible error message fields
+                            jsonResponse.optString("message") 
+                                ?: jsonResponse.optString("error")
+                                ?: jsonResponse.optString("detail")
+                                ?: "Invalid input"
+                        } catch (e: Exception) {
+                            "Invalid input data"
+                        }
+                        SignUpResponse(
+                            success = false,
+                            message = errorMessage
+                        )
+                    }
+                    404 -> {
+                        SignUpResponse(
+                            success = false,
+                            message = "API endpoint not found. Please check if backend is running."
+                        )
+                    }
+                    500 -> {
+                        SignUpResponse(
+                            success = false,
+                            message = "Server error. Please try again later."
+                        )
+                    }
+                    else -> {
+                        SignUpResponse(
+                            success = false,
+                            message = "Unexpected error occurred (Code: $responseCode)"
+                        )
+                    }
+                }
+                
+                Log.d("AuthAPI", "✅ SignUp final response: success=${response.success}, message=${response.message}")
                 Result.success(response)
                 
             } catch (e: Exception) {
-                Log.e("AuthAPI", "❌ SignUp error: ${e.message}")
-                Result.failure(e)
+                Log.e("AuthAPI", "❌ SignUp error: ${e.message}", e)
+                Result.failure(Exception("Network error: ${e.message}"))
+            }
+        }
+    }
+    
+    /**
+     * LOGIN API CALL TO BACKEND (Codespaces compatible)
+     */
+    suspend fun login(email: String, password: String): Result<LoginResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("AuthAPI", "🔐 Attempting login for: $email")
+                Log.d("AuthAPI", "🌐 Using base URL: ${NetworkConfig.getCurrentBaseUrl()}")
+                
+                val requestBody = JSONObject().apply {
+                    put("email", email)
+                    put("password", password)
+                }
+                
+                val fullUrl = NetworkConfig.getFullUrl(NetworkConfig.Endpoints.LOGIN)
+                val url = URL(fullUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                
+                connection.apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    doInput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("User-Agent", "MusicRoom-Android-App")
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                }
+                
+                // Send the request
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(requestBody.toString())
+                    writer.flush()
+                }
+                
+                val responseCode = connection.responseCode
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("AuthAPI", "Login response code: $responseCode")
+                Log.d("AuthAPI", "Login response: $responseText")
+                
+                val response = when (responseCode) {
+                    200 -> {
+                        try {
+                            val jsonResponse = JSONObject(responseText)
+                            LoginResponse(
+                                success = true,
+                                message = "Login successful",
+                                token = jsonResponse.optString("token"),
+                                user = UserInfo(
+                                    id = jsonResponse.optString("id", ""),
+                                    email = jsonResponse.optString("email", email),
+                                    name = jsonResponse.optString("name", ""),
+                                    username = jsonResponse.optString("username"),
+                                    avatar = jsonResponse.optString("avatar")
+                            ),
+                            refresh_token = jsonResponse.optString("refresh_token"),
+                            expires_in = jsonResponse.optLong("expires_in")
+                        )
+                        } catch (e: Exception) {
+                            Log.e("AuthAPI", "Error parsing login response", e)
+                            LoginResponse(
+                                success = true,
+                                message = "Login successful",
+                                token = null,
+                                user = UserInfo(id = "", email = email, name = "")
+                            )
+                        }
+                    }
+                    400 -> {
+                        LoginResponse(
+                            success = false,
+                            message = "Missing credentials"
+                        )
+                    }
+                    401 -> {
+                        LoginResponse(
+                            success = false,
+                            message = "Invalid credentials"
+                        )
+                    }
+                    404 -> {
+                        LoginResponse(
+                            success = false,
+                            message = "User not found"
+                        )
+                    }
+                    else -> {
+                        LoginResponse(
+                            success = false,
+                            message = "Server error occurred (Code: $responseCode)"
+                        )
+                    }
+                }
+                
+                Result.success(response)
+                
+            } catch (e: Exception) {
+                Log.e("AuthAPI", "❌ Login error: ${e.message}", e)
+                Result.failure(Exception("Network error: ${e.message}"))
             }
         }
     }
@@ -263,8 +414,7 @@ class AuthApiService @Inject constructor() {
                 Log.d("AuthAPI", "🔑 Sending password reset for: $email")
                 
                 // Mock data for testing - replace with real API call
-                delay(1000)
-                
+                // Mock success response
                 val response = ForgotPasswordResponse(
                     success = true,
                     message = "Password reset email sent to $email"
@@ -294,8 +444,7 @@ class AuthApiService @Inject constructor() {
                 Log.d("AuthAPI", "🔗 Attempting Google Sign-In")
                 
                 // Mock data for testing - replace with real API call
-                delay(1000)
-                
+                // Mock success response
                 val response = GoogleSignInResponse(
                     success = true,
                     message = "Google Sign-In successful",

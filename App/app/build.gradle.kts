@@ -62,12 +62,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"http://10.32.130.109:8000\"")
+            buildConfigField("Boolean", "IS_DEBUG", "true")
+        }
         release {
-            isMinifyEnabled = false  // Disable obfuscation for easier debugging
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )        
+            buildConfigField("String", "BASE_URL", "\"https://api.musicroom.com\"")
+            buildConfigField("Boolean", "IS_DEBUG", "false")
+            // ...other release config...
         }
     }
     
@@ -160,7 +162,8 @@ dependencies {
     
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
-      // Retrofit dependencies
+    
+    // Retrofit dependencies
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
@@ -174,6 +177,12 @@ dependencies {
     // Google Sign-In
     implementation(libs.play.services.auth)
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    
+    // For JSON parsing (if not already added)
+    implementation("org.json:json:20230227")
+    
+    // Security for encrypted token storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     
     // Testing
     testImplementation(libs.junit)
