@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
+from datetime import timedelta
+
+# PostgreSQL configuration only
 
 load_dotenv()
 JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID")
@@ -19,6 +22,19 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
 
+AUTH_USER_MODEL = 'users.User'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Use console backend for development
+EMAIL_PORT = 587  # Default port for the console email backend
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'samohib50@gmail.com'
+EMAIL_HOST_PASSWORD = 'xvrhvgmzfuwbfgbk'
+
+# Social authentication settings
+FACEBOOK_GRAPH_API_URL = 'https://graph.facebook.com'
+GOOGLE_OAUTH2_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
+
+
 # Debug print to see what's being loaded
 print(f"DEBUG: ALLOWED_HOSTS from env: {ALLOWED_HOSTS_ENV}")
 print(f"DEBUG: ALLOWED_HOSTS parsed: {ALLOWED_HOSTS}")
@@ -34,6 +50,9 @@ if DEBUG:
 
 # Application definition
 INSTALLED_APPS = [
+    'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -82,7 +101,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'MusicRoom.wsgi.application'
 
-# Database
+# Database - PostgreSQL only
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
@@ -91,10 +110,15 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
+    # Fallback to PostgreSQL for local development
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'musicroom_local',
+            'USER': 'postgres',
+            'PASSWORD': 'postgres123',
+            'HOST': 'localhost',
+            'PORT': '5432',
         }
     }
 
@@ -208,12 +232,41 @@ else:
 
 # REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
+}
+
+# JWT Configuration
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+    'JTI_CLAIM': 'jti',
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=60),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
 # Swagger settings from environment variable

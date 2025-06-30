@@ -1,4 +1,12 @@
 from .models import User
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+import jwt
+from datetime import datetime, timedelta
+from django.conf import settings
+from django.core.mail import send_mail
+import requests
+from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.contrib.auth.hashers import make_password, check_password
@@ -18,7 +26,7 @@ def get_user_by_id(user_id):
     try:
         user = User.objects.get(id=user_id, is_active=True)
         return {
-            'id': str(user.id),
+            'id': user.id,
             'name': user.name,
             'email': user.email,
             'avatar': user.avatar,
@@ -35,7 +43,7 @@ def get_user_by_email(email):
     try:
         user = User.objects.get(email=email, is_active=True)
         return {
-            'id': str(user.id),
+            'id': user.id,
             'name': user.name,
             'email': user.email,
             'avatar': user.avatar,
@@ -66,7 +74,7 @@ def create_user(name, email, avatar=None, password=None):
         user = User.objects.create(**user_data)
         
         return {
-            'id': str(user.id),
+            'id': user.id,
             'name': user.name,
             'email': user.email,
             'avatar': user.avatar,
@@ -90,7 +98,7 @@ def update_user(user_id, **kwargs):
         user.save()
         
         return {
-            'id': str(user.id),
+            'id': user.id,
             'name': user.name,
             'email': user.email,
             'avatar': user.avatar,
@@ -132,7 +140,7 @@ def login_user(email, password):
             return {
                 'success': True,
                 'user': {
-                    'id': str(user.id),
+                    'id': user.id,
                     'name': user.name,
                     'email': user.email,
                     'avatar': user.avatar,
@@ -146,5 +154,244 @@ def login_user(email, password):
             
     except User.DoesNotExist:
         return {'error': 'User not found'}
+    except Exception as e:
+        return {'error': str(e)}
+
+# NEW AUTHENTICATION FUNCTIONS FROM ACCOUNTS APP
+
+def register_user(name, email, password, **extra_fields):
+    """Register a new user with email verification"""
+    try:
+        if User.objects.filter(email=email).exists():
+            return {'error': 'Email already exists'}
+        
+        user = User.objects.create_user(
+            email=email,
+            name=name,
+            password=password,
+            is_active=False,  # Require email verification
+            **extra_fields
+        )
+        
+        # Generate email verification token
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, settings.SECRET_KEY, algorithm='HS256')
+        
+        verification_url = f"http://zakariawaladzamel.com/verify-email?token={token}"
+        send_mail(
+            'Verify your MusicRoom account',
+            f'Please click the link to verify your email: {verification_url}',
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
+        return {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'avatar': user.avatar,
+            'message': 'Registration successful. Please check your email to verify your account.'
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+def login_user_jwt(email, password):
+    """Login user and return JWT tokens"""
+    try:
+        user = authenticate(email=email, password=password)
+        if not user:
+            return {'error': 'Invalid email or password'}
+        
+        if not user.is_active:
+            return {'error': 'Account is not verified. Please check your email.'}
+        
+        refresh = RefreshToken.for_user(user)
+        
+        return {
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'avatar': user.avatar
+            },
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            },
+            'message': 'Login successful'
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+def verify_email(token):
+    """Verify user email with token"""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user = User.objects.get(id=payload['user_id'])
+        
+        if not user.is_active:
+            user.is_active = True
+            user.is_verified = True
+            user.save()
+        
+        return {'message': 'Email verified successfully'}
+    except jwt.ExpiredSignatureError:
+        return {'error': 'Token has expired'}
+    except (jwt.DecodeError, User.DoesNotExist):
+        return {'error': 'Invalid token'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def logout_user(refresh_token):
+    """Logout user by blacklisting refresh token"""
+    try:
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return {'message': 'Successfully logged out'}
+    except Exception:
+        return {'error': 'Invalid token'}
+
+def reset_password_request(email):
+    """Send password reset email"""
+    try:
+        if not User.objects.filter(email=email).exists():
+            return {'error': 'User with this email does not exist'}
+        
+        user = User.objects.get(email=email)
+        
+        # Generate password reset token
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(hours=1)
+        }, settings.SECRET_KEY, algorithm='HS256')
+        
+        reset_url = f"http://zakariawaladzamel.com/reset-password?token={token}"
+        send_mail(
+            'Reset your MusicRoom password',
+            f'Please click the link to reset your password: {reset_url}',
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
+        return {'message': 'Password reset email sent'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def reset_password_confirm(token, password):
+    """Confirm password reset with token"""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user = User.objects.get(id=payload['user_id'])
+        
+        user.set_password(password)
+        user.save()
+        
+        return {'message': 'Password reset successful'}
+    except jwt.ExpiredSignatureError:
+        return {'error': 'Token has expired'}
+    except (jwt.DecodeError, User.DoesNotExist):
+        return {'error': 'Invalid token'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def link_social_account(user, provider, access_token):
+    """Link social media account to user profile"""
+    try:
+        if provider == "facebook":
+            social_id = verify_facebook_token(access_token)
+            
+            if User.objects.exclude(id=user.id).filter(facebook_id=social_id).exists():
+                return {'error': 'This Facebook account is already linked to another user'}
+            
+            user.facebook_id = social_id
+            user.save()
+            
+        elif provider == "google":
+            social_id = verify_google_token(access_token)
+            
+            if User.objects.exclude(id=user.id).filter(google_id=social_id).exists():
+                return {'error': 'This Google account is already linked to another user'}
+            
+            user.google_id = social_id
+            user.save()
+        
+        return {'message': f'{provider.capitalize()} account linked successfully'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def verify_facebook_token(token):
+    """Verify Facebook access token and return user ID"""
+    url = f"https://graph.facebook.com/me?access_token={token}"
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        raise ValidationError("Invalid Facebook token")
+    
+    data = response.json()
+    if 'id' not in data:
+        raise ValidationError("Could not retrieve Facebook user ID")
+    
+    return data['id']
+
+def verify_google_token(token):
+    """Verify Google access token and return user ID"""
+    url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        raise ValidationError("Invalid Google token")
+    
+    data = response.json()
+    if 'sub' not in data:
+        raise ValidationError("Could not retrieve Google user ID")
+    
+    return data['sub']
+
+def get_user_profile(user):
+    """Get user profile data"""
+    return {
+        'id': user.id,
+        'email': user.email,
+        'name': user.name,
+        'avatar': user.avatar,
+        'bio': user.bio,
+        'date_of_birth': user.date_of_birth,
+        'phone_number': user.phone_number,
+        'profile_privacy': user.profile_privacy,
+        'email_privacy': user.email_privacy,
+        'phone_privacy': user.phone_privacy,
+        'facebook_id': user.facebook_id,
+        'google_id': user.google_id,
+        'subscription_type': user.subscription_type,
+        'is_premium': user.is_premium,
+        'is_subscribed': user.is_subscribed,
+        'music_preferences': user.music_preferences,
+        'liked_artists': user.liked_artists,
+        'liked_albums': user.liked_albums,
+        'liked_songs': user.liked_songs,
+        'genres': user.genres,
+        'created_at': user.created_at
+    }
+
+def update_user_profile(user, **data):
+    """Update user profile"""
+    try:
+        allowed_fields = [
+            'name', 'avatar', 'bio', 'date_of_birth', 'phone_number',
+            'profile_privacy', 'email_privacy', 'phone_privacy',
+            'music_preferences', 'liked_artists', 'liked_albums', 
+            'liked_songs', 'genres', 'last_song_played'
+        ]
+        
+        for field, value in data.items():
+            if field in allowed_fields and hasattr(user, field):
+                setattr(user, field, value)
+        
+        user.save()
+        return get_user_profile(user)
     except Exception as e:
         return {'error': str(e)}
