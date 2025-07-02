@@ -1,5 +1,6 @@
 package com.example.musicroom.presentation.music
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -120,12 +121,25 @@ fun MusicSearchScreen(
                         TrackItem(
                             track = track,
                             onTrackClick = { clickedTrack ->
-                                // Navigate to now playing screen with track data
-                                val encodedTitle = java.net.URLEncoder.encode(clickedTrack.title, "UTF-8")
-                                val encodedArtist = java.net.URLEncoder.encode(clickedTrack.artist, "UTF-8")
-                                val encodedThumbnailUrl = java.net.URLEncoder.encode(clickedTrack.thumbnailUrl, "UTF-8")
-                                val encodedDuration = java.net.URLEncoder.encode(clickedTrack.duration, "UTF-8")
-                                navController.navigate("now_playing/${clickedTrack.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration")
+                                try {
+                                    // Navigate to now playing screen with track data
+                                    Log.d("MusicSearch", "🎵 Track clicked: ${clickedTrack.title}")
+                                    Log.d("MusicSearch", "🎵 Track ID: ${clickedTrack.id}")
+                                    Log.d("MusicSearch", "🎵 Track audio: ${clickedTrack.description}")
+                                    
+                                    val encodedTitle = java.net.URLEncoder.encode(clickedTrack.title, "UTF-8")
+                                    val encodedArtist = java.net.URLEncoder.encode(clickedTrack.artist, "UTF-8")
+                                    val encodedThumbnailUrl = java.net.URLEncoder.encode(clickedTrack.thumbnailUrl, "UTF-8")
+                                    val encodedDuration = java.net.URLEncoder.encode(clickedTrack.duration, "UTF-8")
+                                    val encodedDescription = java.net.URLEncoder.encode(clickedTrack.description, "UTF-8")
+                                    
+                                    val navigationRoute = "now_playing/${clickedTrack.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration/$encodedDescription"
+                                    Log.d("MusicSearch", "🎵 Navigation route: $navigationRoute")
+                                    
+                                    navController.navigate(navigationRoute)
+                                } catch (e: Exception) {
+                                    Log.e("MusicSearch", "❌ Navigation error: ${e.message}", e)
+                                }
                             }
                         )
                     }
