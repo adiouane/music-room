@@ -67,6 +67,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen // Updated import
 import com.example.musicroom.presentation.music.MusicSearchScreen
+import com.example.musicroom.presentation.artist.ArtistDetailsScreen
 import com.example.musicroom.presentation.theme.MusicRoomTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.getValue
@@ -196,6 +197,17 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
                         PlaylistDetailsScreen(                            playlistId = playlistId,
+                            navController = navController
+                        )
+                    }
+                    // Artist Details Screen
+                    composable(
+                        route = "artist/{artistId}",
+                        arguments = listOf(navArgument("artistId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val artistId = backStackEntry.arguments?.getString("artistId") ?: ""
+                        ArtistDetailsScreen(
+                            artistId = artistId,
                             navController = navController
                         )
                     }
