@@ -1,5 +1,6 @@
 package com.example.musicroom.presentation.home
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -185,8 +186,26 @@ private fun HomeContent(
                     title = "Recommended for You",
                     songs = homeData.recommended_songs.results,
                     onSongClick = { song ->
-                        // Navigate to now playing or add to queue
-                        navController.navigate("now_playing")
+                        // Convert Song to Track and navigate to now playing
+                        val track = Track(
+                            id = song.id,
+                            title = song.name,
+                            artist = song.artist_name,
+                            thumbnailUrl = song.image ?: song.album_image ?: "",
+                            duration = formatDuration(song.duration),
+                            channelTitle = song.album_name,
+                            description = song.audio // Store audio URL in description field
+                        )
+                        
+                        Log.d("HomeScreen", "🎵 Playing song: ${song.name} with audio: ${song.audio}")
+                        
+                        // Navigate to now playing screen with dynamic song data
+                        val encodedTitle = java.net.URLEncoder.encode(track.title, "UTF-8")
+                        val encodedArtist = java.net.URLEncoder.encode(track.artist, "UTF-8")
+                        val encodedThumbnailUrl = java.net.URLEncoder.encode(track.thumbnailUrl, "UTF-8")
+                        val encodedDuration = java.net.URLEncoder.encode(track.duration, "UTF-8")
+                        val encodedDescription = java.net.URLEncoder.encode(track.description, "UTF-8")
+                        navController.navigate("now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration/$encodedDescription")
                     }
                 )
             }
@@ -199,7 +218,26 @@ private fun HomeContent(
                     title = "Popular Right Now",
                     songs = homeData.popular_songs.results,
                     onSongClick = { song ->
-                        navController.navigate("now_playing")
+                        // Convert Song to Track and navigate to now playing
+                        val track = Track(
+                            id = song.id,
+                            title = song.name,
+                            artist = song.artist_name,
+                            thumbnailUrl = song.image ?: song.album_image ?: "",
+                            duration = formatDuration(song.duration),
+                            channelTitle = song.album_name,
+                            description = song.audio // Store audio URL in description field
+                        )
+                        
+                        Log.d("HomeScreen", "🎵 Playing song: ${song.name} with audio: ${song.audio}")
+                        
+                        // Navigate to now playing with song data
+                        val encodedTitle = java.net.URLEncoder.encode(track.title, "UTF-8")
+                        val encodedArtist = java.net.URLEncoder.encode(track.artist, "UTF-8")
+                        val encodedThumbnailUrl = java.net.URLEncoder.encode(track.thumbnailUrl, "UTF-8")
+                        val encodedDuration = java.net.URLEncoder.encode(track.duration, "UTF-8")
+                        val encodedDescription = java.net.URLEncoder.encode(track.description, "UTF-8")
+                        navController.navigate("now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration/$encodedDescription")
                     }
                 )
             }
@@ -212,7 +250,26 @@ private fun HomeContent(
                     title = "Recently Listened",
                     songs = homeData.recently_listened.results,
                     onSongClick = { song ->
-                        navController.navigate("now_playing")
+                        // Convert Song to Track and navigate to now playing
+                        val track = Track(
+                            id = song.id,
+                            title = song.name,
+                            artist = song.artist_name,
+                            thumbnailUrl = song.image ?: song.album_image ?: "",
+                            duration = formatDuration(song.duration),
+                            channelTitle = song.album_name,
+                            description = song.audio // Store audio URL in description field
+                        )
+                        
+                        Log.d("HomeScreen", "🎵 Playing song: ${song.name} with audio: ${song.audio}")
+                        
+                        // Navigate to now playing with song data
+                        val encodedTitle = java.net.URLEncoder.encode(track.title, "UTF-8")
+                        val encodedArtist = java.net.URLEncoder.encode(track.artist, "UTF-8")
+                        val encodedThumbnailUrl = java.net.URLEncoder.encode(track.thumbnailUrl, "UTF-8")
+                        val encodedDuration = java.net.URLEncoder.encode(track.duration, "UTF-8")
+                        val encodedDescription = java.net.URLEncoder.encode(track.description, "UTF-8")
+                        navController.navigate("now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration/$encodedDescription")
                     }
                 )
             }

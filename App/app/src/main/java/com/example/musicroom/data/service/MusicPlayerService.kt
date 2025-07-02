@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
 import com.example.musicroom.data.models.Track
+import com.example.musicroom.data.network.NetworkConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -53,17 +57,34 @@ class MusicPlayerService @Inject constructor(
         _isPlayerReady.value = false
         
         Log.d("MusicPlayer", "🎵 Loading track: ${track.title} by ${track.artist}")
+        Log.d("MusicPlayer", "🔍 Track ID: ${track.id}")
         
         // Release existing MediaPlayer
         releaseMediaPlayer()
         
         serviceScope.launch {
             try {
-                // Find free audio for this track
-                val audioUrl = freeAudioService.findFreeAudioForTrack(track)
+                // First, try to get audio URL from track description (where we store the audio URL)
+                val audioUrl = when {
+                    // If track has audio URL in description field (our API songs)
+                    track.description.startsWith("http") -> {
+                        Log.d("MusicPlayer", "🎧 Using API audio URL from track description")
+                        track.description
+                    }
+                    // If track ID indicates it's from API (not mock)
+                    !track.id.startsWith("mock_") -> {
+                        Log.d("MusicPlayer", "🎧 Fetching audio URL from API for track ID: ${track.id}")
+                        getJamendoAudioUrl(track) ?: freeAudioService.findFreeAudioForTrack(track)
+                    }
+                    // This is a mock track, use free audio service
+                    else -> {
+                        Log.d("MusicPlayer", "🎭 Using free audio service for mock track")
+                        freeAudioService.findFreeAudioForTrack(track)
+                    }
+                }
                 
                 if (audioUrl != null) {
-                    Log.d("MusicPlayer", "🎧 Found audio: $audioUrl")
+                    Log.d("MusicPlayer", "🎧 Found audio URL: $audioUrl")
                     playAudioFromUrl(audioUrl, track)
                 } else {
                     Log.w("MusicPlayer", "⚠️ No audio found, using simulation")
@@ -245,6 +266,42 @@ class MusicPlayerService @Inject constructor(
     
     fun release() {
         releaseMediaPlayer()
+    }
+    
+    /**
+     * Get Jamendo audio URL for a track from API
+     */
+    private suspend fun getJamendoAudioUrl(track: Track): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Call your backend API to get the track details with audio URL
+                val url = URL("${NetworkConfig.BASE_URL}/api/music/songs/${track.id}/")
+                val connection = url.openConnection() as HttpURLConnection
+                
+                connection.apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Accept", "application/json")
+                    connectTimeout = 10000
+                    readTimeout = 10000
+                }
+                
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = connection.inputStream.bufferedReader().readText()
+                    val json = JSONObject(response)
+                    val audioUrl = json.optString("audio")
+                    
+                    if (audioUrl.isNotEmpty()) {
+                        Log.d("MusicPlayer", "🎵 Got Jamendo audio URL: $audioUrl")
+                        return@withContext audioUrl
+                    }
+                }
+                
+                connection.disconnect()
+            } catch (e: Exception) {
+                Log.e("MusicPlayer", "Failed to get Jamendo audio URL: ${e.message}")
+            }
+            null
+        }
     }
 }
 

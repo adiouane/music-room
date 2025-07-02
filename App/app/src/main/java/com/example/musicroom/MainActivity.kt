@@ -158,25 +158,30 @@ class MainActivity : ComponentActivity() {
                     
                     // Now Playing Screen
                     composable(
-                        route = "now_playing/{trackId}/{trackTitle}/{trackArtist}/{trackThumbnailUrl}/{trackDuration}",
+                        route = "now_playing/{trackId}/{trackTitle}/{trackArtist}/{trackThumbnailUrl}/{trackDuration}/{trackDescription}",
                         arguments = listOf(
                             navArgument("trackId") { type = NavType.StringType },
                             navArgument("trackTitle") { type = NavType.StringType },
                             navArgument("trackArtist") { type = NavType.StringType },
                             navArgument("trackThumbnailUrl") { type = NavType.StringType },
-                            navArgument("trackDuration") { type = NavType.StringType }
-                        )                    ) { backStackEntry ->
+                            navArgument("trackDuration") { type = NavType.StringType },
+                            navArgument("trackDescription") { type = NavType.StringType; defaultValue = "" }
+                        )
+                    ) { backStackEntry ->
                         val trackId = backStackEntry.arguments?.getString("trackId") ?: ""
                         val trackTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackTitle") ?: "", "UTF-8")
                         val trackArtist = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackArtist") ?: "", "UTF-8")
                         val trackThumbnailUrl = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackThumbnailUrl") ?: "", "UTF-8")
                         val trackDuration = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDuration") ?: "", "UTF-8")
-                          val track = com.example.musicroom.data.models.Track(
+                        val trackDescription = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDescription") ?: "", "UTF-8")
+                        
+                        val track = com.example.musicroom.data.models.Track(
                             id = trackId,
                             title = trackTitle,
                             artist = trackArtist,
                             thumbnailUrl = trackThumbnailUrl,
-                            duration = trackDuration
+                            duration = trackDuration,
+                            description = trackDescription // This will contain the audio URL
                         )
                         
                         NowPlayingScreen(

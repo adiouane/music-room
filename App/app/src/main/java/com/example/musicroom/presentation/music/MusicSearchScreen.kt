@@ -2,6 +2,7 @@ package com.example.musicroom.presentation.music
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -21,67 +23,100 @@ import coil.compose.AsyncImage
 import com.example.musicroom.data.models.Track
 import com.example.musicroom.presentation.theme.*
 
+private val musicCategories = listOf(
+    "Popular", "Random", "Jazz", "Electronic", "Rock", "Classical", "Ambient", "Hip Hop"
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MusicSearchScreen(
     navController: NavController,
     viewModel: MusicSearchViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Search Bar
+        // Search bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search for music") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search"
-                )
-            },
-            trailingIcon = {
-                Button(
-                    onClick = { 
-                        if (searchQuery.isNotBlank()) {
-                            viewModel.searchTracks(searchQuery) 
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
-                ) {
-                    Text("Search")
-                }
+            label = { Text("Search music", color = TextSecondary) },
+            leadingIcon = { 
+                Icon(Icons.Filled.Search, contentDescription = "Search", tint = TextSecondary) 
             },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryPurple,
+                unfocusedBorderColor = TextSecondary,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = PrimaryPurple,
-                unfocusedBorderColor = TextSecondary
-            )
+                cursorColor = PrimaryPurple
+            ),
+            shape = RoundedCornerShape(12.dp)
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Search button
+        Button(
+            onClick = { viewModel.searchTracks(searchQuery) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Search", color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Music Categories
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 0.dp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
+            items(musicCategories) { category ->
+                FilterChip(
+                    onClick = { 
+                        searchQuery = category
+                        viewModel.searchTracks(category) 
+                    },
+                    label = { Text(category) },
+                    selected = false,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = DarkSurface,
+                        labelColor = TextPrimary,
+                        selectedContainerColor = PrimaryPurple,
+                        selectedLabelColor = Color.White
+                    )
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Content
         when (uiState) {
-            is MusicSearchUiState.Loading -> {                Box(
+            is MusicSearchUiState.Loading -> {
+                Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = PrimaryPurple)
                 }
-            }            is MusicSearchUiState.Success -> {
+            }
+            
+            is MusicSearchUiState.Success -> {
                 val successState = uiState as MusicSearchUiState.Success
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {                    items(successState.tracks) { track ->
+                ) {
+                    items(successState.tracks) { track ->
                         TrackItem(
                             track = track,
                             onTrackClick = { clickedTrack ->
@@ -90,13 +125,14 @@ fun MusicSearchScreen(
                                 val encodedArtist = java.net.URLEncoder.encode(clickedTrack.artist, "UTF-8")
                                 val encodedThumbnailUrl = java.net.URLEncoder.encode(clickedTrack.thumbnailUrl, "UTF-8")
                                 val encodedDuration = java.net.URLEncoder.encode(clickedTrack.duration, "UTF-8")
-                                
                                 navController.navigate("now_playing/${clickedTrack.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration")
                             }
                         )
                     }
                 }
-            }            is MusicSearchUiState.Error -> {
+            }
+            
+            is MusicSearchUiState.Error -> {
                 val errorState = uiState as MusicSearchUiState.Error
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -126,16 +162,35 @@ fun MusicSearchScreen(
                     }
                 }
             }
+            
             is MusicSearchUiState.Empty -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                // Show initial state
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface)
                 ) {
-                    Text(
-                        text = "Search for music to get started",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "🎵 Search for music",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Enter a search term or select a category above",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.getPopularTracks() },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                        ) {
+                            Text("Show Popular")
+                        }
+                    }
                 }
             }
         }
@@ -150,27 +205,27 @@ private fun TrackItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp),
+            .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         onClick = { onTrackClick(track) }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Thumbnail
             AsyncImage(
                 model = track.thumbnailUrl,
-                contentDescription = "Track thumbnail",
+                contentDescription = track.title,
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(64.dp)
                     .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Track info
             Column(
@@ -178,30 +233,22 @@ private fun TrackItem(
             ) {
                 Text(
                     text = track.title,
-                    style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
                 Text(
                     text = track.artist,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
-                if (track.duration != "Unknown") {
-                    Text(
-                        text = track.duration,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                }
+                Text(
+                    text = track.duration,
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

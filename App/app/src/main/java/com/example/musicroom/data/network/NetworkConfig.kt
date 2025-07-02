@@ -35,19 +35,25 @@ object NetworkConfig {
     // 📡 API ENDPOINTS
     object Endpoints {
         // Auth endpoints - Updated to match your backend
-        const val LOGIN = "/api/users/login/"  // ✅ Correct endpoint
+        const val LOGIN = "/api/users/login/"
         const val SIGNUP = "/api/users/create/"
         const val FORGOT_PASSWORD = "/auth/forgot-password/"
         const val GOOGLE_SIGNIN = "/auth/google/"
         
         // Home endpoint
-        const val HOME = "/api/home/"  // New endpoint for home data
+        const val HOME = "/api/home/"
         
         // User endpoints
         const val USER_PROFILE = "/users/profile/"
         const val UPDATE_PROFILE = "/users/update/"
         
-        // Music endpoints
+        // Music endpoints - NEW DYNAMIC ENDPOINTS
+        const val MUSIC_SONGS = "/api/music/songs/"
+        const val MUSIC_RANDOM_SONGS = "/api/music/random-songs/"
+        const val MUSIC_RELATED_SONGS = "/api/music/related/"
+        const val MUSIC_SONG_DETAIL = "/api/music/songs/"  // + {track_id}/
+        
+        // Legacy endpoints
         const val SEARCH_MUSIC = "/music/search/"
         const val GET_PLAYLISTS = "/playlists/"
         const val CREATE_PLAYLIST = "/playlists/create/"
