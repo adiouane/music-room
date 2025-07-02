@@ -52,6 +52,8 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
+    url='https://friendly-trout-rvjv74gr55p3576-8000.app.github.dev/',  # Add this line
+
 )
 
 from django.conf import settings
