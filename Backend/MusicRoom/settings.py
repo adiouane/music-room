@@ -304,7 +304,7 @@ if DEBUG:
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://0.0.0.0:8000",
-        "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev",
+        "https://friendly-trout-rvjv74gr55p3576-8000.app.github.dev",
     ]
 
     

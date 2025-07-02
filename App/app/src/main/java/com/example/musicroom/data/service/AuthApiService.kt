@@ -89,21 +89,28 @@ data class GoogleSignInRequest(
 data class LoginResponse(
     val success: Boolean,
     val message: String,
-    val token: String? = null,
+    // JWT token fields from backend
+    val accessToken: String? = null,
+    val refreshToken: String? = null,
     val user: UserInfo? = null,
-    // Add any additional fields your backend returns on success
-    val refresh_token: String? = null,
+    // Legacy fields for backward compatibility
+    val token: String? = null,
     val expires_in: Long? = null
 )
 
 /**
- * Sign up response model
+ * Sign up response model - Updated to match backend API
  */
 data class SignUpResponse(
     val success: Boolean,
     val message: String,
     val token: String? = null,
-    val user: UserInfo? = null
+    val user: UserInfo? = null,
+    // Backend specific fields
+    val id: Int? = null,
+    val name: String? = null,
+    val email: String? = null,
+    val avatar: String? = null
 )
 
 /**
@@ -125,7 +132,7 @@ data class GoogleSignInResponse(
 )
 
 /**
- * User information model
+ * User information model - Updated to match backend API
  */
 data class UserInfo(
     val id: String,
@@ -133,6 +140,14 @@ data class UserInfo(
     val name: String,
     val username: String? = null,
     val avatar: String? = null
+)
+
+/**
+ * JWT Tokens container
+ */
+data class JWTTokens(
+    val access: String,
+    val refresh: String
 )
 
 // ========================================================================================
@@ -181,7 +196,7 @@ class AuthApiService @Inject constructor() {
                     
                     // Add CORS headers for Codespaces
                     if (NetworkConfig.isCodespaces()) {
-                        setRequestProperty("Origin", "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev")
+                        setRequestProperty("Origin", "https://friendly-trout-rvjv74gr55p3576-8000.app.github.dev")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
@@ -213,26 +228,34 @@ class AuthApiService @Inject constructor() {
                 
                 val response = when (responseCode) {
                     201 -> {
-                        // Parse successful response
+                        // Parse successful response - Updated for your backend
                         try {
                             val jsonResponse = JSONObject(responseText)
+                            
+                            // Your backend returns the user data directly in the response
                             SignUpResponse(
                                 success = true,
-                                message = "Account created successfully",
-                                token = jsonResponse.optString("token", null),
+                                message = jsonResponse.optString("message", "Account created successfully"),
+                                token = null, // Your backend doesn't return token on signup
                                 user = UserInfo(
                                     id = jsonResponse.optString("id", ""),
                                     email = jsonResponse.optString("email", email),
-                                    name = jsonResponse.optString("name", name)
-                                )
+                                    name = jsonResponse.optString("name", name),
+                                    avatar = jsonResponse.optString("avatar", "default_avatar.png")
+                                ),
+                                // Store backend response fields
+                                id = jsonResponse.optInt("id"),
+                                name = jsonResponse.optString("name"),
+                                email = jsonResponse.optString("email"),
+                                avatar = jsonResponse.optString("avatar")
                             )
                         } catch (e: Exception) {
-                            Log.w("AuthAPI", "Could not parse success response as JSON, treating as success")
+                            Log.w("AuthAPI", "Could not parse success response as JSON: ${e.message}")
                             SignUpResponse(
                                 success = true,
                                 message = "Account created successfully",
                                 token = null,
-                                user = UserInfo(id = "", email = email, name = name)
+                                user = UserInfo(id = "", email = email, name = name, avatar = "default_avatar.png")
                             )
                         }
                     }
@@ -244,10 +267,12 @@ class AuthApiService @Inject constructor() {
                             jsonResponse.optString("message") 
                                 ?: jsonResponse.optString("error")
                                 ?: jsonResponse.optString("detail")
+                                ?: parseValidationErrors(jsonResponse) // Handle field validation errors
                                 ?: "Invalid input"
                         } catch (e: Exception) {
                             "Invalid input data"
                         }
+                        
                         SignUpResponse(
                             success = false,
                             message = errorMessage
@@ -335,46 +360,88 @@ class AuthApiService @Inject constructor() {
                 }
                 
                 Log.d("AuthAPI", "Login response code: $responseCode")
-                Log.d("AuthAPI", "Login response: $responseText")
+                Log.d("AuthAPI", "📨 Login response body: $responseText")
+                
+                // Add JWT token parsing debug
+                if (responseCode == 200) {
+                    try {
+                        val jsonResponse = JSONObject(responseText)
+                        val tokensObject = jsonResponse.optJSONObject("tokens")
+                        if (tokensObject != null) {
+                            val accessToken = tokensObject.optString("access")
+                            val refreshToken = tokensObject.optString("refresh")
+                            Log.d("AuthAPI", "🎫 Access Token received: ${accessToken.take(50)}...")
+                            Log.d("AuthAPI", "🔄 Refresh Token received: ${refreshToken.take(50)}...")
+                        }
+                    } catch (e: Exception) {
+                        Log.w("AuthAPI", "Could not parse tokens for debugging: ${e.message}")
+                    }
+                }
                 
                 val response = when (responseCode) {
                     200 -> {
                         try {
                             val jsonResponse = JSONObject(responseText)
+                            
+                            // Parse user object
+                            val userObject = jsonResponse.optJSONObject("user")
+                            val user = if (userObject != null) {
+                                UserInfo(
+                                    id = userObject.optInt("id", 0).toString(),
+                                    email = userObject.optString("email", email),
+                                    name = userObject.optString("name", ""),
+                                    username = userObject.optString("username"),
+                                    avatar = userObject.optString("avatar", "default_avatar.png")
+                                )
+                            } else null
+                            
+                            // Parse tokens object
+                            val tokensObject = jsonResponse.optJSONObject("tokens")
+                            val accessToken = tokensObject?.optString("access")
+                            val refreshToken = tokensObject?.optString("refresh")
+                            
                             LoginResponse(
                                 success = true,
-                                message = "Login successful",
-                                token = jsonResponse.optString("token"),
-                                user = UserInfo(
-                                    id = jsonResponse.optString("id", ""),
-                                    email = jsonResponse.optString("email", email),
-                                    name = jsonResponse.optString("name", ""),
-                                    username = jsonResponse.optString("username"),
-                                    avatar = jsonResponse.optString("avatar")
-                            ),
-                            refresh_token = jsonResponse.optString("refresh_token"),
-                            expires_in = jsonResponse.optLong("expires_in")
-                        )
+                                message = jsonResponse.optString("message", "Login successful"),
+                                accessToken = accessToken,
+                                refreshToken = refreshToken,
+                                user = user,
+                                // Set legacy token field to access token for backward compatibility
+                                token = accessToken,
+                                expires_in = null // Your backend doesn't return this, but you could calculate it from JWT
+                            )
                         } catch (e: Exception) {
-                            Log.e("AuthAPI", "Error parsing login response", e)
+                            Log.e("AuthAPI", "Error parsing login response: ${e.message}", e)
                             LoginResponse(
-                                success = true,
-                                message = "Login successful",
-                                token = null,
-                                user = UserInfo(id = "", email = email, name = "")
+                                success = false,
+                                message = "Failed to parse login response",
+                                accessToken = null,
+                                refreshToken = null,
+                                user = null
                             )
                         }
                     }
                     400 -> {
+                        // Parse error response
+                        val errorMessage = try {
+                            val jsonResponse = JSONObject(responseText)
+                            jsonResponse.optString("message") 
+                                ?: jsonResponse.optString("error")
+                                ?: jsonResponse.optString("detail")
+                                ?: "Invalid credentials"
+                        } catch (e: Exception) {
+                            "Invalid credentials"
+                        }
+                        
                         LoginResponse(
                             success = false,
-                            message = "Missing credentials"
+                            message = errorMessage
                         )
                     }
                     401 -> {
                         LoginResponse(
                             success = false,
-                            message = "Invalid credentials"
+                            message = "Invalid email or password"
                         )
                     }
                     404 -> {
@@ -383,10 +450,16 @@ class AuthApiService @Inject constructor() {
                             message = "User not found"
                         )
                     }
+                    500 -> {
+                        LoginResponse(
+                            success = false,
+                            message = "Server error. Please try again later."
+                        )
+                    }
                     else -> {
                         LoginResponse(
                             success = false,
-                            message = "Server error occurred (Code: $responseCode)"
+                            message = "Unexpected error occurred (Code: $responseCode)"
                         )
                     }
                 }
@@ -463,6 +536,58 @@ class AuthApiService @Inject constructor() {
                 Log.e("AuthAPI", "❌ Google Sign-In error: ${e.message}")
                 Result.failure(e)
             }
+        }
+    }
+    
+    /**
+     * Helper method to store JWT tokens securely
+     * Call this after successful login to store tokens
+     */
+    fun storeTokens(accessToken: String?, refreshToken: String?) {
+        // TODO: Implement secure token storage using EncryptedSharedPreferences
+        // This is where you would store the tokens securely for future API calls
+        Log.d("AuthAPI", "📱 Storing tokens - Access: ${accessToken?.take(20)}..., Refresh: ${refreshToken?.take(20)}...")
+    }
+    
+    /**
+     * Helper method to get stored access token
+     */
+    fun getStoredAccessToken(): String? {
+        // TODO: Implement token retrieval from secure storage
+        return null
+    }
+    
+    /**
+     * Helper method to get stored refresh token
+     */
+    fun getStoredRefreshToken(): String? {
+        // TODO: Implement token retrieval from secure storage
+        return null
+    }
+    
+    /**
+     * Parse validation errors from backend response
+     */
+    private fun parseValidationErrors(jsonResponse: JSONObject): String? {
+        return try {
+            val errors = mutableListOf<String>()
+            
+            // Check for field-specific errors
+            if (jsonResponse.has("name")) {
+                errors.add("Name: ${jsonResponse.optString("name")}")
+            }
+            if (jsonResponse.has("email")) {
+                errors.add("Email: ${jsonResponse.optString("email")}")
+            }
+            if (jsonResponse.has("password")) {
+                errors.add("Password: ${jsonResponse.optString("password")}")
+            }
+            
+            if (errors.isNotEmpty()) {
+                errors.joinToString(", ")
+            } else null
+        } catch (e: Exception) {
+            null
         }
     }
 }

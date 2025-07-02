@@ -10,7 +10,7 @@ object NetworkConfig {
     private const val CURRENT_ENVIRONMENT = "DEVELOPMENT"
     
     // 🌐 BASE URLS FOR DIFFERENT ENVIRONMENTS
-    private const val CODESPACES_BASE_URL = "https://solid-train-jwxwrj54vrg25rv9-8000.app.github.dev"
+    private const val CODESPACES_BASE_URL = "https://friendly-trout-rvjv74gr55p3576-8000.app.github.dev"
     private const val LOCAL_BASE_URL_EMULATOR = "http://10.0.2.2:8000"        
     private const val LOCAL_BASE_URL_PHYSICAL = "http://10.32.130.109:8000"   
     private const val STAGING_BASE_URL = "https://staging-api.musicroom.com"
@@ -35,7 +35,7 @@ object NetworkConfig {
     // 📡 API ENDPOINTS
     object Endpoints {
         // Auth endpoints - Updated to match your backend
-        const val LOGIN = "/api/users/login/"  // Fixed from "/api/users/login/"
+        const val LOGIN = "/api/users/login/"  // ✅ Correct endpoint
         const val SIGNUP = "/api/users/create/"
         const val FORGOT_PASSWORD = "/auth/forgot-password/"
         const val GOOGLE_SIGNIN = "/auth/google/"
