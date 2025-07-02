@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
+from events.services import get_event_songs
 from .models import Events
 from users.models import User
 
@@ -29,8 +29,8 @@ def check_event_permission(request, events, action='view'):
 
     return False
 
-@api_view(['GET'])
 @swagger_auto_schema(
+    method='get',
     operation_summary="Get public events",
     operation_description="Get list of public events with optional location filtering",
     manual_parameters=[
@@ -43,6 +43,7 @@ def check_event_permission(request, events, action='view'):
         ),
     ]
 )
+@api_view(['GET'])
 def event_list(request):
     """Get list of public events with optional location filtering"""
     try:
@@ -77,7 +78,6 @@ def event_list(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-#   @permission_classes([IsAuthenticated])
 @swagger_auto_schema(
     method='POST',
     operation_summary="Create new event",
@@ -142,19 +142,18 @@ def create_event(request):
             return Response({
                 'error': f'Invalid location. Must be one of: {", ".join(valid_locations)}'
             }, status=status.HTTP_400_BAD_REQUEST)
-        ss = User.objects.get(id=1)
         event = Events.objects.create(
             title=title,
             description=description,
             location=location,
             event_start_time=event_start_time,
             event_end_time=event_end_time,
-            organizer=ss,
+            organizer=request.user,
             is_public=is_public
         )
         
         # Assign creator as owner
-        event.assign_role(ss.id, 'owner')
+        event.assign_role(request.user.id, 'owner')
         
         return Response({
             'id': event.id,
@@ -165,8 +164,8 @@ def create_event(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
 @swagger_auto_schema(
+    method='get',
     operation_summary="Get event details",
     operation_description="Get detailed information about a specific event including user roles",
     manual_parameters=[
@@ -225,6 +224,7 @@ def create_event(request):
         )
     }
 )
+@api_view(['GET'])
 def event_detail(request, event_id):
     """Get specific event details"""
     try:
@@ -263,7 +263,6 @@ def event_detail(request, event_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Join event")
 def join_event(request, event_id):
     """Join an event"""
@@ -282,7 +281,6 @@ def join_event(request, event_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Leave event")
 def leave_event(request, event_id):
     """Leave an event"""
@@ -301,7 +299,6 @@ def leave_event(request, event_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Add user to event")
 def add_user_to_event(request, event_id, user_id):
     """Add a user to an event (invite)"""
@@ -321,7 +318,6 @@ def add_user_to_event(request, event_id, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Remove user from event")
 def remove_user_from_event(request, event_id, user_id):
     """Remove a user from an event"""
@@ -344,7 +340,6 @@ def remove_user_from_event(request, event_id, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Add track to event")
 def add_track_to_event(request, event_id, track_id):
     """Add a track to event"""
@@ -364,7 +359,6 @@ def add_track_to_event(request, event_id, track_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Remove track from event")
 def remove_track_from_event(request, event_id, track_id):
     """Remove a track from event"""
@@ -386,27 +380,50 @@ def remove_track_from_event(request, event_id, track_id):
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get event tracks")
 def get_event_tracks(request, event_id):
-    """Get tracks in an event with vote counts"""
+    """Get tracks in an event with vote counts and full details from Jamendo API"""
     try:
         event = get_object_or_404(Events, id=event_id)
 
         if not check_event_permission(request, event, 'view'):
             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
         
-        tracks_with_votes = []
-        for track_id in event.songs:
-            tracks_with_votes.append({
-                'track_id': track_id,
-                'votes': event.get_track_votes(track_id)
-            })
+        # Get full track details from Jamendo API
+        tracks_data = get_event_songs(event_id)
         
-        return Response({'tracks': tracks_with_votes})
+        # Add vote counts to each track
+        tracks_with_votes = []
+        track_results = tracks_data.get('results', []) if tracks_data else []
+        
+        for track in track_results:
+            track_id = str(track.get('id', ''))
+            vote_count = event.get_track_votes(track_id)
+            
+            # Add vote count to track data
+            track['votes'] = vote_count
+            tracks_with_votes.append(track)
+        
+        # Sort tracks by votes in descending order (most voted first)
+        tracks_with_votes.sort(key=lambda track: track.get('votes', 0), reverse=True)
+        
+        # Return event info along with track details
+        response_data = {
+            'event_info': {
+                'id': event.id,
+                'title': event.title,
+                'organizer': event.organizer.name,
+                'track_count': len(event.songs),
+                'attendee_count': event.attendee_count,
+                'is_public': event.is_public,
+            },
+            'tracks': tracks_with_votes
+        }
+        
+        return Response(response_data)
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Vote for track in event")
 def vote_track_in_event(request, event_id, track_id):
     """Vote for a track in event"""
@@ -426,7 +443,6 @@ def vote_track_in_event(request, event_id, track_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Remove vote for track in event")
 def unvote_track_in_event(request, event_id, track_id):
     """Remove vote for a track in event"""
@@ -445,9 +461,32 @@ def unvote_track_in_event(request, event_id, track_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='put',
+    operation_summary="Change event visibility",
+    request_body=openapi.Schema(
+        type= openapi.TYPE_OBJECT,
+        required=['is_public'],
+        properties={
+            'is_public': openapi.Schema(
+                type=openapi.TYPE_BOOLEAN,
+                description="Set to true for public event, false for private"
+            )
+        }
+    ),
+    responses={
+        201: openapi.Response(
+            description="Event visibility changed successfully",
+        ),
+        403: openapi.Response(
+            description="Permission denied - only organizer or managers can change visibility",
+        ),
+        400: openapi.Response(
+            description="Bad request - is_public field is required",
+        )
+    }
+)
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-@swagger_auto_schema(operation_summary="Change event visibility")
 def change_event_visibility(request, event_id):
     """Change event visibility (public/private)"""
     try:
@@ -490,11 +529,8 @@ def event_attendees(request, event_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Role Management Views
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='post',
     operation_summary="Assign editor role to user",
     operation_description="Assign 'editor' role to a user in the event. Only owners can assign editor roles.",
     manual_parameters=[
@@ -540,6 +576,7 @@ def event_attendees(request, event_id):
         )
     }
 )
+@api_view(['POST'])
 def assign_editor_role(request, event_id, user_id):
     """Assign editor role to a user"""
     try:
@@ -559,9 +596,8 @@ def assign_editor_role(request, event_id, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='post',
     operation_summary="Transfer event ownership",
     operation_description="Transfer ownership of the event to another user. Current owner becomes an editor.",
     manual_parameters=[
@@ -607,6 +643,7 @@ def assign_editor_role(request, event_id, user_id):
         )
     }
 )
+@api_view(['POST'])
 def transfer_event_ownership(request, event_id, user_id):
     """Transfer ownership to another user"""
     try:
@@ -710,9 +747,8 @@ def get_event_user_roles(request, event_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='delete',
     operation_summary="Remove user role from event",
     operation_description="Remove a user's role from the event (effectively removing them from the event)",
     manual_parameters=[
@@ -758,6 +794,7 @@ def get_event_user_roles(request, event_id):
         )
     }
 )
+@api_view(['DELETE'])
 def remove_user_role_from_event(request, event_id, user_id):
     """Remove user role from event"""
     try:
@@ -782,26 +819,6 @@ def remove_user_role_from_event(request, event_id, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# @api_view(['GET'])
-# @swagger_auto_schema(
-#     operation_summary="Get available event locations",
-#     operation_description="Get list of all available locations for events",
-#     responses={
-#         200: openapi.Response(
-#             description="Available locations retrieved successfully",
-#             examples={
-#                 'application/json': {
-#                     'locations': [
-#                         {'value': 'E1', 'label': 'E1'},
-#                         {'value': 'E2', 'label': 'E2'},
-#                         {'value': 'P1', 'label': 'P1'},
-#                         # ... other locations
-#                     ]
-#                 }
-#             }
-#         )
-#     }
-# )
 @api_view(['GET'])
 @swagger_auto_schema(
     operation_summary="Get available event locations",

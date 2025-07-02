@@ -3,8 +3,8 @@ from django.conf import settings
 from events.models import Events
 
 
-JAMENDO_BASE_URL = "https://api.jamendo.com/v3.0"
-CLIENT_ID = settings.JAMENDO_CLIENT_ID  # Store this in your .env
+JAMENDO_BASE_URL = settings.JAMENDO_BASE_URL
+CLIENT_ID = settings.JAMENDO_CLIENT_ID
 
 
 def get_jamendo_artists(limit=5):

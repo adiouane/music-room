@@ -55,7 +55,6 @@ def playlist_list(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Get user's playlists")
 def user_playlists(request):
     """Get user's own playlists"""
@@ -78,7 +77,6 @@ def user_playlists(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-#@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Get playlist details")
 def playlist_detail(request, playlist_id):
     """Get specific playlist details"""
@@ -119,9 +117,8 @@ def playlist_detail(request, playlist_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-#@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='post',
     operation_summary="Create new playlist",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -131,6 +128,7 @@ def playlist_detail(request, playlist_id):
         }
     )
 )
+@api_view(['POST'])
 def create_playlist(request):
     """Create a new playlist"""
     try:
@@ -139,11 +137,9 @@ def create_playlist(request):
         
         if not name:
             return Response({'error': 'Playlist name is required'}, status=status.HTTP_400_BAD_REQUEST)
-        ss = User.objects.get(id=1)
         playlist = Playlist.objects.create(
             name=name,
-            #owner=request.user,
-            owner=ss,
+            owner=request.user,
             is_public=is_public
         )
         
@@ -156,9 +152,8 @@ def create_playlist(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='put',
     operation_summary="Update playlist",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -168,6 +163,7 @@ def create_playlist(request):
         }
     )
 )
+@api_view(['PUT'])
 def update_playlist(request, playlist_id):
     """Update playlist details"""
     try:
@@ -192,7 +188,6 @@ def update_playlist(request, playlist_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Delete playlist")
 def delete_playlist(request, playlist_id):
     """Delete a playlist"""
@@ -209,31 +204,25 @@ def delete_playlist(request, playlist_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-#@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Follow playlist")
 def follow_playlist(request, playlist_id):
     """Follow a playlist"""
     try:
         playlist = get_object_or_404(Playlist, id=playlist_id)
-        ss = User.objects.get(id=1)
-        print(type(ss))
         
-        #if not playlist.is_public and playlist.owner != request.user:
-        if not playlist.is_public and playlist.owner != ss:
+        if not playlist.is_public and playlist.owner != request.user:
             return Response({'error': 'Cannot follow private playlist'}, status=status.HTTP_403_FORBIDDEN)
         
         if playlist.owner == request.user:
             return Response({'error': 'Cannot follow your own playlist'}, status=status.HTTP_400_BAD_REQUEST)
         
-        #playlist.add_follower(request.user)
-        playlist.add_follower(ss)
+        playlist.add_follower(request.user)
         return Response({'message': 'Playlist followed successfully'})
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Unfollow playlist")
 def unfollow_playlist(request, playlist_id):
     """Unfollow a playlist"""
@@ -261,6 +250,10 @@ def add_collaborator(request, playlist_id, user_id):
         if user_to_add == playlist.owner:
             return Response({'error': 'Owner is already a collaborator'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Check if user is already a collaborator
+        if user_to_add in playlist.collaborators.all():
+            return Response({'error': f'User {user_to_add.name} is already a collaborator'}, status=status.HTTP_400_BAD_REQUEST)
+        
         playlist.add_collaborator(user_to_add)
         return Response({'message': f'User {user_to_add.name} added as collaborator'})
         
@@ -268,7 +261,6 @@ def add_collaborator(request, playlist_id, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Remove collaborator from playlist")
 def remove_collaborator(request, playlist_id, user_id):
     """Remove a collaborator from playlist"""
@@ -289,15 +281,14 @@ def remove_collaborator(request, playlist_id, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-#@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Add track to playlist")
 def add_track_to_playlist(request, playlist_id, track_id):
     """Add a track to playlist"""
     try:
         playlist = get_object_or_404(Playlist, id=playlist_id)
         
-        #if not check_playlist_permission(request, playlist, 'edit'):
-        #    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_playlist_permission(request, playlist, 'edit'):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
         if str(track_id) not in playlist.tracks:
             playlist.add_track(str(track_id))
@@ -309,7 +300,6 @@ def add_track_to_playlist(request, playlist_id, track_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Remove track from playlist")
 def remove_track_from_playlist(request, playlist_id, track_id):
     """Remove a track from playlist"""
@@ -335,8 +325,8 @@ def get_playlist_tracks(request, playlist_id):
     try:
         playlist = get_object_or_404(Playlist, id=playlist_id)
         
-        #if not check_playlist_permission(request, playlist, 'view'):
-        #    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_playlist_permission(request, playlist, 'view'):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
         
         # Get track details from Jamendo API
         tracks_data = get_playlist_songs(playlist_id)
@@ -359,7 +349,6 @@ def get_playlist_tracks(request, playlist_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
     operation_summary="Change playlist visibility",
     request_body=openapi.Schema(
@@ -411,7 +400,6 @@ def playlist_followers(request, playlist_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Get followed playlists")
 def followed_playlists(request):
     """Get playlists that user follows"""
@@ -434,7 +422,6 @@ def followed_playlists(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
     operation_summary="Reorder playlist tracks",
     request_body=openapi.Schema(

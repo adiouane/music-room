@@ -11,6 +11,26 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.contrib.auth.hashers import make_password, check_password
 
+
+
+def get_user_by_name(name):
+    """Get a user by name"""
+    try:
+        user = User.objects.get(name=name, is_active=True)
+        return {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'avatar': user.avatar,
+            'created_at': user.created_at,
+            'updated_at': user.updated_at
+        }
+    except User.DoesNotExist:
+        return {'error': 'User not found'}
+    except Exception as e:
+        return {'error': str(e)}
+    
+    
 def get_all_users():
     """Get all active users"""
     try:
@@ -161,6 +181,7 @@ def login_user(email, password):
 
 def register_user(name, email, password, **extra_fields):
     """Register a new user with email verification"""
+    print(f"Registering user: {name} with email {email}")
     try:
         if User.objects.filter(email=email).exists():
             return {'error': 'Email already exists'}
@@ -170,16 +191,19 @@ def register_user(name, email, password, **extra_fields):
             name=name,
             password=password,
             is_active=False,  # Require email verification
+            is_verified=False,  # Set as unverified
             **extra_fields
         )
         
         # Generate email verification token
         token = jwt.encode({
             'user_id': user.id,
+            'action': 'email_verification',
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, settings.SECRET_KEY, algorithm='HS256')
         
-        verification_url = f"http://zakariawaladzamel.com/verify-email?token={token}"
+        # Link points directly to backend verification endpoint
+        verification_url = f"{settings.DEFAULT_API_URL}api/users/verify-email/?token={token}"
         send_mail(
             'Verify your MusicRoom account',
             f'Please click the link to verify your email: {verification_url}',
@@ -232,16 +256,22 @@ def verify_email(token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user = User.objects.get(id=payload['user_id'])
         
-        if not user.is_active:
+        # Check if this is an email verification token
+        if payload.get('action') != 'email_verification':
+            return {'error': 'Invalid token type'}
+        
+        if not user.is_verified:
             user.is_active = True
             user.is_verified = True
             user.save()
-        
-        return {'message': 'Email verified successfully'}
+            return {'message': 'Email verified successfully! You can now log in to your account.'}
+        else:
+            return {'message': 'Email already verified'}
+            
     except jwt.ExpiredSignatureError:
-        return {'error': 'Token has expired'}
+        return {'error': 'Verification link has expired. Please request a new verification email.'}
     except (jwt.DecodeError, User.DoesNotExist):
-        return {'error': 'Invalid token'}
+        return {'error': 'Invalid verification link'}
     except Exception as e:
         return {'error': str(e)}
 
@@ -265,10 +295,12 @@ def reset_password_request(email):
         # Generate password reset token
         token = jwt.encode({
             'user_id': user.id,
+            'action': 'password_reset',
             'exp': datetime.utcnow() + timedelta(hours=1)
         }, settings.SECRET_KEY, algorithm='HS256')
         
-        reset_url = f"http://zakariawaladzamel.com/reset-password?token={token}"
+        # Link points directly to backend password reset endpoint
+        reset_url = f"{settings.DEFAULT_API_URL}api/users/password-reset-confirm/?token={token}"
         send_mail(
             'Reset your MusicRoom password',
             f'Please click the link to reset your password: {reset_url}',
@@ -287,14 +319,18 @@ def reset_password_confirm(token, password):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user = User.objects.get(id=payload['user_id'])
         
+        # Check if this is a password reset token
+        if payload.get('action') != 'password_reset':
+            return {'error': 'Invalid token type'}
+        
         user.set_password(password)
         user.save()
         
-        return {'message': 'Password reset successful'}
+        return {'message': 'Password reset successful! You can now log in with your new password.'}
     except jwt.ExpiredSignatureError:
-        return {'error': 'Token has expired'}
+        return {'error': 'Password reset link has expired. Please request a new password reset.'}
     except (jwt.DecodeError, User.DoesNotExist):
-        return {'error': 'Invalid token'}
+        return {'error': 'Invalid password reset link'}
     except Exception as e:
         return {'error': str(e)}
 
@@ -393,5 +429,36 @@ def update_user_profile(user, **data):
         
         user.save()
         return get_user_profile(user)
+    except Exception as e:
+        return {'error': str(e)}
+    
+def resend_verification_email(email):
+    """Resend verification email to user"""
+    try:
+        user = User.objects.get(email=email)
+        
+        if user.is_verified:
+            return {'error': 'Email is already verified'}
+        
+        # Generate new verification token
+        token = jwt.encode({
+            'user_id': user.id,
+            'action': 'email_verification',
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, settings.SECRET_KEY, algorithm='HS256')
+        
+        # Send verification email with backend link
+        verification_url = f"{settings.DEFAULT_API_URL}api/users/verify-email/?token={token}"
+        send_mail(
+            'Verify your MusicRoom account',
+            f'Please click the link to verify your email: {verification_url}',
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
+        return {'message': 'Verification email sent successfully'}
+    except User.DoesNotExist:
+        return {'error': 'User with this email does not exist'}
     except Exception as e:
         return {'error': str(e)}

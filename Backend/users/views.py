@@ -1,9 +1,11 @@
+from django.conf import settings
 from django.shortcuts import render
+import jwt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from .services import (
@@ -23,11 +25,60 @@ from .services import (
     reset_password_confirm,
     link_social_account,
     get_user_profile,
-    update_user_profile
+    update_user_profile,
+    get_user_by_name
 )
 
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary="Get user by name",
+    operation_description="Retrieve user details by their name",
+    manual_parameters=[
+        openapi.Parameter(
+            'user_name',
+            openapi.IN_PATH,
+            description="Name of the user to retrieve",
+            type=openapi.TYPE_STRING,
+            required=True,
+            example="John Doe"
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="User found",
+            examples={
+                'application/json': {
+                    'id': 1,
+                    'name': 'John Doe',
+                    'email': 'john@example.com',
+                    'created_at': '2024-01-01T12:00:00Z',
+                    'updated_at': '2024-01-01T12:00:00Z'
+                }
+            }
+        ),
+        404: openapi.Response(
+            description="User not found",
+            examples={
+                'application/json': {
+                    'error': 'User not found'
+                }
+            }
+        )
+    }
+)
 @api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get all users")
+@permission_classes([AllowAny])
+def get_user_by_name_view(request, user_name):
+    """Get user details by name"""
+    user = get_user_by_name(user_name)
+    if 'error' in user:
+        return Response(user, status=status.HTTP_404_NOT_FOUND)
+    return Response(user, status=status.HTTP_200_OK)
+
+@swagger_auto_schema(method='get',operation_summary="Get all users")
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def get_all_users_view(request):
     """Get list of all users"""
     users = get_all_users()
@@ -35,44 +86,9 @@ def get_all_users_view(request):
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
     return Response(users, status=status.HTTP_200_OK)
 
-@swagger_auto_schema(
-    method='post',
-    operation_summary="Create a new user",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'name': openapi.Schema(type=openapi.TYPE_STRING, description="User's full name"),
-            'email': openapi.Schema(type=openapi.TYPE_STRING, description="User's email address"),
-            'avatar': openapi.Schema(type=openapi.TYPE_STRING, description="URL to user's avatar"),
-            'password': openapi.Schema(type=openapi.TYPE_STRING, description="User's password"),
-        },
-        required=['name', 'email', 'password']
-    ),
-    responses={
-        201: openapi.Response(description="User created successfully"),
-        400: openapi.Response(description="Invalid input"),
-    }
-)
-@api_view(['POST'])
-def create_user_view(request):
-    """Create a new user"""
-    data = request.data
-    name = data.get('name')
-    email = data.get('email')
-    avatar = data.get('avatar', 'default_avatar.png')
-    password = data.get('password')
-
-    if not all([name, email, password]):
-        return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
-
-    user = create_user(name, email, avatar, password)
-
-    if 'error' in user:
-        return Response(user, status=status.HTTP_400_BAD_REQUEST)
-
-    return Response(user, status=status.HTTP_201_CREATED)
 
 # NEW AUTHENTICATION VIEWS FROM ACCOUNTS APP
+
 
 @swagger_auto_schema(
     method='post',
@@ -83,10 +99,8 @@ def create_user_view(request):
             'name': openapi.Schema(type=openapi.TYPE_STRING, description="User's full name"),
             'email': openapi.Schema(type=openapi.TYPE_STRING, description="User's email address"),
             'password': openapi.Schema(type=openapi.TYPE_STRING, description="User's password"),
-            'password_confirm': openapi.Schema(type=openapi.TYPE_STRING, description="Password confirmation"),
-            'avatar': openapi.Schema(type=openapi.TYPE_STRING, description="URL to user's avatar"),
         },
-        required=['name', 'email', 'password', 'password_confirm']
+        required=['name', 'email', 'password']
     ),
     responses={
         201: openapi.Response(description="User registered successfully"),
@@ -94,27 +108,24 @@ def create_user_view(request):
     }
 )
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user_view(request):
     """Register a new user"""
     data = request.data
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
-    password_confirm = data.get('password_confirm')
-    avatar = data.get('avatar', 'default_avatar.png')
 
-    if not all([name, email, password, password_confirm]):
+    if not all([name, email, password]):
         return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
     
-    if password != password_confirm:
-        return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-
-    result = register_user(name, email, password, avatar=avatar)
+    result = register_user(name, email, password)
 
     if 'error' in result:
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(result, status=status.HTTP_201_CREATED)
+
 
 @swagger_auto_schema(
     method='post',
@@ -133,6 +144,7 @@ def register_user_view(request):
     }
 )
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def login_jwt_view(request):
     """Login user with JWT tokens"""
     data = request.data
@@ -175,21 +187,58 @@ def logout_view(request):
     
     return Response(result, status=status.HTTP_200_OK)
 
+
 @swagger_auto_schema(
     method='post',
-    operation_summary="Verify email",
+    operation_summary="Verify user email",
+    operation_description="Verify user email using token from email link",
+    manual_parameters=[
+        openapi.Parameter(
+            'token',
+            openapi.IN_QUERY,
+            description="Email verification token (for GET requests)",
+            type=openapi.TYPE_STRING,
+            required=False
+        )
+    ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'token': openapi.Schema(type=openapi.TYPE_STRING, description="Email verification token"),
-        },
-        required=['token']
-    )
+            'token': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Email verification token (for POST requests)"
+            )
+        }
+    ),
+    responses={
+        200: openapi.Response(
+            description="Email verified successfully",
+            examples={
+                'application/json': {
+                    'message': 'Email verified successfully! You can now log in to your account.'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Invalid or expired token",
+            examples={
+                'application/json': {
+                    'error': 'Invalid verification link'
+                }
+            }
+        )
+    }
 )
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 def verify_email_view(request):
     """Verify user email with token"""
-    token = request.data.get('token')
+    # Handle GET request (when user clicks email link)
+    if request.method == 'GET':
+        token = request.GET.get('token')
+    # Handle POST request (API call)
+    else:
+        token = request.data.get('token')
     
     if not token:
         return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -200,6 +249,7 @@ def verify_email_view(request):
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
     
     return Response(result, status=status.HTTP_200_OK)
+
 
 @swagger_auto_schema(
     method='post',
@@ -227,39 +277,106 @@ def password_reset_view(request):
     
     return Response(result, status=status.HTTP_200_OK)
 
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 @swagger_auto_schema(
-    method='post',
-    operation_summary="Confirm password reset",
+    operation_summary="Password reset confirmation",
+    operation_description="Handle password reset using token from email link",
+    manual_parameters=[
+        openapi.Parameter(
+            'token',
+            openapi.IN_QUERY,
+            description="Password reset token (for GET requests)",
+            type=openapi.TYPE_STRING,
+            required=False
+        )
+    ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'token': openapi.Schema(type=openapi.TYPE_STRING, description="Reset token"),
-            'password': openapi.Schema(type=openapi.TYPE_STRING, description="New password"),
-            'password_confirm': openapi.Schema(type=openapi.TYPE_STRING, description="Password confirmation"),
+            'token': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Password reset token"
+            ),
+            'password': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="New password"
+            ),
+            'password_confirm': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Confirm new password"
+            )
         },
         required=['token', 'password', 'password_confirm']
-    )
+    ),
+    responses={
+        200: openapi.Response(
+            description="Password reset successful or token validation",
+            examples={
+                'application/json': {
+                    'message': 'Password reset successful! You can now log in with your new password.'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Invalid token or password validation error",
+            examples={
+                'application/json': {
+                    'error': 'Invalid password reset link'
+                }
+            }
+        )
+    }
 )
-@api_view(['POST'])
 def password_reset_confirm_view(request):
-    """Confirm password reset"""
-    data = request.data
-    token = data.get('token')
-    password = data.get('password')
-    password_confirm = data.get('password_confirm')
+    """Confirm password reset with token"""
+    # Handle GET request (when user clicks email link)
+    if request.method == 'GET':
+        token = request.GET.get('token')
+        
+        if not token:
+            return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate token and return instructions
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            
+            if payload.get('action') != 'password_reset':
+                return Response({'error': 'Invalid token type'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({
+                'message': 'Token is valid. Please provide your new password.',
+                'instructions': 'Send a POST request with token, password, and password_confirm fields.',
+                'token': token
+            }, status=status.HTTP_200_OK)
+            
+        except jwt.ExpiredSignatureError:
+            return Response({'error': 'Password reset link has expired. Please request a new password reset.'}, status=status.HTTP_400_BAD_REQUEST)
+        except jwt.DecodeError:
+            return Response({'error': 'Invalid password reset link'}, status=status.HTTP_400_BAD_REQUEST)
     
-    if not all([token, password, password_confirm]):
-        return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if password != password_confirm:
-        return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    result = reset_password_confirm(token, password)
-    
-    if 'error' in result:
-        return Response(result, status=status.HTTP_400_BAD_REQUEST)
-    
-    return Response(result, status=status.HTTP_200_OK)
+    # Handle POST request (actual password reset)
+    else:
+        token = request.data.get('token')
+        password = request.data.get('password')
+        password_confirm = request.data.get('password_confirm')
+        
+        if not all([token, password, password_confirm]):
+            return Response({'error': 'Token, password, and password confirmation are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if password != password_confirm:
+            return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(password) < 8:
+            return Response({'error': 'Password must be at least 8 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        result = reset_password_confirm(token, password)
+        
+        if 'error' in result:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(result, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='post',
@@ -313,7 +430,6 @@ def profile_view(request):
         type=openapi.TYPE_OBJECT,
         properties={
             'name': openapi.Schema(type=openapi.TYPE_STRING),
-            'avatar': openapi.Schema(type=openapi.TYPE_STRING),
             'bio': openapi.Schema(type=openapi.TYPE_STRING),
             'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format='date'),
             'phone_number': openapi.Schema(type=openapi.TYPE_STRING),
@@ -341,76 +457,3 @@ def profile_update_view(request):
     
     return Response({'message': 'Profile updated successfully', 'user': result}, status=status.HTTP_200_OK)
 
-# Keep your existing views...
-@api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get user by ID")
-def get_user_by_id_view(request, user_id):
-    """Get user details by ID"""
-    user = get_user_by_id(user_id)
-    if 'error' in user:
-        return Response(user, status=status.HTTP_404_NOT_FOUND)
-    return Response(user, status=status.HTTP_200_OK)
-
-@swagger_auto_schema(
-    method='put',
-    operation_summary="Update user",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'name': openapi.Schema(type=openapi.TYPE_STRING),
-            'avatar': openapi.Schema(type=openapi.TYPE_STRING),
-        }
-    )
-)
-@api_view(['PUT'])
-def update_user_view(request, user_id):
-    """Update user information"""
-    data = request.data
-    user = update_user(user_id, **data)
-    
-    if 'error' in user:
-        return Response(user, status=status.HTTP_400_BAD_REQUEST)
-    
-    return Response(user, status=status.HTTP_200_OK)
-
-@api_view(['DELETE'])
-@swagger_auto_schema(operation_summary="Delete user")
-def delete_user_view(request, user_id):
-    """Delete a user"""
-    result = delete_user(user_id)
-    if 'error' in result:
-        return Response(result, status=status.HTTP_404_NOT_FOUND)
-    
-    return Response(result, status=status.HTTP_200_OK)
-
-@api_view(['GET'])
-@swagger_auto_schema(operation_summary="Get user by email")
-def get_user_by_email_view(request):
-    """Get user by email"""
-    email = request.GET.get('email')
-    if not email:
-        return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = get_user_by_email(email)
-    if 'error' in user:
-        return Response(user, status=status.HTTP_404_NOT_FOUND)
-    
-    return Response(user, status=status.HTTP_200_OK)
-
-@api_view(['POST'])
-@swagger_auto_schema(operation_summary="Simple login (legacy)")
-def login_user_view(request):
-    """Simple login without JWT"""
-    data = request.data
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-    result = login_user(email, password)
-
-    if 'error' in result:
-        return Response(result, status=status.HTTP_401_UNAUTHORIZED)
-
-    return Response(result, status=status.HTTP_200_OK)

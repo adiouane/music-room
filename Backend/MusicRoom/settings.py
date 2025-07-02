@@ -29,6 +29,8 @@ EMAIL_PORT = 587  # Default port for the console email backend
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'samohib50@gmail.com'
 EMAIL_HOST_PASSWORD = 'xvrhvgmzfuwbfgbk'
+DEFAULT_API_URL = os.getenv('DEFAULT_API_URL', 'http://localhost:8000/api/v1/')
+JAMENDO_BASE_URL = os.getenv('Jamendo_url')
 
 # Social authentication settings
 FACEBOOK_GRAPH_API_URL = 'https://graph.facebook.com'
