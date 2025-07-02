@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.musicroom.data.models.Song
 import com.example.musicroom.data.models.Artist
 import com.example.musicroom.data.service.MusicApiService
+import com.example.musicroom.data.service.HomeApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ArtistDetailsViewModel @Inject constructor(
-    private val musicApiService: MusicApiService
+    private val musicApiService: MusicApiService,
+    private val homeApiService: HomeApiService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow<ArtistDetailsUiState>(ArtistDetailsUiState.Loading)
@@ -26,8 +28,12 @@ class ArtistDetailsViewModel @Inject constructor(
             try {
                 _uiState.value = ArtistDetailsUiState.Loading
                 
-                // Create mock artist - TODO: Replace with actual API call
-                val artist = createMockArtist(artistId)
+                // Fetch real artist data from backend
+                val artist = fetchArtistById(artistId)
+                if (artist == null) {
+                    _uiState.value = ArtistDetailsUiState.Error("Artist not found")
+                    return@launch
+                }
                 
                 // Get artist songs - for now using random songs and filtering by artist name
                 // TODO: Replace with actual artist-specific endpoint when backend supports it
@@ -66,63 +72,40 @@ class ArtistDetailsViewModel @Inject constructor(
         }
     }
     
-    private fun createMockArtist(artistId: String): Artist {
-        // Create mock artist based on ID - you can replace this with real API call
-        return when (artistId) {
-            "5" -> Artist(
-                id = "5",
-                name = "Both",
-                website = "http://www.both-world.com",
-                joindate = "2004-07-04",
-                image = "https://usercontent.jamendo.com?type=artist&id=5&width=300",
-                shorturl = "https://jamen.do/a/5",
-                shareurl = "https://www.jamendo.com/artist/5"
-            )
-            "6" -> Artist(
-                id = "6",
-                name = "Tryad",
-                website = "http://www.tryad.fr",
-                joindate = "2004-08-20",
-                image = "https://usercontent.jamendo.com?type=artist&id=6&width=300",
-                shorturl = "https://jamen.do/a/6",
-                shareurl = "https://www.jamendo.com/artist/6"
-            )
-            "7" -> Artist(
-                id = "7",
-                name = "Both",
-                website = "http://www.both-world.com",
-                joindate = "2004-07-04",
-                image = "https://usercontent.jamendo.com?type=artist&id=7&width=300",
-                shorturl = "https://jamen.do/a/7",
-                shareurl = "https://www.jamendo.com/artist/7"
-            )
-            "9" -> Artist(
-                id = "9",
-                name = "Shearer",
-                website = "http://www.shearer.fr.st",
-                joindate = "2004-11-06",
-                image = "https://usercontent.jamendo.com?type=artist&id=9&width=300",
-                shorturl = "https://jamen.do/a/9",
-                shareurl = "https://www.jamendo.com/artist/9"
-            )
-            "13" -> Artist(
-                id = "13",
-                name = "Ehma",
-                website = "http://www.ehma.net",
-                joindate = "2005-01-15",
-                image = "https://usercontent.jamendo.com?type=artist&id=13&width=300",
-                shorturl = "https://jamen.do/a/13",
-                shareurl = "https://www.jamendo.com/artist/13"
-            )
-            else -> Artist(
-                id = artistId,
-                name = "Unknown Artist",
-                website = null,
-                joindate = "2004-01-01",
-                image = null,
-                shorturl = "https://jamen.do/a/$artistId",
-                shareurl = "https://www.jamendo.com/artist/$artistId"
-            )
+    /**
+     * Fetch real artist data by ID from the backend's popular artists
+     */
+    private suspend fun fetchArtistById(artistId: String): Artist? {
+        return try {
+            Log.d("ArtistDetailsVM", "🎤 Fetching real artist data for ID: $artistId")
+            
+            // Get home data which includes popular artists
+            val homeResult = homeApiService.getHomeData()
+            
+            if (homeResult.isSuccess) {
+                val homeData = homeResult.getOrThrow()
+                val popularArtists = homeData.popular_artists.results
+                
+                Log.d("ArtistDetailsVM", "📋 Found ${popularArtists.size} popular artists")
+                
+                // Find the artist by ID
+                val artist = popularArtists.find { it.id == artistId }
+                
+                if (artist != null) {
+                    Log.d("ArtistDetailsVM", "✅ Found artist: ${artist.name}")
+                } else {
+                    Log.w("ArtistDetailsVM", "❌ Artist with ID $artistId not found in popular artists")
+                }
+                
+                artist
+            } else {
+                val error = homeResult.exceptionOrNull()
+                Log.e("ArtistDetailsVM", "Failed to fetch home data for artist lookup", error)
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("ArtistDetailsVM", "Error fetching artist by ID", e)
+            null
         }
     }
 }
