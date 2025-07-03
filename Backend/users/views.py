@@ -236,19 +236,75 @@ def verify_email_view(request):
     # Handle GET request (when user clicks email link)
     if request.method == 'GET':
         token = request.GET.get('token')
+        
+        # For GET requests, render the HTML template
+        if not token:
+            context = {
+                'status': 'error',
+                'title': 'Verification Failed',
+                'message': 'No verification token provided',
+                'icon_type': 'error'
+            }
+            return render(request, 'users/email_verified.html', context)
+        
+        result = verify_email(token)
+        
+        if 'error' in result:
+            # Handle different error types
+            if 'Invalid verification link' in result['error']:
+                context = {
+                    'status': 'error',
+                    'title': 'Invalid Link',
+                    'message': 'This verification link is invalid or corrupted. Please request a new verification email.',
+                    'icon_type': 'error'
+                }
+            elif 'expired' in result['error'].lower():
+                context = {
+                    'status': 'error',
+                    'title': 'Link Expired',
+                    'message': 'This verification link has expired. Please request a new verification email.',
+                    'icon_type': 'error'
+                }
+            else:
+                context = {
+                    'status': 'error',
+                    'title': 'Verification Failed',
+                    'message': result['error'],
+                    'icon_type': 'error'
+                }
+        else:
+            # Handle success cases
+            if 'already verified' in result['message'].lower():
+                context = {
+                    'status': 'already_verified',
+                    'title': 'Already Verified',
+                    'message': 'Your email has already been verified. You can proceed to log in.',
+                    'icon_type': 'info'
+                }
+            else:
+                context = {
+                    'status': 'success',
+                    'title': 'Verified Successfully',
+                    'message': 'Email verified successfully! You can now log in to your account.',
+                    'icon_type': 'success'
+                }
+        
+        return render(request, 'users/email_verified.html', context)
+    
     # Handle POST request (API call)
     else:
         token = request.data.get('token')
-    
-    if not token:
-        return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    result = verify_email(token)
-    
-    if 'error' in result:
-        return Response(result, status=status.HTTP_400_BAD_REQUEST)
-    
-    return Response(result, status=status.HTTP_200_OK)
+        
+        if not token:
+            return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        result = verify_email(token)
+        
+        if 'error' in result:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(result, status=status.HTTP_200_OK)
+
 
 
 @swagger_auto_schema(
