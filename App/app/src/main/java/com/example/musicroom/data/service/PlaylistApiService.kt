@@ -588,6 +588,7 @@ class PlaylistApiService @Inject constructor(
      */
     private fun parsePlaylistTracksResponse(responseText: String): PlaylistWithTracks {
         try {
+            Log.d("PlaylistAPI", "🔍 Parsing response: $responseText")
             val json = JSONObject(responseText)
             
             // Parse playlist info
@@ -601,12 +602,18 @@ class PlaylistApiService @Inject constructor(
                 followers_count = playlistInfoJson.getInt("followers_count")
             )
             
+            Log.d("PlaylistAPI", "📋 Playlist info: ${playlistInfo.name}, expected ${playlistInfo.track_count} tracks")
+            
             // Parse tracks
             val tracksArray = json.getJSONArray("tracks")
             val tracks = mutableListOf<PlaylistTrackDetails>()
             
+            Log.d("PlaylistAPI", "🎵 Found ${tracksArray.length()} tracks in JSON array")
+            
             for (i in 0 until tracksArray.length()) {
                 val trackJson = tracksArray.getJSONObject(i)
+                Log.d("PlaylistAPI", "🎵 Parsing track $i: ${trackJson.optString("name", "Unknown")}")
+                
                 val track = PlaylistTrackDetails(
                     id = trackJson.getString("id"),
                     name = trackJson.getString("name"),
@@ -630,16 +637,32 @@ class PlaylistApiService @Inject constructor(
                     audiodownload_allowed = trackJson.optBoolean("audiodownload_allowed", false)
                 )
                 tracks.add(track)
+                Log.d("PlaylistAPI", "✅ Added track: ${track.name} by ${track.artist_name}")
+            }
+            
+            Log.d("PlaylistAPI", "🎵 Total tracks parsed: ${tracks.size}")
+            
+            // Check for duplicates
+            val trackIds = tracks.map { it.id }
+            val uniqueIds = trackIds.toSet()
+            if (trackIds.size != uniqueIds.size) {
+                Log.w("PlaylistAPI", "⚠️ Found duplicate track IDs: ${trackIds.size} total, ${uniqueIds.size} unique")
+            }
+            
+            // Check positions
+            tracks.forEach { track ->
+                Log.d("PlaylistAPI", "🎵 Track '${track.name}' at position ${track.position}")
             }
             
             return PlaylistWithTracks(playlistInfo, tracks)
             
         } catch (e: Exception) {
             Log.e("PlaylistAPI", "❌ Error parsing playlist tracks response", e)
+            Log.e("PlaylistAPI", "📄 Failed to parse response: $responseText")
             throw Exception("Failed to parse playlist tracks: ${e.message}")
         }
     }
-    
+
     /**
      * Parse add track to playlist response
      */
@@ -651,7 +674,7 @@ class PlaylistApiService @Inject constructor(
             )
         } catch (e: Exception) {
             Log.e("PlaylistAPI", "❌ Error parsing add track response", e)
-            AddTrackToPlaylistResponse(message = "Track added successfully")
+            AddTrackToPlaylistResponse("Track added successfully")
         }
     }
 }

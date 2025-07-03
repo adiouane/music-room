@@ -65,7 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen // Updated import
+import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen
 import com.example.musicroom.presentation.music.MusicSearchScreen
 import com.example.musicroom.presentation.artist.ArtistDetailsScreen
 import com.example.musicroom.presentation.theme.MusicRoomTheme
@@ -87,6 +87,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import com.example.musicroom.presentation.playlist.PlaylistTracksScreen
+import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen // Fixed: correct package path
 
 @AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
@@ -191,28 +192,12 @@ class MainActivity : ComponentActivity() {
                             navController = navController
                         )
                     }
-                      // Add the playlist details route here
-                    composable(
-                        route = "playlist_details/{playlistId}",
-                        arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
-                    ) { backStackEntry ->
-                        val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
-                        PlaylistDetailsScreen(                            playlistId = playlistId,
-                            navController = navController
-                        )
+                      // Playlists List Screen
+                    composable("playlists") {
+                        PublicPlaylistsScreen(navController = navController)
                     }
-                    // Artist Details Screen
-                    composable(
-                        route = "artist/{artistId}",
-                        arguments = listOf(navArgument("artistId") { type = NavType.StringType })
-                    ) { backStackEntry ->
-                        val artistId = backStackEntry.arguments?.getString("artistId") ?: ""
-                        ArtistDetailsScreen(
-                            artistId = artistId,
-                            navController = navController
-                        )
-                    }
-                    // Playlist Tracks Screen
+                    
+                    // Playlist Tracks Screen - Single route for viewing playlist songs
                     composable(
                         route = "playlist_tracks/{playlistId}",
                         arguments = listOf(
@@ -222,6 +207,18 @@ class MainActivity : ComponentActivity() {
                         val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
                         PlaylistTracksScreen(
                             playlistId = playlistId,
+                            navController = navController
+                        )
+                    }
+                    
+                    // Artist Details Screen
+                    composable(
+                        route = "artist/{artistId}",
+                        arguments = listOf(navArgument("artistId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val artistId = backStackEntry.arguments?.getString("artistId") ?: ""
+                        ArtistDetailsScreen(
+                            artistId = artistId,
                             navController = navController
                         )
                     }

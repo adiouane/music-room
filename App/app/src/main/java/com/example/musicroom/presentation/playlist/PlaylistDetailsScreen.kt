@@ -27,7 +27,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.musicroom.R
 import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
+// import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
 
 // Data models for playlist
 data class PlaylistResponse(
@@ -359,7 +359,7 @@ private fun PlaylistTrackItem(
             
             // Duration
             Text(
-                text = formatDuration(track.duration.toIntOrNull() ?: 0),
+                text = com.example.musicroom.presentation.playlist.formatDuration(track.duration.toIntOrNull() ?: 0),
                 color = TextSecondary,
                 fontSize = 12.sp
             )
@@ -390,8 +390,8 @@ private fun formatDate(dateString: String): String {
     }
 }
 
-private fun formatDuration(seconds: Int): String {
-    val minutes = seconds / 60
-    val remainingSeconds = seconds % 60
-    return String.format("%d:%02d", minutes, remainingSeconds)
-}
+// private fun formatDuration(seconds: Int): String {
+//     val minutes = seconds / 60
+//     val remainingSeconds = seconds % 60
+//     return String.format("%d:%02d", minutes, remainingSeconds)
+// }

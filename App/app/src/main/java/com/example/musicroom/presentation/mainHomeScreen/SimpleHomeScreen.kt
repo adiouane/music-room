@@ -60,7 +60,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 ExploreScreen() 
             }
             composable("create") { 
-                PublicPlaylistsScreen(navController = innerNavController)
+                PublicPlaylistsScreen(navController = navController) // Use main navController for playlist navigation
             }
             composable("profile") { 
                 ProfileScreen(user) 
@@ -77,16 +77,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 )
             }
             
-            composable(
-                route = "playlist/{playlistId}",
-                arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
-                PlaylistDetailsScreen(
-                    playlistId = playlistId,
-                    navController = innerNavController
-                )
-            }
+            // Remove the conflicting playlist route - handled in MainActivity
         }
     }
 }

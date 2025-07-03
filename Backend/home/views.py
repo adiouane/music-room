@@ -10,9 +10,9 @@ from rest_framework.decorators import api_view
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get Home Page Data")
 def home(request):
-    user_playlists = get_user_playlists(2, 5) or []
+    user_playlists = get_user_playlists(request.user.id, 5) or []
     
-    recommended_songs = get_jamendo_related(2, 5) or []
+    recommended_songs = get_jamendo_related(request.user.id, 5) or []
     recently_listened = get_recent(5) or []
     popular_songs = get_random_songs(5) or []
     popular_artists = get_popular_artists(5) or []

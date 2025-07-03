@@ -172,8 +172,8 @@ private fun HomeContent(
                     title = "Your Playlists",
                     playlists = homeData.user_playlists.results,
                     onPlaylistClick = { playlist ->
-                        // Navigate to playlist details
-                        navController.navigate("playlist/${playlist.id}")
+                        // Navigate to playlist tracks screen
+                        navController.navigate("playlist_tracks/${playlist.id}")
                     }
                 )
             }
