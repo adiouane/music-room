@@ -196,7 +196,7 @@ class AuthApiService @Inject constructor() {
                     
                     // Add CORS headers for Codespaces
                     if (NetworkConfig.isCodespaces()) {
-                        setRequestProperty("Origin", "https://friendly-trout-rvjv74gr55p3576-8000.app.github.dev")
+                        setRequestProperty("Origin", "https://shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
