@@ -86,6 +86,7 @@ import com.example.musicroom.data.models.Track
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import com.example.musicroom.presentation.playlist.PlaylistTracksScreen
 
 @AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
@@ -208,6 +209,19 @@ class MainActivity : ComponentActivity() {
                         val artistId = backStackEntry.arguments?.getString("artistId") ?: ""
                         ArtistDetailsScreen(
                             artistId = artistId,
+                            navController = navController
+                        )
+                    }
+                    // Playlist Tracks Screen
+                    composable(
+                        route = "playlist_tracks/{playlistId}",
+                        arguments = listOf(
+                            navArgument("playlistId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
+                        PlaylistTracksScreen(
+                            playlistId = playlistId,
                             navController = navController
                         )
                     }

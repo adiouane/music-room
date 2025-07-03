@@ -28,6 +28,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.musicroom.data.models.Track
 import com.example.musicroom.data.service.RepeatMode
+import com.example.musicroom.data.service.PlaylistApiService
+import com.example.musicroom.data.service.PublicPlaylist
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,8 +45,9 @@ fun NowPlayingScreen(
     val isPlayerReady by viewModel.isPlayerReady.collectAsState()
     val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
-      var isLiked by remember { mutableStateOf(false) }
-    
+    var isLiked by remember { mutableStateOf(false) }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+
     // Play track when screen opens
     LaunchedEffect(track) {
         viewModel.playTrack(track)
@@ -79,7 +82,7 @@ fun NowPlayingScreen(
                     modifier = Modifier.size(32.dp)
                 )
             }
-            
+
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "PLAYING FROM SEARCH",
@@ -94,40 +97,41 @@ fun NowPlayingScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
-            IconButton(onClick = { /* More options */ }) {
+
+            IconButton(onClick = { showAddToPlaylistDialog = true }) {
                 Icon(
-                    Icons.Filled.MoreVert,
-                    contentDescription = "More",
+                    Icons.Filled.PlaylistAdd,
+                    contentDescription = "Add to Playlist",
                     tint = Color.White
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Album Art
         Box(
             modifier = Modifier
                 .size(280.dp)
                 .align(Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(8.dp))        ) {
+                .clip(RoundedCornerShape(8.dp))
+        ) {
             AsyncImage(
                 model = track.thumbnailUrl,
                 contentDescription = "Album Art",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-        }        
+        }
         Spacer(modifier = Modifier.height(32.dp))
-          // Audio Player Status
+        // Audio Player Status
         Text(
             text = if (isPlayerReady) "🎵 Now Playing: ${track.title}" else "⏳ Loading track...",
             color = if (isPlayerReady) Color(0xFF1DB954) else Color.White.copy(alpha = 0.7f),
             fontSize = 14.sp,
             modifier = Modifier.padding(8.dp)
         )
-        
+
         // Audio Visualizer
         AudioVisualizer(
             isPlaying = isPlaying,
@@ -136,16 +140,17 @@ fun NowPlayingScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 32.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Track info
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {                Text(
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
                     text = track.title,
                     color = Color.White,
                     fontSize = 22.sp,
@@ -161,7 +166,7 @@ fun NowPlayingScreen(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             IconButton(
                 onClick = { isLiked = !isLiked }
             ) {
@@ -173,11 +178,12 @@ fun NowPlayingScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         // Progress bar
-        Column {            Slider(
+        Column {
+            Slider(
                 value = if (duration > 0) currentPosition else 0f,
                 onValueChange = { newPosition ->
                     viewModel.seekTo(newPosition)
@@ -190,7 +196,7 @@ fun NowPlayingScreen(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -207,28 +213,29 @@ fun NowPlayingScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Control buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
-        ) {            // Shuffle
+        ) {
+            // Shuffle
             ControlButton(
                 icon = Icons.Filled.Shuffle,
                 isActive = isShuffleEnabled,
                 onClick = { viewModel.toggleShuffle() }
             )
-            
+
             // Previous
             ControlButton(
                 icon = Icons.Filled.SkipPrevious,
                 size = 48.dp,
                 onClick = { /* Previous track */ }
             )
-              // Play/Pause
+            // Play/Pause
             ControlButton(
                 icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 size = 64.dp,
@@ -242,14 +249,14 @@ fun NowPlayingScreen(
                     }
                 }
             )
-            
+
             // Next
             ControlButton(
                 icon = Icons.Filled.SkipNext,
                 size = 48.dp,
                 onClick = { /* Next track */ }
             )
-              // Repeat
+            // Repeat
             ControlButton(
                 icon = when (repeatMode) {
                     RepeatMode.OFF -> Icons.Filled.Repeat
@@ -260,9 +267,9 @@ fun NowPlayingScreen(
                 onClick = { viewModel.cycleRepeatMode() }
             )
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Bottom actions
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -276,7 +283,7 @@ fun NowPlayingScreen(
                     tint = Color.White
                 )
             }
-            
+
             IconButton(onClick = { /* Share */ }) {
                 Icon(
                     Icons.Filled.Share,
@@ -285,6 +292,14 @@ fun NowPlayingScreen(
                 )
             }
         }
+    }
+
+    // Add to Playlist Dialog
+    if (showAddToPlaylistDialog) {
+        AddToPlaylistDialog(
+            track = track,
+            onDismiss = { showAddToPlaylistDialog = false }
+        )
     }
 }
 

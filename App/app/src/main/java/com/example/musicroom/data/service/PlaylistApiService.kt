@@ -47,6 +47,50 @@ data class CreatePlaylistResponse(
 )
 
 /**
+ * Data models for playlist tracks
+ */
+data class PlaylistTrackDetails(
+    val id: String,
+    val name: String,
+    val duration: Int,
+    val artist_id: String,
+    val artist_name: String,
+    val artist_idstr: String,
+    val album_name: String,
+    val album_id: String,
+    val license_ccurl: String,
+    val position: Int,
+    val releasedate: String,
+    val album_image: String,
+    val audio: String,
+    val audiodownload: String,
+    val prourl: String,
+    val shorturl: String,
+    val shareurl: String,
+    val waveform: String,
+    val image: String,
+    val audiodownload_allowed: Boolean
+)
+
+data class PlaylistWithTracks(
+    val playlist_info: PlaylistInfo,
+    val tracks: List<PlaylistTrackDetails>
+)
+
+data class PlaylistInfo(
+    val id: Int,  // API returns integer in tracks endpoint
+    val name: String,
+    val owner: String,
+    val track_count: Int,
+    val is_public: Boolean,
+    val followers_count: Int
+)
+
+data class AddTrackToPlaylistResponse(
+    val message: String
+)
+
+/**
  * Enhanced API Service for playlist operations
  */
 @Singleton
@@ -273,6 +317,112 @@ class PlaylistApiService @Inject constructor(
     }
     
     /**
+     * Get tracks in a playlist with full details from Jamendo
+     */
+    suspend fun getPlaylistTracks(playlistId: String): Result<PlaylistWithTracks> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("PlaylistAPI", "📋 Fetching tracks for playlist: $playlistId")
+                
+                val fullUrl = NetworkConfig.BASE_URL + "/api/playlists/$playlistId/tracks/"
+                Log.d("PlaylistAPI", "📡 Playlist tracks URL: $fullUrl")
+                
+                val connection = createConnection(fullUrl, "GET", requireAuth = true)
+                val responseCode = connection.responseCode
+                val responseText = getResponseText(connection, responseCode)
+                
+                Log.d("PlaylistAPI", "📨 Playlist tracks response code: $responseCode")
+                Log.d("PlaylistAPI", "📨 Playlist tracks response body (first 500 chars): ${responseText.take(500)}")
+                
+                when (responseCode) {
+                    200 -> {
+                        val playlistWithTracks = parsePlaylistTracksResponse(responseText)
+                        Log.d("PlaylistAPI", "✅ Successfully parsed ${playlistWithTracks.tracks.size} tracks")
+                        Result.success(playlistWithTracks)
+                    }
+                    401 -> {
+                        Log.e("PlaylistAPI", "❌ Unauthorized")
+                        Result.failure(Exception("Authentication required. Please log in again."))
+                    }
+                    404 -> {
+                        Log.e("PlaylistAPI", "❌ Playlist not found")
+                        Result.failure(Exception("Playlist not found"))
+                    }
+                    else -> {
+                        Log.e("PlaylistAPI", "❌ Error: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to fetch playlist tracks (Error $responseCode)"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("PlaylistAPI", "❌ Exception fetching playlist tracks", e)
+                Result.failure(Exception("Network error: ${e.message}"))
+            }
+        }
+    }
+    
+    /**
+     * Add a track to playlist
+     */
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String): Result<AddTrackToPlaylistResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("PlaylistAPI", "➕ Adding track $trackId to playlist $playlistId")
+                
+                val token = tokenManager.getToken()
+                if (token == null) {
+                    Log.e("PlaylistAPI", "❌ No auth token for adding track")
+                    return@withContext Result.failure(Exception("Authentication required. Please log in."))
+                }
+                
+                val fullUrl = NetworkConfig.BASE_URL + "/api/playlists/$playlistId/tracks/$trackId/add/"
+                Log.d("PlaylistAPI", "📡 Add track URL: $fullUrl")
+                
+                val connection = createConnection(fullUrl, "POST", requireAuth = true)
+                
+                // This endpoint doesn't require a body according to your Swagger
+                val responseCode = connection.responseCode
+                val responseText = getResponseText(connection, responseCode)
+                
+                Log.d("PlaylistAPI", "📨 Add track response code: $responseCode")
+                Log.d("PlaylistAPI", "📨 Add track response body: $responseText")
+                
+                when (responseCode) {
+                    200, 201 -> {
+                        val response = parseAddTrackResponse(responseText)
+                        Log.d("PlaylistAPI", "✅ Track added successfully: ${response.message}")
+                        Result.success(response)
+                    }
+                    400 -> {
+                        Log.e("PlaylistAPI", "❌ Bad request: $responseText")
+                        Result.failure(Exception("Invalid track or playlist"))
+                    }
+                    401 -> {
+                        Log.e("PlaylistAPI", "❌ Unauthorized")
+                        Result.failure(Exception("Authentication required. Please log in again."))
+                    }
+                    404 -> {
+                        Log.e("PlaylistAPI", "❌ Not found")
+                        Result.failure(Exception("Track or playlist not found"))
+                    }
+                    409 -> {
+                        Log.e("PlaylistAPI", "❌ Conflict")
+                        Result.failure(Exception("Track is already in this playlist"))
+                    }
+                    else -> {
+                        Log.e("PlaylistAPI", "❌ Error: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to add track to playlist (Error $responseCode)"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("PlaylistAPI", "❌ Exception adding track to playlist", e)
+                Result.failure(Exception("Network error: ${e.message}"))
+            }
+        }
+    }
+
+    /**
      * Helper function to create HTTP connection
      */
     private fun createConnection(url: String, method: String, requireAuth: Boolean = false): HttpURLConnection {
@@ -430,6 +580,78 @@ class PlaylistApiService @Inject constructor(
         } catch (e: Exception) {
             Log.e("PlaylistAPI", "Error parsing error message", e)
             null
+        }
+    }
+
+    /**
+     * Parse playlist tracks response
+     */
+    private fun parsePlaylistTracksResponse(responseText: String): PlaylistWithTracks {
+        try {
+            val json = JSONObject(responseText)
+            
+            // Parse playlist info
+            val playlistInfoJson = json.getJSONObject("playlist_info")
+            val playlistInfo = PlaylistInfo(
+                id = playlistInfoJson.getInt("id"),
+                name = playlistInfoJson.getString("name"),
+                owner = playlistInfoJson.getString("owner"),
+                track_count = playlistInfoJson.getInt("track_count"),
+                is_public = playlistInfoJson.getBoolean("is_public"),
+                followers_count = playlistInfoJson.getInt("followers_count")
+            )
+            
+            // Parse tracks
+            val tracksArray = json.getJSONArray("tracks")
+            val tracks = mutableListOf<PlaylistTrackDetails>()
+            
+            for (i in 0 until tracksArray.length()) {
+                val trackJson = tracksArray.getJSONObject(i)
+                val track = PlaylistTrackDetails(
+                    id = trackJson.getString("id"),
+                    name = trackJson.getString("name"),
+                    duration = trackJson.getInt("duration"),
+                    artist_id = trackJson.getString("artist_id"),
+                    artist_name = trackJson.getString("artist_name"),
+                    artist_idstr = trackJson.getString("artist_idstr"),
+                    album_name = trackJson.getString("album_name"),
+                    album_id = trackJson.getString("album_id"),
+                    license_ccurl = trackJson.optString("license_ccurl", ""),
+                    position = trackJson.getInt("position"),
+                    releasedate = trackJson.getString("releasedate"),
+                    album_image = trackJson.optString("album_image", ""),
+                    audio = trackJson.getString("audio"),
+                    audiodownload = trackJson.optString("audiodownload", ""),
+                    prourl = trackJson.optString("prourl", ""),
+                    shorturl = trackJson.optString("shorturl", ""),
+                    shareurl = trackJson.optString("shareurl", ""),
+                    waveform = trackJson.optString("waveform", ""),
+                    image = trackJson.optString("image", ""),
+                    audiodownload_allowed = trackJson.optBoolean("audiodownload_allowed", false)
+                )
+                tracks.add(track)
+            }
+            
+            return PlaylistWithTracks(playlistInfo, tracks)
+            
+        } catch (e: Exception) {
+            Log.e("PlaylistAPI", "❌ Error parsing playlist tracks response", e)
+            throw Exception("Failed to parse playlist tracks: ${e.message}")
+        }
+    }
+    
+    /**
+     * Parse add track to playlist response
+     */
+    private fun parseAddTrackResponse(responseText: String): AddTrackToPlaylistResponse {
+        return try {
+            val json = JSONObject(responseText)
+            AddTrackToPlaylistResponse(
+                message = json.optString("message", "Track added successfully")
+            )
+        } catch (e: Exception) {
+            Log.e("PlaylistAPI", "❌ Error parsing add track response", e)
+            AddTrackToPlaylistResponse(message = "Track added successfully")
         }
     }
 }

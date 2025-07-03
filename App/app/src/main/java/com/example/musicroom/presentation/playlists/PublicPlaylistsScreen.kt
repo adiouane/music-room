@@ -1,6 +1,7 @@
 package com.example.musicroom.presentation.playlists
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -243,8 +244,19 @@ fun PublicPlaylistsScreen(
             onRefresh = { viewModel.refreshCurrentTab() },
             onCreatePlaylist = { showCreateDialog = true },
             onPlaylistClick = { playlist ->
-                // Navigate to playlist details or start playing
-                println("Clicked playlist: ${playlist.name}")
+                // Debug logging
+                println("🔍 Playlist clicked: ${playlist.name} with ID: ${playlist.id}")
+                
+                try {
+                    // Navigate to playlist tracks screen
+                    val route = "playlist_tracks/${playlist.id}"
+                    println("🔍 Navigating to route: $route")
+                    navController.navigate(route)
+                    println("✅ Navigation call completed")
+                } catch (e: Exception) {
+                    println("❌ Navigation error: ${e.message}")
+                    e.printStackTrace()
+                }
             }
         )
     }
@@ -514,9 +526,14 @@ private fun EnhancedPlaylistCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { 
+                println("🔍 Card clicked for playlist: ${playlist.name}")
+                onClick() 
+            },
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        onClick = onClick
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -528,10 +545,8 @@ private fun EnhancedPlaylistCard(
             Box(
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (playlist.isPublic) PrimaryPurple else DeepPurple
-                    ),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DarkBackground),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -563,7 +578,7 @@ private fun EnhancedPlaylistCard(
                     Icon(
                         imageVector = if (playlist.isPublic) Icons.Default.Public else Icons.Default.Lock,
                         contentDescription = if (playlist.isPublic) "Public" else "Private",
-                        tint = if (playlist.isPublic) PrimaryPurple else TextSecondary,
+                        tint = if (playlist.isPublic) Color.Green else TextSecondary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -582,7 +597,7 @@ private fun EnhancedPlaylistCard(
                 if (playlist.isOwner) {
                     Text(
                         text = "Created by you",
-                        color = PrimaryPurple,
+                        color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
