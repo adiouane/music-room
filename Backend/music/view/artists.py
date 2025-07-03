@@ -15,7 +15,7 @@ from music.services import get_jamendo_artists
 @swagger_auto_schema(operation_summary="Get artist list")
 def artist_list(request):
     """Get list of artists"""
-    artists = get_jamendo_artists()
+    artists = get_jamendo_artists(10)
     return Response(artists)
 
 @api_view(['GET'])

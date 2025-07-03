@@ -10,12 +10,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.automirrored.filled.ArrowBack  // Add this import
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PersonAdd  // Add this import for invite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,12 +35,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.musicroom.BuildConfig  // Add this import
 import com.example.musicroom.data.models.Track
 import com.example.musicroom.data.service.PlaylistApiService
 import com.example.musicroom.data.service.PlaylistWithTracks
 import com.example.musicroom.data.service.PlaylistTrackDetails
 import com.example.musicroom.presentation.theme.*
+import com.example.musicroom.presentation.player.InviteUserDialog  // Add this import
 import com.example.musicroom.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,9 +98,11 @@ fun PlaylistTracksScreen(
     viewModel: PlaylistTracksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showInviteDialog by remember { mutableStateOf(false) }
     
     // Add debug logging
     LaunchedEffect(playlistId) {
+        Log.d("PlaylistTracksScreen", "🎵 Loading playlist tracks for ID: $playlistId")
         try {
             viewModel.loadPlaylistTracks(playlistId)
         } catch (e: Exception) {
@@ -134,13 +137,28 @@ fun PlaylistTracksScreen(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,  // Updated to non-deprecated version
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = TextPrimary
                     )
                 }
             },
             actions = {
+                // Add invite button for playlist owners
+                if (uiState is PlaylistTracksUiState.Success) {
+                    val currentPlaylist = (uiState as PlaylistTracksUiState.Success).playlistWithTracks
+                    // You'll need to add an isOwner field to your PlaylistInfo or determine ownership logic
+                    IconButton(
+                        onClick = { showInviteDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = "Invite Users",
+                            tint = PrimaryPurple
+                        )
+                    }
+                }
+                
                 IconButton(
                     onClick = { 
                         try {
@@ -207,7 +225,8 @@ fun PlaylistTracksScreen(
                         } catch (e: Exception) {
                             Log.e("PlaylistTracksScreen", "❌ Error playing track", e)
                         }
-                    }
+                    },
+                    onInviteClick = { showInviteDialog = true }  // Add invite callback
                 )
             }
             
@@ -282,21 +301,40 @@ fun PlaylistTracksScreen(
             }
         }
     }
+    
+    // Invite dialog
+    if (showInviteDialog && uiState is PlaylistTracksUiState.Success) {
+        val currentPlaylist = (uiState as PlaylistTracksUiState.Success).playlistWithTracks
+        InviteUserDialog(
+            playlistName = currentPlaylist.playlist_info.name,
+            onDismiss = { showInviteDialog = false },
+            onInvite = { username ->
+                // TODO: Implement invite functionality
+                // You can add the invite logic here or in the ViewModel
+                Log.d("PlaylistTracksScreen", "🎯 Inviting user: $username to playlist: ${currentPlaylist.playlist_info.name}")
+                showInviteDialog = false
+                // Show success message or handle invite result
+            }
+        )
+    }
 }
 
 @Composable
 fun PlaylistContent(
     playlistWithTracks: PlaylistWithTracks,
-    onTrackClick: (PlaylistTrackDetails) -> Unit
+    onTrackClick: (PlaylistTrackDetails) -> Unit,
+    onInviteClick: (() -> Unit)? = null  // Add invite callback
 ) {
-    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
         // Playlist Header
         item {
-            PlaylistHeaderInfo(playlistInfo = playlistWithTracks.playlist_info)
+            PlaylistHeaderInfo(
+                playlistInfo = playlistWithTracks.playlist_info,
+                onInviteClick = onInviteClick  // Pass the callback
+            )
             Spacer(modifier = Modifier.height(24.dp))
         }
 
@@ -311,9 +349,8 @@ fun PlaylistContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Track List - Add debugging
+        // Track List
         itemsIndexed(playlistWithTracks.tracks) { index, track ->
-
             PlaylistTrackRow(
                 track = track,
                 position = index + 1,
@@ -326,22 +363,14 @@ fun PlaylistContent(
                 )
             }
         }
-        
-        // Add a final item to confirm all tracks are rendered
-        item {
-            Text(
-                text = "End of ${playlistWithTracks.tracks.size} tracks",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(16.dp)
-            )
-            Spacer(modifier = Modifier.height(100.dp))
-        }
     }
 }
 
 @Composable
-fun PlaylistHeaderInfo(playlistInfo: com.example.musicroom.data.service.PlaylistInfo) {
+fun PlaylistHeaderInfo(
+    playlistInfo: com.example.musicroom.data.service.PlaylistInfo,
+    onInviteClick: (() -> Unit)? = null  // Add invite callback
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -371,20 +400,47 @@ fun PlaylistHeaderInfo(playlistInfo: com.example.musicroom.data.service.Playlist
             Spacer(modifier = Modifier.height(4.dp))
             
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (playlistInfo.is_public) Icons.Default.Public else Icons.Default.Lock,
-                    contentDescription = if (playlistInfo.is_public) "Public" else "Private",
-                    tint = if (playlistInfo.is_public) Color.Green else Color.Red,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (playlistInfo.is_public) "Public" else "Private",
-                    color = if (playlistInfo.is_public) Color.Green else Color.Red,
-                    fontSize = 12.sp
-                )
+                // Privacy indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (playlistInfo.is_public) Icons.Default.Public else Icons.Default.Lock,
+                        contentDescription = if (playlistInfo.is_public) "Public" else "Private",
+                        tint = if (playlistInfo.is_public) Color.Green else Color.Red,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (playlistInfo.is_public) "Public" else "Private",
+                        color = if (playlistInfo.is_public) Color.Green else Color.Red,
+                        fontSize = 12.sp
+                    )
+                }
+                
+                // Invite button for playlist owners
+                if (onInviteClick != null) {
+                    Button(
+                        onClick = onInviteClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Invite",
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
         }
     }

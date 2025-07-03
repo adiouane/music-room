@@ -380,7 +380,6 @@ class PlaylistApiService @Inject constructor(
                 
                 val connection = createConnection(fullUrl, "POST", requireAuth = true)
                 
-                // This endpoint doesn't require a body according to your Swagger
                 val responseCode = connection.responseCode
                 val responseText = getResponseText(connection, responseCode)
                 
@@ -395,15 +394,22 @@ class PlaylistApiService @Inject constructor(
                     }
                     400 -> {
                         Log.e("PlaylistAPI", "❌ Bad request: $responseText")
-                        Result.failure(Exception("Invalid track or playlist"))
+                        // Better error message for bad requests
+                        Result.failure(Exception("Unable to add track. Please check if the track and playlist are valid."))
                     }
                     401 -> {
                         Log.e("PlaylistAPI", "❌ Unauthorized")
                         Result.failure(Exception("Authentication required. Please log in again."))
                     }
+                    403 -> {
+                        Log.e("PlaylistAPI", "❌ Forbidden - likely private playlist permission issue")
+                        // Better error message for private playlists
+                        Result.failure(Exception("You don't have permission to add tracks to this playlist"))
+                    }
                     404 -> {
-                        Log.e("PlaylistAPI", "❌ Not found")
-                        Result.failure(Exception("Track or playlist not found"))
+                        Log.e("PlaylistAPI", "❌ Not found: $responseText")
+                        // More specific error message
+                        Result.failure(Exception("Track or playlist not found. Please try again."))
                     }
                     409 -> {
                         Log.e("PlaylistAPI", "❌ Conflict")
@@ -411,13 +417,13 @@ class PlaylistApiService @Inject constructor(
                     }
                     else -> {
                         Log.e("PlaylistAPI", "❌ Error: $responseCode - $responseText")
-                        Result.failure(Exception("Failed to add track to playlist (Error $responseCode)"))
+                        Result.failure(Exception("Failed to add track to playlist. Please try again."))
                     }
                 }
                 
             } catch (e: Exception) {
                 Log.e("PlaylistAPI", "❌ Exception adding track to playlist", e)
-                Result.failure(Exception("Network error: ${e.message}"))
+                Result.failure(Exception("Network error. Please check your connection and try again."))
             }
         }
     }

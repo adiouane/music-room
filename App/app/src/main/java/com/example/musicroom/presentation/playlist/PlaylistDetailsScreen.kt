@@ -389,9 +389,3 @@ private fun formatDate(dateString: String): String {
         dateString
     }
 }
-
-// private fun formatDuration(seconds: Int): String {
-//     val minutes = seconds / 60
-//     val remainingSeconds = seconds % 60
-//     return String.format("%d:%02d", minutes, remainingSeconds)
-// }

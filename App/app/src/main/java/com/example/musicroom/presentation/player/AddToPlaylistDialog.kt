@@ -1,5 +1,6 @@
 package com.example.musicroom.presentation.player
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -83,14 +84,29 @@ class AddToPlaylistViewModel @Inject constructor(
         viewModelScope.launch {
             _addTrackResult.value = AddTrackResult.Loading
             
+            Log.d("AddToPlaylistVM", "🎵 Adding track $trackId to playlist $playlistId")
+            
             playlistApiService.addTrackToPlaylist(playlistId, trackId).fold(
                 onSuccess = { response ->
+                    Log.d("AddToPlaylistVM", "✅ Successfully added track: ${response.message}")
                     _addTrackResult.value = AddTrackResult.Success(response.message)
                 },
                 onFailure = { exception ->
-                    _addTrackResult.value = AddTrackResult.Error(
-                        exception.message ?: "Failed to add track to playlist"
-                    )
+                    Log.e("AddToPlaylistVM", "❌ Failed to add track: ${exception.message}")
+                    
+                    // Provide more specific error messages
+                    val errorMessage = when {
+                        exception.message?.contains("not found") == true -> 
+                            "Unable to add track to this playlist. Please try again."
+                        exception.message?.contains("already") == true -> 
+                            "This track is already in the playlist"
+                        exception.message?.contains("Authentication") == true -> 
+                            "Please log in again to add tracks"
+                        exception.message?.contains("Access denied") == true -> 
+                            "You don't have permission to add tracks to this playlist"
+                        else -> "Failed to add track: ${exception.message}"
+                    }
+                    _addTrackResult.value = AddTrackResult.Error(errorMessage)
                 }
             )
         }
@@ -109,11 +125,11 @@ fun AddToPlaylistDialog(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val addTrackResult by viewModel.addTrackResult.collectAsState()
-    
+
     LaunchedEffect(Unit) {
         viewModel.loadUserPlaylists()
     }
-    
+
     // Handle add track result
     LaunchedEffect(addTrackResult) {
         addTrackResult?.let { result ->
@@ -131,7 +147,7 @@ fun AddToPlaylistDialog(
             }
         }
     }
-    
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -401,6 +417,7 @@ fun AddToPlaylistDialog(
     }
 }
 
+// Simplified PlaylistSelectionItem without invite functionality
 @Composable
 private fun PlaylistSelectionItem(
     playlist: PublicPlaylist,
@@ -463,16 +480,19 @@ private fun PlaylistSelectionItem(
                         tint = if (playlist.isPublic) Color.Green else TextSecondary,
                         modifier = Modifier.size(12.dp)
                     )
+                    
+                    // Show owner indicator
+                    if (playlist.isOwner) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Your playlist",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
-            
-            // Add icon
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Add to playlist",
-                tint = if (isLoading) TextSecondary else Color.White,
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }
