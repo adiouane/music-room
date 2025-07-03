@@ -26,9 +26,9 @@ import com.example.musicroom.presentation.room.CreateRoomScreen
 import com.example.musicroom.presentation.theme.* 
 import com.example.musicroom.presentation.room.*
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
+import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen
 import com.example.musicroom.presentation.home.HomeScreen  // Updated import to use new HomeScreen
 import com.example.musicroom.presentation.player.NowPlayingScreen
-import com.example.musicroom.presentation.music.MusicSearchScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +60,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 ExploreScreen() 
             }
             composable("create") { 
-                CreateRoomScreen() 
+                PublicPlaylistsScreen(navController = innerNavController)
             }
             composable("profile") { 
                 ProfileScreen(user) 
