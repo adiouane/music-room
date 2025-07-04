@@ -52,7 +52,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
-    url='https://shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev/',  # Add this line
+    url='https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev/',  # Add this line
 
 )
 

@@ -44,7 +44,7 @@ print(f"DEBUG: ALLOWED_HOSTS parsed: {ALLOWED_HOSTS}")
 # For development, allow all hosts when DEBUG is True
 if DEBUG:
     ALLOWED_HOSTS = ['*',
-        'shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev',
+        'crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev',
         '.app.github.dev',  # Allow all GitHub Codespaces domains
 
     ]
@@ -284,12 +284,12 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL': None,
     'LOGOUT_URL': None,
     'VALIDATOR_URL': None,
-    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'https://shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev/'),
+    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev/'),
 }
 
 # Add this for drf-yasg URL configuration
 SWAGGER_SETTINGS.update({
-    'DEFAULT_HOST': 'shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev',
+    'DEFAULT_HOST': 'crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev',
     'DEFAULT_SCHEME': 'https',
     'SUPPORTED_SUBMIT_METHODS': ['get', 'post', 'put', 'delete', 'patch'],
 })
@@ -307,11 +307,11 @@ if DEBUG:
     
     # Add your mobile device's network to allowed origins
     CORS_ALLOWED_ORIGINS = [
-        "https://shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev",
+        "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://0.0.0.0:8000",
-        "https://shiny-space-meme-jwxwrj54gxqfj9-8000.app.github.dev",
+        "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev",
     ]
 
     
