@@ -49,6 +49,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import javax.inject.Inject
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 
 // UI State
 sealed class PlaylistTracksUiState {
@@ -159,6 +161,17 @@ fun PlaylistTracksScreen(
                     }
                 }
                 
+                // Add delete playlist button (add this to existing actions)
+                IconButton(
+                    onClick = { /* TODO: implement delete playlist */ }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteForever,
+                        contentDescription = "Delete Playlist",
+                        tint = Color.Red
+                    )
+                }
+
                 IconButton(
                     onClick = { 
                         try {
@@ -535,6 +548,18 @@ fun PlaylistTrackRow(
                 imageVector = Icons.Default.PlayArrow,
                 contentDescription = "Play",
                 tint = Color.White
+            )
+        }
+        // Add this to the end of your track row component
+        IconButton(
+            onClick = { /* TODO: implement delete track */ },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Remove Track", 
+                tint = Color.Red,
+                modifier = Modifier.size(16.dp)
             )
         }
     }

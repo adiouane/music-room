@@ -28,6 +28,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.musicroom.data.models.*
 import com.example.musicroom.presentation.theme.*
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +61,25 @@ fun HomeScreen(
                         contentDescription = "Refresh",
                         tint = TextPrimary
                     )
+                }
+                // Add this to your existing TopAppBar actions in HomeScreen
+                IconButton(
+                    onClick = { /* TODO: show invitations */ }
+                ) {
+                    Box {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsNone,
+                            contentDescription = "Notifications",
+                            tint = TextPrimary
+                        )
+                        // Red badge when has invitations
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color.Red, shape = androidx.compose.foundation.shape.CircleShape)
+                                .align(Alignment.TopEnd)
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
