@@ -486,7 +486,7 @@ class EventsApiService @Inject constructor(
     }
     
     /**
-     * Parse events response from JSON array
+     * Parse events response - Updated to handle actual backend format
      */
     private fun parseEventsResponse(responseText: String): List<Event> {
         val events = mutableListOf<Event>()
@@ -497,28 +497,43 @@ class EventsApiService @Inject constructor(
             for (i in 0 until jsonArray.length()) {
                 val eventJson = jsonArray.getJSONObject(i)
                 
-                // Parse organizer
-                val organizerJson = eventJson.optJSONObject("organizer")
-                val organizer = EventOrganizer(
-                    id = organizerJson?.optString("id") ?: "",
-                    name = organizerJson?.optString("name") ?: "Unknown",
-                    avatar = organizerJson?.optString("avatar")
-                )
+                // Handle organizer - it could be a string or object
+                val organizer = if (eventJson.has("organizer")) {
+                    val organizerData = eventJson.get("organizer")
+                    if (organizerData is String) {
+                        // Backend returns organizer as string
+                        EventOrganizer(
+                            id = "", // Not provided in listing
+                            name = organizerData,
+                            avatar = null
+                        )
+                    } else {
+                        // Backend returns organizer as object
+                        val organizerJson = eventJson.getJSONObject("organizer")
+                        EventOrganizer(
+                            id = organizerJson.optString("id", ""),
+                            name = organizerJson.optString("name", "Unknown"),
+                            avatar = organizerJson.optString("avatar")
+                        )
+                    }
+                } else {
+                    EventOrganizer(id = "", name = "Unknown", avatar = null)
+                }
                 
                 val event = Event(
                     id = eventJson.optString("id"),
                     title = eventJson.optString("title"),
-                    description = eventJson.optString("description"),
+                    description = eventJson.optString("description"), // May be null in listing
                     location = eventJson.optString("location"),
                     organizer = organizer,
                     attendee_count = eventJson.optInt("attendee_count", 0),
-                    track_count = eventJson.optInt("track_count", 0),
+                    track_count = 0, // Not provided in listing for performance
                     is_public = eventJson.optBoolean("is_public", true),
                     event_start_time = eventJson.optString("event_start_time"),
-                    event_end_time = eventJson.optString("event_end_time"),
-                    image_url = eventJson.optString("image_url"),
-                    created_at = eventJson.optString("created_at"),
-                    current_user_role = eventJson.optString("current_user_role")
+                    event_end_time = eventJson.optString("event_end_time"), // May be null
+                    image_url = eventJson.optString("image_url"), // May be null
+                    created_at = eventJson.optString("created_at"), // May be null
+                    current_user_role = eventJson.optString("current_user_role") // May be null in listing
                 )
                 
                 events.add(event)

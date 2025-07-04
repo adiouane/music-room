@@ -423,7 +423,7 @@ private fun EventCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = "Created by",
+                            contentDescription = "Organizer",
                             tint = PrimaryPurple,
                             modifier = Modifier.size(16.dp)
                         )
