@@ -133,3 +133,11 @@ data class EventOrganizer(
     val name: String,
     val avatar: String?
 )
+
+/**
+ * Events section for home screen
+ */
+data class EventsSection(
+    val headers: ApiHeaders,
+    val results: List<Event>
+)

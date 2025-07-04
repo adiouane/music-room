@@ -88,6 +88,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import com.example.musicroom.presentation.playlist.PlaylistTracksScreen
 import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen // Fixed: correct package path
+import com.example.musicroom.presentation.events.EventDetailsScreen // Add this import with the other presentation imports
 
 @AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
@@ -219,6 +220,18 @@ class MainActivity : ComponentActivity() {
                         val artistId = backStackEntry.arguments?.getString("artistId") ?: ""
                         ArtistDetailsScreen(
                             artistId = artistId,
+                            navController = navController
+                        )
+                    }
+                    
+                    // Event Details Screen
+                    composable(
+                        route = "event_details/{eventId}",
+                        arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+                        EventDetailsScreen(
+                            eventId = eventId,
                             navController = navController
                         )
                     }

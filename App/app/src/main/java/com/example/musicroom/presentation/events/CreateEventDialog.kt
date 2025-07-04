@@ -36,6 +36,14 @@ fun CreateEventDialog(
         else -> null
     }
     
+    // Location dropdown with predefined choices
+    var showLocationDropdown by remember { mutableStateOf(false) }
+    val predefinedLocations = listOf(
+        "E1", "E2", "P1", "P2", "C3", "C4", 
+        "Agora", "E3", "C3-Room", "C3-Relax", 
+        "C4-rooms", "Elevator-room"
+    )
+
     AlertDialog(
         onDismissRequest = { if (!isCreating) onDismiss() },
         title = {
@@ -69,27 +77,51 @@ fun CreateEventDialog(
                     )
                 )
                 
-                // Location dropdown (you can expand this with predefined locations)
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location") },
-                    enabled = !isCreating,
-                    placeholder = { Text("e.g., E1, P1, Agora") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Location",
-                            tint = PrimaryPurple
+                // Location dropdown
+                ExposedDropdownMenuBox(
+                    expanded = showLocationDropdown,
+                    onExpandedChange = { showLocationDropdown = !showLocationDropdown }
+                ) {
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Location") },
+                        enabled = !isCreating,
+                        placeholder = { Text("Select location") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showLocationDropdown) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Location",
+                                tint = PrimaryPurple
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            focusedLabelColor = PrimaryPurple,
+                            cursorColor = PrimaryPurple
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryPurple,
-                        focusedLabelColor = PrimaryPurple,
-                        cursorColor = PrimaryPurple
                     )
-                )
+                    
+                    ExposedDropdownMenu(
+                        expanded = showLocationDropdown,
+                        onDismissRequest = { showLocationDropdown = false }
+                    ) {
+                        predefinedLocations.forEach { loc ->
+                            DropdownMenuItem(
+                                text = { Text(loc) },
+                                onClick = {
+                                    location = loc
+                                    showLocationDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
                 
                 // Start time (you can add a date/time picker later)
                 OutlinedTextField(

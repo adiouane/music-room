@@ -67,3 +67,13 @@ https://chatgpt.com/share/6844587d-a6fc-800e-8a33-da5005e40e1c
     -suggest tracks.
 
     
+
+    event:
+3 roles :
+   organizer do everything
+   managers edit tracks and vote
+   attenders only vote
+when add people you can assign them roles
+- when entre to event you can list all attenders and only organizer who could assign manager to attenders.
+list tracks with high voted top 
+vote only works on spesific time (start / end)

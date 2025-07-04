@@ -29,6 +29,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.musicroom.data.models.Event
 import com.example.musicroom.data.models.Track
+import com.example.musicroom.data.service.EventsApiService
 import com.example.musicroom.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +54,7 @@ sealed class AddTrackToEventResult {
 // ViewModel for Add to Event functionality
 @HiltViewModel
 class AddToEventViewModel @Inject constructor(
-    // TODO: Inject EventsApiService when available
+    private val eventsApiService: EventsApiService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow<AddToEventUiState>(AddToEventUiState.Loading)
@@ -70,15 +71,19 @@ class AddToEventViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.value = AddToEventUiState.Loading
-                Log.d("AddToEventVM", "🔄 Loading my events for track addition")
+                Log.d("AddToEventVM", "🔄 Loading my manageable events for track addition")
                 
-                // TODO: Replace with real API call to get user's events
-                // For now, return empty list
-                kotlinx.coroutines.delay(500) // Simulate API call
-                val myEvents = emptyList<Event>()
+                val result = eventsApiService.getUserManageableEvents()
                 
-                _uiState.value = AddToEventUiState.Success(myEvents)
-                Log.d("AddToEventVM", "✅ Loaded ${myEvents.size} events")
+                if (result.isSuccess) {
+                    val myEvents: List<Event> = result.getOrThrow()
+                    _uiState.value = AddToEventUiState.Success(myEvents)
+                    Log.d("AddToEventVM", "✅ Loaded ${myEvents.size} manageable events")
+                } else {
+                    val error = result.exceptionOrNull()
+                    Log.e("AddToEventVM", "❌ Failed to load events", error)
+                    _uiState.value = AddToEventUiState.Error(error?.message ?: "Failed to load events")
+                }
                 
             } catch (e: Exception) {
                 Log.e("AddToEventVM", "❌ Failed to load events", e)
@@ -91,17 +96,26 @@ class AddToEventViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _addTrackResult.value = AddTrackToEventResult.Loading
-                Log.d("AddToEventVM", "🎵 Adding track ${track.title} to event ${event.title}")
+                Log.d("AddToEventVM", "🎵 Adding track ${track.title} (ID: ${track.id}) to event ${event.title} (ID: ${event.id})")
                 
-                // TODO: Replace with real API call
-                kotlinx.coroutines.delay(1000) // Simulate API call
+                val result = eventsApiService.addTrackToEvent(
+                    eventId = event.id,
+                    trackId = track.id
+                )
                 
-                _addTrackResult.value = AddTrackToEventResult.Success("Track added to event successfully!")
-                Log.d("AddToEventVM", "✅ Track added to event successfully")
+                if (result.isSuccess) {
+                    val response = result.getOrThrow()
+                    _addTrackResult.value = AddTrackToEventResult.Success(response.message)
+                    Log.d("AddToEventVM", "✅ Track added to event successfully: ${response.message}")
+                } else {
+                    val error = result.exceptionOrNull()
+                    Log.e("AddToEventVM", "❌ Failed to add track to event", error)
+                    _addTrackResult.value = AddTrackToEventResult.Error(error?.message ?: "Failed to add track to event")
+                }
                 
             } catch (e: Exception) {
-                Log.e("AddToEventVM", "❌ Failed to add track to event", e)
-                _addTrackResult.value = AddTrackToEventResult.Error("Failed to add track to event")
+                Log.e("AddToEventVM", "❌ Exception adding track to event", e)
+                _addTrackResult.value = AddTrackToEventResult.Error("Error adding track to event: ${e.message}")
             }
         }
     }
@@ -167,13 +181,8 @@ fun AddToEventDialog(
                         fontWeight = FontWeight.Bold
                     )
                     
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Close",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = TextSecondary)
                     }
                 }
                 
