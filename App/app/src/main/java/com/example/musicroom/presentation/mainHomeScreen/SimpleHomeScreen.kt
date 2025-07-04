@@ -20,7 +20,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController  // Add this import
-import com.example.musicroom.presentation.explore.ExploreScreen
+import com.example.musicroom.presentation.events.EventsScreen
 import com.example.musicroom.presentation.profile.ProfileScreen
 import com.example.musicroom.presentation.theme.* 
 import com.example.musicroom.presentation.room.*
@@ -55,8 +55,9 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             composable("home") { 
                 HomeScreen(navController = navController)  // Pass the main navController for navigation
             }
-            composable("explore") { 
-                ExploreScreen() 
+            // Change the composable route
+            composable("events") { 
+                EventsScreen() 
             }
             // Change the composable route
             composable("playlist") { 
@@ -103,11 +104,12 @@ fun SimpleBottomNav(
                 indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
             )
         )
+        // Change the NavigationBarItem
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Search, contentDescription = "Explore") },
-            label = { Text("Explore") },
-            selected = currentRoute == "explore",
-            onClick = { onTabSelected("explore") },
+            icon = { Icon(Icons.Default.Event, contentDescription = "Events") }, // Changed to event icon
+            label = { Text("Events") }, // Changed to "Events"
+            selected = currentRoute == "events", // Changed route name
+            onClick = { onTabSelected("events") }, // Changed route name
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = PrimaryPurple,
                 selectedTextColor = PrimaryPurple,
@@ -116,7 +118,6 @@ fun SimpleBottomNav(
                 indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
             )
         )
-        // Change the NavigationBarItem
         NavigationBarItem(
             icon = { Icon(Icons.Default.PlaylistPlay, contentDescription = "Playlist") }, // Changed to playlist icon
             label = { Text("Playlist") }, // Changed to "Playlist"
