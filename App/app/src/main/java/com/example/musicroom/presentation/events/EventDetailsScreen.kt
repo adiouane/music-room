@@ -42,14 +42,19 @@ import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import javax.inject.Inject
 
-// UI State for Event Details
+// UI State for Event Details - Updated
 sealed class EventDetailsUiState {
     object Loading : EventDetailsUiState()
-    data class Success(val event: Event, val tracks: List<Track>) : EventDetailsUiState()
+    data class Success(
+        val event: Event, 
+        val tracks: List<Track>,
+        val isAttending: Boolean = false,
+        val isJoining: Boolean = false  // Add joining state
+    ) : EventDetailsUiState()
     data class Error(val message: String) : EventDetailsUiState()
 }
 
-// ViewModel for Event Details
+// ViewModel for Event Details - Updated
 @HiltViewModel
 class EventDetailsViewModel @Inject constructor(
     private val eventsApiService: EventsApiService
@@ -64,24 +69,45 @@ class EventDetailsViewModel @Inject constructor(
                 _uiState.value = EventDetailsUiState.Loading
                 Log.d("EventDetailsVM", "🎪 Loading event details for ID: $eventId")
                 
-                // Load event details and tracks concurrently
-                val eventDetailsDeferred = async { eventsApiService.getEventDetails(eventId) }
-                val eventTracksDeferred = async { eventsApiService.getEventTracks(eventId) }
-                
-                val eventResult = eventDetailsDeferred.await()
-                val tracksResult = eventTracksDeferred.await()
+                // Load event details first
+                val eventResult = eventsApiService.getEventDetails(eventId)
                 
                 if (eventResult.isSuccess) {
                     val eventDetails = eventResult.getOrThrow()
-                    val tracks = if (tracksResult.isSuccess) {
-                        tracksResult.getOrThrow()
+                    
+                    // Check if user is attending (organizer, attendee, or has any role)
+                    val isAttending = eventDetails.current_user_role != null
+                    
+                    // Add explicit debug logging
+                    Log.d("EventDetailsVM", "🔍 Event Details Analysis:")
+                    Log.d("EventDetailsVM", "   - Event ID: ${eventDetails.id}")
+                    Log.d("EventDetailsVM", "   - Event Title: ${eventDetails.title}")
+                    Log.d("EventDetailsVM", "   - current_user_role: '${eventDetails.current_user_role}' (type: ${eventDetails.current_user_role?.javaClass?.simpleName ?: "null"})")
+                    Log.d("EventDetailsVM", "   - isAttending calculation: ${eventDetails.current_user_role} != null = $isAttending")
+                    Log.d("EventDetailsVM", "   - Expected behavior:")
+                    if (isAttending) {
+                        Log.d("EventDetailsVM", "     -> Should show LEAVE button and LOAD tracks")
                     } else {
-                        Log.w("EventDetailsVM", "⚠️ Failed to load tracks: ${tracksResult.exceptionOrNull()?.message}")
-                        emptyList()
+                        Log.d("EventDetailsVM", "     -> Should show JOIN button and NOT load tracks")
                     }
                     
-                    Log.d("EventDetailsVM", "✅ Event details loaded: ${eventDetails.title} with ${tracks.size} tracks")
-                    _uiState.value = EventDetailsUiState.Success(eventDetails, tracks)
+                    if (isAttending) {
+                        // Load tracks only if attending
+                        val tracksResult = eventsApiService.getEventTracks(eventId)
+                        val tracks = if (tracksResult.isSuccess) {
+                            tracksResult.getOrThrow()
+                        } else {
+                            Log.w("EventDetailsVM", "⚠️ Failed to load tracks: ${tracksResult.exceptionOrNull()?.message}")
+                            emptyList()
+                        }
+                        
+                        Log.d("EventDetailsVM", "✅ Event details loaded: ${eventDetails.title} with ${tracks.size} tracks (ATTENDING)")
+                        _uiState.value = EventDetailsUiState.Success(eventDetails, tracks, true)
+                    } else {
+                        // User not attending, don't load tracks
+                        Log.d("EventDetailsVM", "✅ Event details loaded: ${eventDetails.title} - User NOT attending")
+                        _uiState.value = EventDetailsUiState.Success(eventDetails, emptyList(), false)
+                    }
                 } else {
                     val error = eventResult.exceptionOrNull()
                     Log.e("EventDetailsVM", "❌ Failed to load event details", error)
@@ -91,6 +117,54 @@ class EventDetailsViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("EventDetailsVM", "❌ Exception loading event details", e)
                 _uiState.value = EventDetailsUiState.Error("Error loading event details: ${e.message}")
+            }
+        }
+    }
+    
+    fun joinEvent(eventId: String) {
+        viewModelScope.launch {
+            try {
+                // Set joining state
+                val currentState = _uiState.value
+                if (currentState is EventDetailsUiState.Success) {
+                    _uiState.value = currentState.copy(isJoining = true)
+                }
+                
+                Log.d("EventDetailsVM", "🎪 Joining event: $eventId")
+                val result = eventsApiService.joinEvent(eventId)
+                
+                if (result.isSuccess) {
+                    Log.d("EventDetailsVM", "✅ Successfully joined event")
+                    // Reload event details to get updated status and tracks
+                    loadEventDetails(eventId)
+                } else {
+                    Log.e("EventDetailsVM", "❌ Failed to join event: ${result.exceptionOrNull()?.message}")
+                    // Reset joining state on error
+                    if (currentState is EventDetailsUiState.Success) {
+                        _uiState.value = currentState.copy(isJoining = false)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("EventDetailsVM", "❌ Exception joining event", e)
+            }
+        }
+    }
+    
+    fun leaveEvent(eventId: String) {
+        viewModelScope.launch {
+            try {
+                Log.d("EventDetailsVM", "🚪 Leaving event: $eventId")
+                val result = eventsApiService.leaveEvent(eventId)
+                
+                if (result.isSuccess) {
+                    Log.d("EventDetailsVM", "✅ Successfully left event")
+                    // Reload event details to get updated status
+                    loadEventDetails(eventId)
+                } else {
+                    Log.e("EventDetailsVM", "❌ Failed to leave event: ${result.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("EventDetailsVM", "❌ Exception leaving event", e)
             }
         }
     }
@@ -192,6 +266,9 @@ fun EventDetailsScreen(
                 EventDetailsContent(
                     event = currentState.event,
                     tracks = currentState.tracks,
+                    isAttending = currentState.isAttending,
+                    onJoinEvent = { viewModel.joinEvent(eventId) },
+                    onLeaveEvent = { viewModel.leaveEvent(eventId) },
                     navController = navController
                 )
             }
@@ -241,6 +318,9 @@ fun EventDetailsScreen(
 private fun EventDetailsContent(
     event: Event,
     tracks: List<Track>,
+    isAttending: Boolean,
+    onJoinEvent: () -> Unit,
+    onLeaveEvent: () -> Unit,
     navController: NavController
 ) {
     LazyColumn(
@@ -258,84 +338,178 @@ private fun EventDetailsContent(
             EventInfoCard(event = event)
         }
         
-        // Tracks Section (update this existing item)
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+        // Join/Leave Event Button - Fixed with debug logging
+        if (event.current_user_role != "owner") { // Don't show for event owner
+            item {
+                // Add debug logging
+                Log.d("EventDetailsScreen", "🔍 UI Button Logic:")
+                Log.d("EventDetailsScreen", "   - event.current_user_role: '${event.current_user_role}'")
+                Log.d("EventDetailsScreen", "   - isAttending: $isAttending")
+                Log.d("EventDetailsScreen", "   - Should show: ${if (isAttending) "LEAVE (Red)" else "JOIN (Purple)"} button")
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Event Tracks",
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${tracks.size} tracks",
-                            color = TextSecondary,
-                            fontSize = 14.sp
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    if (tracks.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
+                        Column {
+                            Text(
+                                text = if (isAttending) "You're attending this event" else "Join this event",
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (isAttending) "Access to tracks and event features" else "Join to access tracks and participate",
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
+                        
+                        Button(
+                            onClick = if (isAttending) onLeaveEvent else onJoinEvent,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAttending) Color.Red else PrimaryPurple
+                            )
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
+                            Text(
+                                text = if (isAttending) "Leave" else "Join",
+                                color = Color.White
+                            )
+                            Log.d("EventDetailsScreen", "🔘 Button rendered: '${if (isAttending) "Leave" else "Join"}' (${if (isAttending) "Red" else "Purple"})")
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Tracks Section - Only show if attending or is owner
+        if (isAttending || event.current_user_role == "owner") {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Event Tracks",
+                                color = TextPrimary,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${tracks.size} tracks",
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        if (tracks.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.MusicNote,
-                                    contentDescription = "No tracks",
-                                    modifier = Modifier.size(48.dp),
-                                    tint = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "No tracks yet",
-                                    color = TextSecondary,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "Add songs to this event to see them here",
-                                    color = TextSecondary,
-                                    fontSize = 12.sp,
-                                    textAlign = TextAlign.Center
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MusicNote,
+                                        contentDescription = "No tracks",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = TextSecondary
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "No tracks yet",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = "Add songs to this event to see them here",
+                                        color = TextSecondary,
+                                        fontSize = 12.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            // Display tracks list
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                tracks.forEachIndexed { index, track ->
+                                    EventTrackRow(
+                                        track = track,
+                                        position = index + 1,
+                                        onTrackClick = {
+                                            try {
+                                                navigateToNowPlaying(navController, track)
+                                            } catch (e: Exception) {
+                                                Log.e("EventDetailsScreen", "❌ Navigation error", e)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
-                    } else {
-                        // Display tracks list
+                    }
+                }
+            }
+        } else {
+            // Show message for non-attending users
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            tracks.forEachIndexed { index, track ->
-                                EventTrackRow(
-                                    track = track,
-                                    position = index + 1,
-                                    onTrackClick = {
-                                        try {
-                                            navigateToNowPlaying(navController, track)
-                                        } catch (e: Exception) {
-                                            Log.e("EventDetailsScreen", "❌ Navigation error", e)
-                                        }
-                                    }
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Join required",
+                                modifier = Modifier.size(48.dp),
+                                tint = TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Join event to access tracks",
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "You need to join this event to see and play tracks",
+                                color = TextSecondary,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
@@ -635,10 +809,9 @@ private fun navigateToNowPlaying(navController: NavController, track: Track) {
     try {
         val encodedTitle = URLEncoder.encode(track.title, "UTF-8")
         val encodedArtist = URLEncoder.encode(track.artist, "UTF-8")
-        val encodedThumbnail = URLEncoder.encode(track.thumbnailUrl, "UTF-8")
-        val encodedDuration = URLEncoder.encode(track.duration, "UTF-8")
         val encodedDescription = URLEncoder.encode(track.description, "UTF-8")
-        
+        val encodedDuration = URLEncoder.encode(track.duration, "UTF-8")
+        val encodedThumbnail = URLEncoder.encode(track.thumbnailUrl, "UTF-8")
         navController.navigate(
             "now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnail/$encodedDuration/$encodedDescription"
         )

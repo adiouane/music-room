@@ -307,6 +307,159 @@ class EventsApiService @Inject constructor(
     }
 
     /**
+     * Join an event
+     */
+    suspend fun joinEvent(eventId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "🎪 Joining event ID: $eventId")
+                
+                val url = "${NetworkConfig.BASE_URL}/api/events/$eventId/join/"
+                
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                    doOutput = true
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📨 Join event response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                when (responseCode) {
+                    200, 201 -> {
+                        Log.d("EventsAPI", "✅ Successfully joined event")
+                        Log.d("EventsAPI", "📨 Join response: $responseText")
+                        Result.success("Successfully joined event")
+                    }
+                    400 -> {
+                        Log.e("EventsAPI", "❌ Bad request: $responseText")
+                        Result.failure(Exception("Already attending this event"))
+                    }
+                    401 -> {
+                        Log.e("EventsAPI", "❌ Unauthorized: $responseText") 
+                        Result.failure(Exception("Authentication required"))
+                    }
+                    403 -> {
+                        Log.e("EventsAPI", "❌ Forbidden: $responseText")
+                        Result.failure(Exception("Access denied"))
+                    }
+                    404 -> {
+                        Log.e("EventsAPI", "❌ Not found: $responseText")
+                        Result.failure(Exception("Event not found"))
+                    }
+                    else -> {
+                        Log.e("EventsAPI", "❌ Unexpected response: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to join event: HTTP $responseCode"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Network error joining event", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Leave an event
+     */
+    suspend fun leaveEvent(eventId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "🚪 Leaving event ID: $eventId")
+                
+                val url = "${NetworkConfig.BASE_URL}/api/events/$eventId/leave/"
+                
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"  // Changed from POST to DELETE
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                    // Remove doOutput = true since DELETE doesn't need body
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📨 Leave event response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("EventsAPI", "📨 Leave response: $responseText")
+                
+                when (responseCode) {
+                    200, 204 -> {  // Backend returns 200, but 204 is also valid for DELETE
+                        Log.d("EventsAPI", "✅ Successfully left event")
+                        Result.success("Successfully left event")
+                    }
+                    400 -> {
+                        Log.e("EventsAPI", "❌ Bad request: $responseText")
+                        Result.failure(Exception("Not attending this event"))
+                    }
+                    401 -> {
+                        Log.e("EventsAPI", "❌ Unauthorized: $responseText")
+                        Result.failure(Exception("Authentication required"))
+                    }
+                    404 -> {
+                        Log.e("EventsAPI", "❌ Not found: $responseText")
+                        Result.failure(Exception("Event not found"))
+                    }
+                    else -> {
+                        Log.e("EventsAPI", "❌ Unexpected response: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to leave event: HTTP $responseCode"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Network error leaving event", e)
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
      * Get user's own events (events where user is organizer or has manage permissions)
      * For now, this filters public events by current user, but you could add a separate endpoint later
      */
@@ -533,7 +686,7 @@ class EventsApiService @Inject constructor(
                     event_end_time = eventJson.optString("event_end_time"), // May be null
                     image_url = eventJson.optString("image_url"), // May be null
                     created_at = eventJson.optString("created_at"), // May be null
-                    current_user_role = eventJson.optString("current_user_role") // May be null in listing
+                    current_user_role = eventJson.optString("current_user_role").takeIf { it.isNotBlank() } // Fix: convert empty string to null
                 )
                 
                 events.add(event)
@@ -567,6 +720,18 @@ class EventsApiService @Inject constructor(
             val songsArray = eventJson.optJSONArray("songs")
             val trackCount = songsArray?.length() ?: eventJson.optInt("track_count", 0)
             
+            // Handle current_user_role properly - check if it's actually null in JSON
+            val currentUserRole = if (eventJson.isNull("current_user_role")) {
+                null
+            } else {
+                eventJson.optString("current_user_role").takeIf { it.isNotBlank() }
+            }
+            
+            Log.d("EventsAPI", "🔍 Parsing current_user_role:")
+            Log.d("EventsAPI", "   - Raw JSON isNull: ${eventJson.isNull("current_user_role")}")
+            Log.d("EventsAPI", "   - Raw JSON value: '${eventJson.opt("current_user_role")}'")
+            Log.d("EventsAPI", "   - Parsed role: '$currentUserRole'")
+            
             return Event(
                 id = eventJson.optString("id"),
                 title = eventJson.optString("title"),
@@ -580,7 +745,7 @@ class EventsApiService @Inject constructor(
                 event_end_time = eventJson.optString("event_end_time"),
                 image_url = eventJson.optString("image_url"),
                 created_at = eventJson.optString("created_at"),
-                current_user_role = eventJson.optString("current_user_role")
+                current_user_role = currentUserRole
             )
             
         } catch (e: Exception) {
