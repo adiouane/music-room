@@ -6,22 +6,26 @@ from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 
 from music.services import  get_jamendo_related
-from music.service.tracks import get_jamendo_track,get_random_songs
+from music.service.tracks import get_jamendo_track,get_random_songs, jamendo_track_search
 
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get song list")
 def song_list(request):
     """Get list of songs from Jamendo"""
     songs = get_random_songs(limit=20)
-    return Response(songs)
+    if not songs:
+        return Response({"message": "No songs found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(songs, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get song details")
 def song_file(request, track_id):
-    track_id = request.GET.get('track_id')
+    #track_id = request.GET.get(id, 'id')
     song = get_jamendo_track(track_id)
     # Implement song detail logic
-    return Response({"message": f"Song {song} details"})
+    if not song:
+        return Response({"message": "Song not found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(song, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get related songs")
@@ -30,19 +34,25 @@ def related_list(request):
     user_id = request.GET.get('user_id', 1)
     limit = request.GET.get('limit', 10)
     related = get_jamendo_related(user_id, limit)
-    return Response(related)
+    if not related:
+        return Response({"message": "No related songs found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(related, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @swagger_auto_schema(operation_summary="Get random songs")
 def random_songs(request):
-    limit = request.GET.get('limit', 20)
+    limit = request.GET.get('limit', 10)
     songs = get_random_songs(limit=limit)
-    return Response(songs)
+    if not songs:
+        return Response({"message": "No random songs found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(songs, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
-@swagger_auto_schema(operation_summary="Get user's recent tracks")
-def recent_tracks(request, user_id):
-    """Get user's recently played tracks"""
-    # Implement recent tracks logic
-    return Response({"message": f"Recent tracks for user {user_id}"})
+@swagger_auto_schema(operation_summary="Search tracks by name")
+def track_search(request, query):
+    """Search tracks by name"""
+    tracks = jamendo_track_search(query)
+    if not tracks:
+        return Response({"message": "No tracks found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(tracks, status=status.HTTP_200_OK)

@@ -7,17 +7,7 @@ JAMENDO_BASE_URL = settings.JAMENDO_BASE_URL
 CLIENT_ID = settings.JAMENDO_CLIENT_ID
 
 
-def get_jamendo_artists(limit=5):
-    url = f"{JAMENDO_BASE_URL}/artists"
-    params = {
-        "client_id": CLIENT_ID,
-        "format": "json",
-        "limit": limit
-    }
-    response = requests.get(url, params=params)
-    return response.json()
-
-def get_jamendo_related(user_id, limit=5):
+def get_jamendo_related(user_id, limit):
     try:
         from users.models import User
         

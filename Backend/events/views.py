@@ -859,3 +859,335 @@ def get_available_locations(request):
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Invitation Management Views
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Invite user to event with role",
+    operation_description="Send invitation to a user to join the event with a specific role (organizer, manager, or attendee)",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['user_id'],
+        properties={
+            'user_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of user to invite"),
+            'role': openapi.Schema(
+                type=openapi.TYPE_STRING, 
+                description="Role to assign to the invited user",
+                enum=['organizer', 'manager', 'attendee'],
+                default='attendee'
+            ),
+        }
+    ),
+    responses={
+        200: openapi.Response(
+            description="Invitation sent successfully",
+            examples={
+                'application/json': {
+                    'message': 'Invitation sent successfully for attendee role'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Bad request - user already invited or attending, or invalid role",
+            examples={
+                'application/json': {
+                    'error': 'User is already attending this event'
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Permission denied - insufficient permissions for the requested role",
+            examples={
+                'application/json': {
+                    'error': 'You don\'t have permission to invite users as organizer'
+                }
+            }
+        )
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def invite_user_to_event(request, event_id):
+    """Invite a user to an event with a specific role"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        user_id = request.data.get('user_id')
+        role = request.data.get('role', 'attendee')  # Default to attendee
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate role
+        valid_roles = ['organizer', 'manager', 'attendee']
+        if role not in valid_roles:
+            return Response({'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get current user ID
+        current_user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+        
+        # Check if user can invite with this role
+        if not event.can_invite_with_role(current_user_id, role):
+            return Response({'error': f'You don\'t have permission to invite users as {role}'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        # Invite user with role
+        success, message = event.invite_user(user_id, current_user_id, role)
+        
+        if success:
+            return Response({'message': message}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Accept event invitation",
+    responses={
+        200: openapi.Response(
+            description="Invitation accepted successfully",
+            examples={
+                'application/json': {
+                    'message': 'Invitation accepted successfully'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="No pending invite found",
+            examples={
+                'application/json': {
+                    'error': 'No pending invite found'
+                }
+            }
+        )
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_event_invitation(request, event_id):
+    """Accept event invitation"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        
+        # Get current user ID
+        current_user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+        
+        success, message = event.accept_invite(current_user_id)
+        
+        if success:
+            return Response({'message': message}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Decline event invitation",
+    responses={
+        200: openapi.Response(
+            description="Invitation declined successfully",
+            examples={
+                'application/json': {
+                    'message': 'Invitation declined'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="No pending invite found",
+            examples={
+                'application/json': {
+                    'error': 'No pending invite found'
+                }
+            }
+        )
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def decline_event_invitation(request, event_id):
+    """Decline event invitation"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        
+        # Get current user ID
+        current_user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+        
+        success, message = event.decline_invite(current_user_id)
+        
+        if success:
+            return Response({'message': message}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@swagger_auto_schema(
+    operation_summary="Get user's events",
+    operation_description="Get all events user is involved in (organizing, attending, managing, has roles)",
+    responses={
+        200: openapi.Response(
+            description="Events retrieved successfully",
+            examples={
+                'application/json': {
+                    'events': [
+                        {
+                            'id': 1,
+                            'title': 'Music Night',
+                            'organizer': {'id': 1, 'name': 'John Doe'},
+                            'user_role': ['owner', 'organizer'],
+                            'can_edit': True,
+                            'attendees_count': 15,
+                            'location': 'E1',
+                            'event_start_time': '2025-07-05T19:00:00Z'
+                        }
+                    ],
+                    'count': 1
+                }
+            }
+        )
+    }
+)
+def get_my_events(request):
+    """Get all events user is involved in"""
+    try:
+        # Get current user ID
+        current_user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+        
+        # Get all events user is involved in
+        events = Events.get_my_events(request.user)
+        
+        events_data = []
+        for event in events:
+            # Determine user's relationship to this event
+            user_roles = []
+            if event.organizer == request.user:
+                user_roles.append('organizer')
+            if request.user in event.attendees.all():
+                user_roles.append('attendee')
+            if str(current_user_id) in event.managers:
+                user_roles.append('manager')
+            
+            # Check role from user_roles field
+            user_role_from_field = event.get_user_role(current_user_id)
+            if user_role_from_field:
+                user_roles.append(user_role_from_field)
+            
+            # Remove duplicates
+            user_roles = list(set(user_roles))
+            
+            events_data.append({
+                'id': event.id,
+                'title': event.title,
+                'organizer': {
+                    'id': event.organizer.id,
+                    'name': event.organizer.name,
+                    'avatar': event.organizer.avatar if hasattr(event.organizer, 'avatar') else None
+                },
+                'description': event.description,
+                'location': event.location,
+                'image_url': event.image_url,
+                'is_public': event.is_public,
+                'attendees_count': event.attendee_count,
+                'track_count': event.track_count,
+                'user_roles': user_roles,  # Shows all relationships: ['organizer', 'attendee', 'owner', etc.]
+                'can_edit': event.has_permission(current_user_id, 'edit_event') or event.organizer == request.user,
+                'can_invite': event.has_permission(current_user_id, 'invite_users') or event.organizer == request.user,
+                'event_start_time': event.event_start_time.isoformat(),
+                'event_end_time': event.event_end_time.isoformat() if event.event_end_time else None,
+                'created_at': event.created_at.isoformat(),
+            })
+        
+        return Response({
+            'events': events_data,
+            'count': len(events_data)
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def my_events(request):
+    """Get all events where the user is involved (organizer, attendee, or has any role)"""
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return Response({'error': 'user_id parameter is required'}, status=400)
+    
+    try:
+        events = Events.get_my_events(user_id)
+        
+        events_data = []
+        for event in events:
+            event_data = {
+                'id': event.id,
+                'title': event.title,
+                'description': event.description,
+                'location': event.location,
+                'start_time': event.event_start_time.isoformat() if event.event_start_time else None,
+                'end_time': event.event_end_time.isoformat() if event.event_end_time else None,
+                'is_public': event.is_public,
+                'organizer_id': event.organizer_id,
+                'created_at': event.created_at.isoformat(),
+                'updated_at': event.updated_at.isoformat(),
+                'attendees_count': event.attendees.count(),
+                'user_role': event.get_user_actual_role(user_id),
+                'can_edit': event.can_edit(user_id)
+            }
+            events_data.append(event_data)
+        
+        return Response({
+            'events': events_data,
+            'count': len(events_data)
+        })
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_event_pending_invites(request, event_id):
+    """Get pending invites for an event"""
+    try:
+        event = get_object_or_404(Events, id=event_id)
+        
+        # Get current user ID
+        current_user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+        
+        # Check if user can view pending invites (organizer or manager)
+        if not event.has_permission(current_user_id, 'manage_users'):
+            return Response({'error': 'Only organizers and managers can view pending invites'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        # Get pending invites with roles
+        pending_invites = event.get_pending_invites_with_roles()
+        
+        # Enrich with user information
+        invites_data = []
+        for invite in pending_invites:
+            try:
+                user = User.objects.get(id=int(invite['user_id']))
+                invite_data = {
+                    'user_id': invite['user_id'],
+                    'name': user.name,
+                    'email': user.email,
+                    'role': invite['role'],
+                    'invited_at': invite['invited_at']
+                }
+                invites_data.append(invite_data)
+            except User.DoesNotExist:
+                continue
+        
+        return Response({
+            'pending_invites': invites_data,
+            'count': len(invites_data)
+        })
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

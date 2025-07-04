@@ -34,4 +34,13 @@ urlpatterns = [
     path('<int:event_id>/assign-editor/<int:user_id>/', views.assign_editor_role, name='assign_editor_role'),
     path('<int:event_id>/transfer-ownership/<int:user_id>/', views.transfer_event_ownership, name='transfer_event_ownership'),
     path('<int:event_id>/remove-user-role/<int:user_id>/', views.remove_user_role_from_event, name='remove_user_role_from_event'),
+    
+    # Invitation Management
+    path('<int:event_id>/invite/', views.invite_user_to_event, name='invite_user_to_event'),
+    path('<int:event_id>/pending-invites/', views.get_event_pending_invites, name='get_event_pending_invites'),
+    path('<int:event_id>/accept-invite/', views.accept_event_invitation, name='accept_event_invitation'),
+    path('<int:event_id>/decline-invite/', views.decline_event_invitation, name='decline_event_invitation'),
+    
+    # User's events
+    path('my-events/', views.my_events, name='my_events'),
 ]

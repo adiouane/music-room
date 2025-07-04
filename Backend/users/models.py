@@ -61,6 +61,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Music preferences from accounts
     music_preferences = models.JSONField(default=dict)
     
+    # Notification fields for invitations
+    event_notifications = models.JSONField(default=dict)  # {"event_id_inviter_id": {"event_id": 1, "inviter_name": "John", "message": "..."}}
+    playlist_notifications = models.JSONField(default=dict)  # {"playlist_id_inviter_id": {"playlist_id": 1, "inviter_name": "John", "message": "..."}}
+    
     # Auto-generated fields (keeping your structure)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

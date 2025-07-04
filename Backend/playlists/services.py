@@ -47,7 +47,7 @@ def search_playlists(query, user=None):
     except Exception as e:
         return []
     
-def get_user_playlists(user_id, limit=10):
+def get_user_playlists(user_id, limit):
     """Get user's own playlists"""
     try:
         user = User.objects.get(id=user_id)

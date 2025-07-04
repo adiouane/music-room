@@ -3,6 +3,11 @@ from django.utils import timezone
 from users.models import User
 
 # Predefined location choices
+from django.db import models
+from django.utils import timezone
+from users.models import User
+
+# Predefined location choices
 LOCATION_CHOICES = [
     ('E1', 'E1'),
     ('E2', 'E2'),
@@ -31,6 +36,8 @@ class Events(models.Model):
     track_votes = models.JSONField(default=dict)  # Stores track votes: {"track_id": ["user_id1", "user_id2"]}
     # New field for user roles mapping
     user_roles = models.JSONField(default=dict)  # {"user_id": "role"} - roles: "owner", "editor", "listener"
+    # New field for pending invites
+    pending_invites = models.JSONField(default=list)  # Stores array of user IDs with pending invites
     is_public = models.BooleanField(default=True)
     event_start_time = models.DateTimeField(default=timezone.now)
     event_end_time = models.DateTimeField(null=True, blank=True)
@@ -50,22 +57,220 @@ class Events(models.Model):
         return self.title
     
     def add_attendee(self, user):
-        """Add user to event attendees with 'listener' role"""
+        """Add user to event attendees"""
         if user not in self.attendees.all():
             self.attendees.add(user)
-            # Assign 'listener' role when joining
-            self.assign_role(user.id, 'listener')
+            # Remove from pending invites if they were invited
+            self.remove_pending_invite(user.id)
             return True
         return False
     
     def remove_attendee(self, user):
-        """Remove user from event attendees and their role"""
+        """Remove user from event attendees"""
         if user in self.attendees.all():
             self.attendees.remove(user)
-            # Remove user role when leaving
-            self.remove_user_role(user.id)
+            # Also remove from managers if they were a manager
+            user_id = str(user.id)
+            if user_id in self.managers:
+                self.managers.remove(user_id)
+                self.save()
             return True
         return False
+    
+    def add_pending_invite(self, user_id):
+        """Add user to pending invites list (legacy method for backward compatibility)"""
+        return self.add_pending_invite_with_role(user_id, 'attendee')
+    
+    def add_pending_invite_with_role(self, user_id, role):
+        """Add user to pending invites list with role information"""
+        user_id = str(user_id)
+        
+        # Check if user already has pending invite
+        for invite in self.pending_invites:
+            if isinstance(invite, dict) and invite.get('user_id') == user_id:
+                return False
+            elif isinstance(invite, str) and invite == user_id:
+                return False
+        
+        # Add new invite with role
+        invite_data = {
+            'user_id': user_id,
+            'role': role,
+            'invited_at': timezone.now().isoformat()
+        }
+        self.pending_invites.append(invite_data)
+        self.save()
+        return True
+    
+    def remove_pending_invite(self, user_id):
+        """Remove user from pending invites list"""
+        user_id = str(user_id)
+        
+        # Handle both old format (string) and new format (dict)
+        for i, invite in enumerate(self.pending_invites):
+            if isinstance(invite, dict) and invite.get('user_id') == user_id:
+                self.pending_invites.pop(i)
+                self.save()
+                return True
+            elif isinstance(invite, str) and invite == user_id:
+                self.pending_invites.pop(i)
+                self.save()
+                return True
+        return False
+    
+    def has_pending_invite(self, user_id):
+        """Check if user has pending invite"""
+        user_id = str(user_id)
+        
+        for invite in self.pending_invites:
+            if isinstance(invite, dict) and invite.get('user_id') == user_id:
+                return True
+            elif isinstance(invite, str) and invite == user_id:
+                return True
+        return False
+    
+    def get_pending_invite_role(self, user_id):
+        """Get the role for a pending invite"""
+        user_id = str(user_id)
+        
+        for invite in self.pending_invites:
+            if isinstance(invite, dict) and invite.get('user_id') == user_id:
+                return invite.get('role', 'attendee')
+            elif isinstance(invite, str) and invite == user_id:
+                return 'attendee'  # Default for old format
+        return None
+    
+    def invite_user(self, user_id, inviter_id, role='attendee'):
+        """Invite a user to the event with a specific role"""
+        user_id = str(user_id)
+        inviter_id = str(inviter_id)
+        
+        # Validate role - using the actual event structure
+        valid_roles = ['organizer', 'manager', 'attendee']
+        if role not in valid_roles:
+            return False, "Invalid role. Must be 'organizer', 'manager', or 'attendee'"
+        
+        # Check if user is already attending
+        try:
+            user = User.objects.get(id=int(user_id))
+            if user in self.attendees.all():
+                return False, "User is already attending this event"
+        except User.DoesNotExist:
+            return False, "User not found"
+        
+        # Check if user already has pending invite
+        if self.has_pending_invite(user_id):
+            return False, "User already has a pending invite"
+        
+        # Check if inviter has permission to invite with this role
+        if not self.can_invite_with_role(inviter_id, role):
+            return False, "You don't have permission to invite with this role"
+        
+        # For organizer role, check if current user is organizer
+        if role == 'organizer' and str(self.organizer.id) != inviter_id:
+            return False, "Only the current organizer can invite new organizers"
+        
+        # Add to pending invites with role information
+        self.add_pending_invite_with_role(user_id, role)
+        
+        # Add notification to user
+        try:
+            inviter = User.objects.get(id=int(inviter_id))
+            inviter_name = inviter.name
+            
+            # Get current event notifications
+            current_notifications = user.event_notifications or {}
+            
+            # Add new notification
+            current_notifications[str(self.id)] = {
+                'event_id': self.id,
+                'event_title': self.title,
+                'inviter_id': inviter_id,
+                'inviter_name': inviter_name,
+                'invited_role': role,
+                'type': 'event_invite',
+                'created_at': timezone.now().isoformat()
+            }
+            
+            user.event_notifications = current_notifications
+            user.save()
+            
+            return True, f"Invitation sent successfully for {role} role"
+        except User.DoesNotExist:
+            return False, "Inviter not found"
+    
+    def accept_invite(self, user_id):
+        """Accept event invitation"""
+        user_id = str(user_id)
+        
+        if not self.has_pending_invite(user_id):
+            return False, "No pending invite found"
+        
+        # Get the invited role
+        invited_role = self.get_pending_invite_role(user_id)
+        
+        try:
+            user = User.objects.get(id=int(user_id))
+            
+            # Handle different role assignments
+            if invited_role == 'organizer':
+                # Transfer ownership - current organizer becomes manager
+                current_organizer = self.organizer
+                self.organizer = user
+                
+                # Add current organizer as manager if they're not already
+                if str(current_organizer.id) not in self.managers:
+                    self.managers.append(str(current_organizer.id))
+                
+                # Add new organizer as attendee
+                self.attendees.add(user)
+                
+            elif invited_role == 'manager':
+                # Add as manager and attendee
+                if str(user_id) not in self.managers:
+                    self.managers.append(str(user_id))
+                self.attendees.add(user)
+                
+            else:  # attendee
+                # Add as regular attendee
+                self.attendees.add(user)
+            
+            # Remove from pending invites
+            self.remove_pending_invite(user_id)
+            
+            # Remove notification
+            current_notifications = user.event_notifications or {}
+            if str(self.id) in current_notifications:
+                del current_notifications[str(self.id)]
+                user.event_notifications = current_notifications
+                user.save()
+            
+            self.save()
+            return True, f"Invitation accepted successfully. You are now a {invited_role}"
+        except User.DoesNotExist:
+            return False, "User not found"
+    
+    def decline_invite(self, user_id):
+        """Decline event invitation"""
+        user_id = str(user_id)
+        
+        if not self.has_pending_invite(user_id):
+            return False, "No pending invite found"
+        
+        self.remove_pending_invite(user_id)
+        
+        # Remove notification
+        try:
+            user = User.objects.get(id=int(user_id))
+            current_notifications = user.event_notifications or {}
+            if str(self.id) in current_notifications:
+                del current_notifications[str(self.id)]
+                user.event_notifications = current_notifications
+                user.save()
+        except User.DoesNotExist:
+            pass
+        
+        return True, "Invitation declined"
     
     def assign_role(self, user_id, role):
         """Assign role to user. Roles: 'owner', 'editor', 'listener'"""
@@ -77,20 +282,6 @@ class Events(models.Model):
         self.user_roles[user_id] = role
         self.save()
         return True
-    
-    def get_user_role(self, user_id):
-        """Get user's role in the event"""
-        user_id = str(user_id)
-        return self.user_roles.get(user_id, None)
-    
-    def remove_user_role(self, user_id):
-        """Remove user's role from the event"""
-        user_id = str(user_id)
-        if user_id in self.user_roles:
-            del self.user_roles[user_id]
-            self.save()
-            return True
-        return False
     
     def assign_editor_role(self, user_id):
         """Assign 'editor' role to user"""
@@ -119,6 +310,29 @@ class Events(models.Model):
         except User.DoesNotExist:
             return False
     
+    def can_invite_with_role(self, inviter_id, role):
+        """Check if inviter can invite someone with the specified role"""
+        inviter_id = str(inviter_id)
+        
+        # Check if inviter is the organizer
+        is_organizer = str(self.organizer.id) == inviter_id
+        
+        # Check if inviter is a manager
+        is_manager = inviter_id in self.managers
+        
+        # Permission matrix based on actual event roles
+        if role == 'organizer':
+            # Only current organizer can invite new organizers
+            return is_organizer
+        elif role == 'manager':
+            # Only organizers can invite managers
+            return is_organizer
+        elif role == 'attendee':
+            # Organizers and managers can invite attendees
+            return is_organizer or is_manager
+        
+        return False
+    
     def get_users_by_role(self, role):
         """Get list of user IDs with specific role"""
         return [user_id for user_id, user_role in self.user_roles.items() if user_role == role]
@@ -126,21 +340,84 @@ class Events(models.Model):
     def get_all_roles(self):
         """Get all user roles in the event"""
         return self.user_roles
+
+    def get_user_role(self, user_id):
+        """Get user's role in the event"""
+        user_id = str(user_id)
+        return self.user_roles.get(user_id, None)
+    
+    def remove_user_role(self, user_id):
+        """Remove user's role from the event"""
+        user_id = str(user_id)
+        if user_id in self.user_roles:
+            del self.user_roles[user_id]
+            self.save()
+            return True
+        return False
     
     def has_permission(self, user_id, action):
         """Check if user has permission for specific action"""
-        user_role = self.get_user_role(user_id)
+        user_id = str(user_id)
         
-        if not user_role:
-            return False
+        # Check if user is organizer
+        is_organizer = str(self.organizer.id) == user_id
         
+        # Check if user is manager
+        is_manager = user_id in self.managers
+        
+        # Check if user is attendee
+        is_attendee = self.attendees.filter(id=int(user_id)).exists()
+        
+        # Permission matrix based on actual event roles
         permissions = {
-            'owner': ['edit_event', 'delete_event', 'add_tracks', 'remove_tracks', 'manage_users', 'transfer_ownership'],
-            'editor': ['add_tracks', 'remove_tracks', 'edit_event'],
-            'listener': ['vote_tracks']
+            'organizer': ['edit_event', 'delete_event', 'add_tracks', 'remove_tracks', 'manage_users', 'invite_users', 'invite_organizers', 'invite_managers', 'invite_attendees'],
+            'manager': ['edit_event', 'add_tracks', 'remove_tracks', 'manage_users', 'invite_users', 'invite_attendees'],
+            'attendee': ['vote_tracks']
         }
         
-        return action in permissions.get(user_role, [])
+        # Check permissions based on actual role
+        if is_organizer:
+            return action in permissions.get('organizer', [])
+        elif is_manager:
+            return action in permissions.get('manager', [])
+        elif is_attendee:
+            return action in permissions.get('attendee', [])
+        
+        return False
+    
+    def get_user_actual_role(self, user_id):
+        """Get user's actual role based on database fields (organizer, manager, attendee)"""
+        user_id = str(user_id)
+        
+        # Check if user is organizer
+        if str(self.organizer.id) == user_id:
+            return 'organizer'
+        
+        # Check if user is manager
+        if user_id in self.managers:
+            return 'manager'
+        
+        # Check if user is attendee
+        if self.attendees.filter(id=int(user_id)).exists():
+            return 'attendee'
+        
+        return None
+    
+    def is_organizer(self, user_id):
+        """Check if user is the organizer"""
+        return str(self.organizer.id) == str(user_id)
+    
+    def is_manager(self, user_id):
+        """Check if user is a manager"""
+        return str(user_id) in self.managers
+    
+    def is_attendee(self, user_id):
+        """Check if user is an attendee"""
+        return self.attendees.filter(id=int(user_id)).exists()
+    
+    def can_edit(self, user_id):
+        """Check if user can edit the event"""
+        return self.has_permission(user_id, 'edit_event')
     
     def add_track(self, track_id):
         """Add track to event"""
@@ -207,10 +484,64 @@ class Events(models.Model):
     def track_count(self):
         return len(self.songs)
     
+    def get_pending_invites_with_roles(self):
+        """Get all pending invites with their roles"""
+        invites = []
+        for invite in self.pending_invites:
+            if isinstance(invite, dict):
+                invites.append(invite)
+            else:
+                # Handle old format
+                invites.append({
+                    'user_id': invite,
+                    'role': 'attendee',
+                    'invited_at': None
+                })
+        return invites
+    
+    def get_user_invitation_info(self, user_id):
+        """Get invitation info for a specific user"""
+        user_id = str(user_id)
+        for invite in self.pending_invites:
+            if isinstance(invite, dict) and invite.get('user_id') == user_id:
+                return invite
+            elif isinstance(invite, str) and invite == user_id:
+                return {
+                    'user_id': user_id,
+                    'role': 'attendee',
+                    'invited_at': None
+                }
+        return None
+    
     @classmethod
     def get_available_locations(cls):
         """Get list of all available locations"""
         return [choice[0] for choice in LOCATION_CHOICES]
+    
+    @classmethod
+    def get_my_events(cls, user_id):
+        """Get all events where the user is involved (organizer, attendee, or has any role)"""
+        from django.db.models import Q
+        
+        user_id = str(user_id)
+        
+        # Get events where user is organizer
+        organizer_events = cls.objects.filter(organizer_id=user_id)
+        
+        # Get events where user is attendee
+        attendee_events = cls.objects.filter(attendees__id=user_id)
+        
+        # Get events where user has any role (stored in user_roles JSON field)
+        # This uses JSONField lookup to find events where user_id is a key in user_roles
+        role_events = cls.objects.extra(
+            where=["JSON_EXTRACT(user_roles, %s) IS NOT NULL"],
+            params=[f'$."{user_id}"']
+        )
+        
+        # Combine all querysets and remove duplicates
+        all_events = organizer_events.union(attendee_events, role_events).distinct()
+        
+        return all_events.order_by('-created_at')
     
     @classmethod
     def get_location_choices(cls):
