@@ -47,6 +47,7 @@ fun NowPlayingScreen(
     val repeatMode by viewModel.repeatMode.collectAsState()
     var isLiked by remember { mutableStateOf(false) }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var showAddToEventDialog by remember { mutableStateOf(false) }
 
     // Play track when screen opens
     LaunchedEffect(track) {
@@ -98,12 +99,24 @@ fun NowPlayingScreen(
                 )
             }
 
-            IconButton(onClick = { showAddToPlaylistDialog = true }) {
-                Icon(
-                    Icons.Filled.PlaylistAdd,
-                    contentDescription = "Add to Playlist",
-                    tint = Color.White
-                )
+            Row {
+                // Add to Playlist
+                IconButton(onClick = { showAddToPlaylistDialog = true }) {
+                    Icon(
+                        Icons.Filled.PlaylistAdd,
+                        contentDescription = "Add to Playlist",
+                        tint = Color.White
+                    )
+                }
+
+                // Add to Event - NEW ICON
+                IconButton(onClick = { showAddToEventDialog = true }) {
+                    Icon(
+                        Icons.Filled.Event,
+                        contentDescription = "Add to Event",
+                        tint = Color.White
+                    )
+                }
             }
         }
 
@@ -299,6 +312,14 @@ fun NowPlayingScreen(
         AddToPlaylistDialog(
             track = track,
             onDismiss = { showAddToPlaylistDialog = false }
+        )
+    }
+
+    // Add to Event Dialog
+    if (showAddToEventDialog) {
+        AddToEventDialog(
+            track = track,
+            onDismiss = { showAddToEventDialog = false }
         )
     }
 }
