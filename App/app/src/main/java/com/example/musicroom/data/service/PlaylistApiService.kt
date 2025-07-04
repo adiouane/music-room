@@ -428,6 +428,117 @@ class PlaylistApiService @Inject constructor(
         }
     }
 
+
+    /**
+     * Delete a track from playlist
+     */
+    suspend fun removeTrackFromPlaylist(playlistId: String, trackId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("PlaylistAPI", "🗑️ Removing track $trackId from playlist $playlistId")
+                
+                val token = tokenManager.getToken()
+                if (token == null) {
+                    Log.e("PlaylistAPI", "❌ No auth token for removing track")
+                    return@withContext Result.failure(Exception("Authentication required. Please log in."))
+                }
+                
+                val fullUrl = NetworkConfig.BASE_URL + "/api/playlists/$playlistId/tracks/$trackId/remove/"
+                Log.d("PlaylistAPI", "📡 Remove track URL: $fullUrl")
+                
+                val connection = createConnection(fullUrl, "DELETE", requireAuth = true)
+                
+                val responseCode = connection.responseCode
+                val responseText = getResponseText(connection, responseCode)
+                
+                Log.d("PlaylistAPI", "📨 Remove track response code: $responseCode")
+                Log.d("PlaylistAPI", "📨 Remove track response: $responseText")
+                
+                when (responseCode) {
+                    200, 204 -> {  // Handle both 200 and 204 as success
+                        Log.d("PlaylistAPI", "✅ Track removed successfully")
+                        Result.success("Track removed from playlist")
+                    }
+                    404 -> {
+                        Log.e("PlaylistAPI", "❌ Track or playlist not found")
+                        Result.failure(Exception("Track or playlist not found"))
+                    }
+                    403 -> {
+                        Log.e("PlaylistAPI", "❌ Not authorized to remove track")
+                        Result.failure(Exception("You don't have permission to remove tracks from this playlist"))
+                    }
+                    401 -> {
+                        Log.e("PlaylistAPI", "❌ Unauthorized")
+                        Result.failure(Exception("Authentication expired. Please log in again."))
+                    }
+                    else -> {
+                        Log.e("PlaylistAPI", "❌ Unexpected error: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to remove track (Error $responseCode)"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("PlaylistAPI", "❌ Exception removing track from playlist", e)
+                Result.failure(Exception("Network error: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Delete a playlist
+     */
+    suspend fun deletePlaylist(playlistId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("PlaylistAPI", "🗑️ Deleting playlist $playlistId")
+                
+                val token = tokenManager.getToken()
+                if (token == null) {
+                    Log.e("PlaylistAPI", "❌ No auth token for deleting playlist")
+                    return@withContext Result.failure(Exception("Authentication required. Please log in."))
+                }
+                
+                val fullUrl = NetworkConfig.BASE_URL + "/api/playlists/$playlistId/delete/"
+                Log.d("PlaylistAPI", "📡 Delete playlist URL: $fullUrl")
+                
+                val connection = createConnection(fullUrl, "DELETE", requireAuth = true)
+                
+                val responseCode = connection.responseCode
+                val responseText = getResponseText(connection, responseCode)
+                
+                Log.d("PlaylistAPI", "📨 Delete playlist response code: $responseCode")
+                Log.d("PlaylistAPI", "📨 Delete playlist response: $responseText")
+                
+                when (responseCode) {
+                    200, 204 -> {  // Handle both 200 and 204 as success
+                        Log.d("PlaylistAPI", "✅ Playlist deleted successfully")
+                        Result.success("Playlist deleted successfully")
+                    }
+                    404 -> {
+                        Log.e("PlaylistAPI", "❌ Playlist not found")
+                        Result.failure(Exception("Playlist not found"))
+                    }
+                    403 -> {
+                        Log.e("PlaylistAPI", "❌ Not authorized to delete playlist")
+                        Result.failure(Exception("You don't have permission to delete this playlist"))
+                    }
+                    401 -> {
+                        Log.e("PlaylistAPI", "❌ Unauthorized")
+                        Result.failure(Exception("Authentication expired. Please log in again."))
+                    }
+                    else -> {
+                        Log.e("PlaylistAPI", "❌ Unexpected error: $responseCode - $responseText")
+                        Result.failure(Exception("Failed to delete playlist (Error $responseCode)"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("PlaylistAPI", "❌ Exception deleting playlist", e)
+                Result.failure(Exception("Network error: ${e.message}"))
+            }
+        }
+    }
+
     /**
      * Helper function to create HTTP connection
      */

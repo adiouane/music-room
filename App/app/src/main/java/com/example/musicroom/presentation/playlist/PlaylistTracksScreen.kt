@@ -16,7 +16,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PersonAdd  // Add this import for invite
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,22 +38,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.musicroom.data.models.Track
 import com.example.musicroom.data.service.PlaylistApiService
 import com.example.musicroom.data.service.PlaylistWithTracks
 import com.example.musicroom.data.service.PlaylistTrackDetails
 import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.presentation.player.InviteUserDialog  // Add this import
+import com.example.musicroom.presentation.player.InviteUserDialog
 import com.example.musicroom.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLEncoder
 import javax.inject.Inject
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteForever
 
 // UI State
 sealed class PlaylistTracksUiState {
@@ -89,6 +95,33 @@ class PlaylistTracksViewModel @Inject constructor(
     fun refresh(playlistId: String) {
         loadPlaylistTracks(playlistId)
     }
+
+    fun removeTrackFromPlaylist(playlistId: String, trackId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            playlistApiService.removeTrackFromPlaylist(playlistId, trackId).fold(
+                onSuccess = { message ->
+                    onSuccess()
+                    loadPlaylistTracks(playlistId) // Refresh the list
+                },
+                onFailure = { exception ->
+                    onError(exception.message ?: "Failed to remove track")
+                }
+            )
+        }
+    }
+
+    fun deletePlaylist(playlistId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            playlistApiService.deletePlaylist(playlistId).fold(
+                onSuccess = { message ->
+                    onSuccess()
+                },
+                onFailure = { exception ->
+                    onError(exception.message ?: "Failed to delete playlist")
+                }
+            )
+        }
+    }
 }
 
 // Main Screen
@@ -101,6 +134,8 @@ fun PlaylistTracksScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showInviteDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     
     // Add debug logging
     LaunchedEffect(playlistId) {
@@ -149,7 +184,6 @@ fun PlaylistTracksScreen(
                 // Add invite button for playlist owners
                 if (uiState is PlaylistTracksUiState.Success) {
                     val currentPlaylist = (uiState as PlaylistTracksUiState.Success).playlistWithTracks
-                    // You'll need to add an isOwner field to your PlaylistInfo or determine ownership logic
                     IconButton(
                         onClick = { showInviteDialog = true }
                     ) {
@@ -159,19 +193,19 @@ fun PlaylistTracksScreen(
                             tint = PrimaryPurple
                         )
                     }
+                    
+                    // Delete playlist button
+                    IconButton(
+                        onClick = { showDeleteDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteForever,
+                            contentDescription = "Delete Playlist",
+                            tint = Color.Red
+                        )
+                    }
                 }
                 
-                // Add delete playlist button (add this to existing actions)
-                IconButton(
-                    onClick = { /* TODO: implement delete playlist */ }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteForever,
-                        contentDescription = "Delete Playlist",
-                        tint = Color.Red
-                    )
-                }
-
                 IconButton(
                     onClick = { 
                         try {
@@ -239,7 +273,20 @@ fun PlaylistTracksScreen(
                             Log.e("PlaylistTracksScreen", "❌ Error playing track", e)
                         }
                     },
-                    onInviteClick = { showInviteDialog = true }  // Add invite callback
+                    onInviteClick = { showInviteDialog = true },
+                    onDeleteTrack = { track ->
+                        viewModel.removeTrackFromPlaylist(
+                            playlistId = playlistId,
+                            trackId = track.id,
+                            onSuccess = {
+                                Log.d("PlaylistTracksScreen", "Track removed successfully")
+                            },
+                            onError = { error ->
+                                errorMessage = error
+                                Log.e("PlaylistTracksScreen", "Remove track failed: $error")
+                            }
+                        )
+                    }
                 )
             }
             
@@ -261,8 +308,7 @@ fun PlaylistTracksScreen(
                             text = "Failed to load playlist",
                             color = TextPrimary,
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
+                            fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -271,43 +317,20 @@ fun PlaylistTracksScreen(
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Playlist ID: $playlistId",
-                            color = TextSecondary.copy(alpha = 0.7f),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center
-                        )
                         Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        Button(
+                            onClick = { 
+                                try {
+                                    viewModel.refresh(playlistId)
+                                } catch (e: Exception) {
+                                    Log.e("PlaylistTracksScreen", "❌ Retry error", e)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryPurple
+                            )
                         ) {
-                            Button(
-                                onClick = { 
-                                    try {
-                                        viewModel.refresh(playlistId)
-                                    } catch (e: Exception) {
-                                        Log.e("PlaylistTracksScreen", "❌ Retry error", e)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                            ) {
-                                Text("Retry", color = Color.Black)
-                            }
-                            
-                            OutlinedButton(
-                                onClick = { 
-                                    try {
-                                        navController.popBackStack()
-                                    } catch (e: Exception) {
-                                        Log.e("PlaylistTracksScreen", "❌ Back navigation error", e)
-                                    }
-                                },
-                                border = BorderStroke(1.dp, Color.White)
-                            ) {
-                                Text("Go Back", color = Color.White)
-                            }
+                            Text("Try Again", color = Color.White)
                         }
                     }
                 }
@@ -315,20 +338,89 @@ fun PlaylistTracksScreen(
         }
     }
     
-    // Invite dialog
-    if (showInviteDialog && uiState is PlaylistTracksUiState.Success) {
-        val currentPlaylist = (uiState as PlaylistTracksUiState.Success).playlistWithTracks
+    // Show invite dialog
+    if (showInviteDialog) {
         InviteUserDialog(
-            playlistName = currentPlaylist.playlist_info.name,
+            playlistName = when (val currentState = uiState) {
+                is PlaylistTracksUiState.Success -> currentState.playlistWithTracks.playlist_info.name
+                else -> "Playlist"
+            },
             onDismiss = { showInviteDialog = false },
             onInvite = { username ->
                 // TODO: Implement invite functionality
-                // You can add the invite logic here or in the ViewModel
-                Log.d("PlaylistTracksScreen", "🎯 Inviting user: $username to playlist: ${currentPlaylist.playlist_info.name}")
+                Log.d("PlaylistTracksScreen", "🎯 Inviting user: $username to playlist: $playlistId")
                 showInviteDialog = false
-                // Show success message or handle invite result
             }
         )
+    }
+    
+    // Delete playlist confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = {
+                Text(
+                    text = "Delete Playlist",
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this playlist? This action cannot be undone.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deletePlaylist(
+                            playlistId = playlistId,
+                            onSuccess = {
+                                // Navigate back to playlists screen
+                                navController.navigate("playlists") {
+                                    popUpTo("playlist_tracks/$playlistId") { inclusive = true }
+                                }
+                            },
+                            onError = { error ->
+                                errorMessage = error
+                                Log.e("PlaylistTracksScreen", "Delete playlist failed: $error")
+                            }
+                        )
+                    }
+                ) {
+                    Text("Delete", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false }
+                ) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
+    
+    // Show error message
+    errorMessage?.let { error ->
+        LaunchedEffect(error) {
+            kotlinx.coroutines.delay(3000)
+            errorMessage = null
+        }
+        
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            action = {
+                TextButton(onClick = { errorMessage = null }) {
+                    Text("Dismiss", color = PrimaryPurple)
+                }
+            },
+            containerColor = Color.Red.copy(alpha = 0.9f)
+        ) {
+            Text(text = error, color = Color.White)
+        }
     }
 }
 
@@ -336,30 +428,21 @@ fun PlaylistTracksScreen(
 fun PlaylistContent(
     playlistWithTracks: PlaylistWithTracks,
     onTrackClick: (PlaylistTrackDetails) -> Unit,
-    onInviteClick: (() -> Unit)? = null  // Add invite callback
+    onInviteClick: (() -> Unit)? = null,
+    onDeleteTrack: ((PlaylistTrackDetails) -> Unit)? = null
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Playlist Header
         item {
             PlaylistHeaderInfo(
                 playlistInfo = playlistWithTracks.playlist_info,
-                onInviteClick = onInviteClick  // Pass the callback
+                onInviteClick = onInviteClick
             )
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Tracks Section
-        item {
-            Text(
-                text = "Tracks (${playlistWithTracks.tracks.size})",
-                color = TextPrimary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Track List
@@ -367,7 +450,8 @@ fun PlaylistContent(
             PlaylistTrackRow(
                 track = track,
                 position = index + 1,
-                onTrackClick = { onTrackClick(track) }
+                onTrackClick = { onTrackClick(track) },
+                onDeleteTrack = onDeleteTrack?.let { { onDeleteTrack(track) } }
             )
             if (index < playlistWithTracks.tracks.size - 1) {
                 HorizontalDivider(
@@ -382,7 +466,7 @@ fun PlaylistContent(
 @Composable
 fun PlaylistHeaderInfo(
     playlistInfo: com.example.musicroom.data.service.PlaylistInfo,
-    onInviteClick: (() -> Unit)? = null  // Add invite callback
+    onInviteClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -413,47 +497,20 @@ fun PlaylistHeaderInfo(
             Spacer(modifier = Modifier.height(4.dp))
             
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Privacy indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (playlistInfo.is_public) Icons.Default.Public else Icons.Default.Lock,
-                        contentDescription = if (playlistInfo.is_public) "Public" else "Private",
-                        tint = if (playlistInfo.is_public) Color.Green else Color.Red,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (playlistInfo.is_public) "Public" else "Private",
-                        color = if (playlistInfo.is_public) Color.Green else Color.Red,
-                        fontSize = 12.sp
-                    )
-                }
-                
-                // Invite button for playlist owners
-                if (onInviteClick != null) {
-                    Button(
-                        onClick = onInviteClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PersonAdd,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Invite",
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = if (playlistInfo.is_public) Icons.Default.Public else Icons.Default.Lock,
+                    contentDescription = if (playlistInfo.is_public) "Public playlist" else "Private playlist",
+                    tint = if (playlistInfo.is_public) PrimaryPurple else TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (playlistInfo.is_public) "Public" else "Private",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
             }
         }
     }
@@ -463,124 +520,132 @@ fun PlaylistHeaderInfo(
 fun PlaylistTrackRow(
     track: PlaylistTrackDetails,
     position: Int,
-    onTrackClick: () -> Unit
+    onTrackClick: () -> Unit,
+    onDeleteTrack: (() -> Unit)? = null
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onTrackClick() }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable { onTrackClick() },
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        // Position number
-        Text(
-            text = position.toString(),
-            color = TextSecondary,
-            fontSize = 14.sp,
-            modifier = Modifier.width(32.dp)
-        )
-        
-        // Track image or icon
-        if (track.image.isNotEmpty() || track.album_image.isNotEmpty()) {
-            AsyncImage(
-                model = track.image.ifEmpty { track.album_image },
-                contentDescription = "Track image",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            // Fallback to icon when no image URL
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = "Music note",
-                tint = TextSecondary,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Track info
-        Column(
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Position number
             Text(
-                text = track.name,
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist_name,
+                text = position.toString(),
                 color = TextSecondary,
                 fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(24.dp)
             )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Track artwork or music note icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(DarkSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                if (track.image.isNotEmpty() || track.album_image.isNotEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(track.image.ifEmpty { track.album_image })
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Track artwork",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = "Music",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Track info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = track.name,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = track.artist_name,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Duration
             Text(
-                text = track.album_name,
-                color = TextSecondary.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = formatDuration(track.duration),
+                color = TextSecondary,
+                fontSize = 12.sp
             )
-        }
-        
-        // Duration
-        Text(
-            text = formatDuration(track.duration),
-            color = TextSecondary,
-            fontSize = 14.sp
-        )
-        
-        Spacer(modifier = Modifier.width(8.dp))
-        
-        // Play button
-        IconButton(
-            onClick = onTrackClick,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Play",
-                tint = Color.White
-            )
-        }
-        // Add this to the end of your track row component
-        IconButton(
-            onClick = { /* TODO: implement delete track */ },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Remove Track", 
-                tint = Color.Red,
-                modifier = Modifier.size(16.dp)
-            )
+            
+            // Delete track button
+            onDeleteTrack?.let { deleteCallback ->
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = deleteCallback,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove Track",
+                        tint = Color.Red,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
     }
 }
 
-// Helper function to format duration
+// Helper functions
+fun navigateToNowPlaying(navController: NavController, track: Track) {
+    try {
+        val encodedTitle = URLEncoder.encode(track.title, "UTF-8")
+        val encodedArtist = URLEncoder.encode(track.artist, "UTF-8")
+        val encodedThumbnail = URLEncoder.encode(track.thumbnailUrl, "UTF-8")
+        val encodedDuration = URLEncoder.encode(track.duration, "UTF-8")
+        val encodedDescription = URLEncoder.encode(track.description, "UTF-8")
+        
+        navController.navigate(
+            "now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnail/$encodedDuration/$encodedDescription"
+        )
+    } catch (e: Exception) {
+        Log.e("PlaylistTracksScreen", "Navigation error: ${e.message}")
+    }
+}
+
 fun formatDuration(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
-    return "%d:%02d".format(minutes, remainingSeconds)
-}
-
-// Helper function to navigate to now playing
-fun navigateToNowPlaying(navController: NavController, track: Track) {
-    val encodedTitle = URLEncoder.encode(track.title, "UTF-8")
-    val encodedArtist = URLEncoder.encode(track.artist, "UTF-8")
-    val encodedThumbnailUrl = URLEncoder.encode(track.thumbnailUrl, "UTF-8")
-    val encodedDuration = URLEncoder.encode(track.duration, "UTF-8")
-    val encodedDescription = URLEncoder.encode(track.description, "UTF-8")
-    
-    navController.navigate(
-        "now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnailUrl/$encodedDuration/$encodedDescription"
-    )
+    return String.format("%d:%02d", minutes, remainingSeconds)
 }
