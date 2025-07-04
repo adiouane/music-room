@@ -22,7 +22,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController  // Add this import
 import com.example.musicroom.presentation.explore.ExploreScreen
 import com.example.musicroom.presentation.profile.ProfileScreen
-import com.example.musicroom.presentation.room.CreateRoomScreen
 import com.example.musicroom.presentation.theme.* 
 import com.example.musicroom.presentation.room.*
 import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
@@ -59,7 +58,8 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             composable("explore") { 
                 ExploreScreen() 
             }
-            composable("create") { 
+            // Change the composable route
+            composable("playlist") { 
                 PublicPlaylistsScreen(navController = navController) // Use main navController for playlist navigation
             }
             composable("profile") { 
@@ -116,11 +116,12 @@ fun SimpleBottomNav(
                 indicatorColor = PrimaryPurple.copy(alpha = 0.2f)
             )
         )
+        // Change the NavigationBarItem
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Add, contentDescription = "Create") },
-            label = { Text("Create") },
-            selected = currentRoute == "create",
-            onClick = { onTabSelected("create") },
+            icon = { Icon(Icons.Default.PlaylistPlay, contentDescription = "Playlist") }, // Changed to playlist icon
+            label = { Text("Playlist") }, // Changed to "Playlist"
+            selected = currentRoute == "playlist", // Changed route name
+            onClick = { onTabSelected("playlist") }, // Changed route name
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = PrimaryPurple,
                 selectedTextColor = PrimaryPurple,
