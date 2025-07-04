@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.musicroom.data.auth.TokenManager
 import com.example.musicroom.data.models.Event
 import com.example.musicroom.data.models.EventOrganizer
+import com.example.musicroom.data.models.Track
 import com.example.musicroom.data.network.NetworkConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -405,6 +406,86 @@ class EventsApiService @Inject constructor(
     }
     
     /**
+     * Get tracks in an event with vote counts and full details
+     */
+    suspend fun getEventTracks(eventId: String): Result<List<Track>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "🎵 Fetching tracks for event ID: $eventId")
+                
+                val url = "${NetworkConfig.BASE_URL}/api/events/$eventId/tracks/"
+                
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📨 Event tracks response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("EventsAPI", "📨 Event tracks response: $responseText")
+                
+                when (responseCode) {
+                    200 -> {
+                        try {
+                            val tracks = parseEventTracksResponse(responseText)
+                            Log.d("EventsAPI", "✅ Successfully parsed ${tracks.size} event tracks")
+                            Result.success(tracks)
+                        } catch (e: Exception) {
+                            Log.e("EventsAPI", "❌ Error parsing event tracks response", e)
+                            Result.failure(Exception("Failed to parse event tracks: ${e.message}"))
+                        }
+                    }
+                    401 -> {
+                        Log.e("EventsAPI", "❌ Unauthorized - token may be expired")
+                        Result.failure(Exception("Authentication required"))
+                    }
+                    403 -> {
+                        Log.e("EventsAPI", "❌ Access denied to event tracks")
+                        Result.failure(Exception("Access denied to this event"))
+                    }
+                    404 -> {
+                        Log.e("EventsAPI", "❌ Event not found")
+                        Result.failure(Exception("Event not found"))
+                    }
+                    else -> {
+                        Log.e("EventsAPI", "❌ Error response: $responseText")
+                        Result.failure(Exception("Failed to fetch event tracks: HTTP $responseCode"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Network error fetching event tracks", e)
+                Result.failure(e)
+            }
+        }
+    }
+    
+    /**
      * Parse events response from JSON array
      */
     private fun parseEventsResponse(responseText: String): List<Event> {
@@ -467,6 +548,10 @@ class EventsApiService @Inject constructor(
                 avatar = organizerJson?.optString("avatar")
             )
             
+            // Parse songs array to get track count
+            val songsArray = eventJson.optJSONArray("songs")
+            val trackCount = songsArray?.length() ?: eventJson.optInt("track_count", 0)
+            
             return Event(
                 id = eventJson.optString("id"),
                 title = eventJson.optString("title"),
@@ -474,7 +559,7 @@ class EventsApiService @Inject constructor(
                 location = eventJson.optString("location"),
                 organizer = organizer,
                 attendee_count = eventJson.optInt("attendee_count", 0),
-                track_count = eventJson.optInt("track_count", 0),
+                track_count = trackCount, // Use actual songs array length if available
                 is_public = eventJson.optBoolean("is_public", true),
                 event_start_time = eventJson.optString("event_start_time"),
                 event_end_time = eventJson.optString("event_end_time"),
@@ -485,6 +570,71 @@ class EventsApiService @Inject constructor(
             
         } catch (e: Exception) {
             Log.e("EventsAPI", "❌ Error parsing event details JSON", e)
+            throw e
+        }
+    }
+    
+    /**
+     * Parse event tracks response from JSON
+     */
+    private fun parseEventTracksResponse(responseText: String): List<Track> {
+        try {
+            val responseJson = JSONObject(responseText)
+            val tracksArray = responseJson.optJSONArray("tracks") ?: JSONArray()
+            
+            val tracks = mutableListOf<Track>()
+            for (i in 0 until tracksArray.length()) {
+                val trackJson = tracksArray.getJSONObject(i)
+                
+                // Get artist name - could be in artist_name or nested artist object
+                val artistName = trackJson.optString("artist_name").takeIf { it.isNotBlank() }
+                    ?: trackJson.optJSONObject("artist")?.optString("name")
+                    ?: "Unknown Artist"
+                
+                // Get duration - handle different formats
+                val durationValue = trackJson.optString("duration", "0")
+                val duration = when {
+                    durationValue.contains(":") -> durationValue // Already formatted as MM:SS
+                    durationValue.isNotBlank() && durationValue != "0" -> {
+                        try {
+                            val seconds = durationValue.toInt()
+                            "${seconds / 60}:${String.format("%02d", seconds % 60)}"
+                        } catch (e: Exception) {
+                            durationValue
+                        }
+                    }
+                    else -> "0:00"
+                }
+                
+                // Get image URL - try different possible fields
+                val imageUrl = trackJson.optString("image")
+                    .takeIf { it.isNotBlank() }
+                    ?: trackJson.optString("album_image")
+                    ?: trackJson.optString("cover")
+                    ?: ""
+                
+                // Get audio URL - this will be used as description for playback
+                val audioUrl = trackJson.optString("audio")
+                    ?: trackJson.optString("audiodownload")
+                    ?: ""
+                
+                val track = Track(
+                    id = trackJson.optString("id", ""),
+                    title = trackJson.optString("name", trackJson.optString("title", "Unknown Track")),
+                    artist = artistName,
+                    thumbnailUrl = imageUrl,
+                    duration = duration,
+                    description = audioUrl // Store audio URL in description for playback
+                )
+                
+                tracks.add(track)
+                Log.d("EventsAPI", "🎵 Parsed track: ${track.title} by ${track.artist}")
+            }
+            
+            return tracks
+            
+        } catch (e: Exception) {
+            Log.e("EventsAPI", "❌ Error parsing event tracks JSON", e)
             throw e
         }
     }

@@ -34,6 +34,7 @@ import com.example.musicroom.data.models.Track
 import com.example.musicroom.data.service.EventsApiService
 import com.example.musicroom.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,18 +64,26 @@ class EventDetailsViewModel @Inject constructor(
                 _uiState.value = EventDetailsUiState.Loading
                 Log.d("EventDetailsVM", "🎪 Loading event details for ID: $eventId")
                 
-                val result = eventsApiService.getEventDetails(eventId)
+                // Load event details and tracks concurrently
+                val eventDetailsDeferred = async { eventsApiService.getEventDetails(eventId) }
+                val eventTracksDeferred = async { eventsApiService.getEventTracks(eventId) }
                 
-                if (result.isSuccess) {
-                    val eventDetails = result.getOrThrow()
-                    Log.d("EventDetailsVM", "✅ Event details loaded: ${eventDetails.title}")
+                val eventResult = eventDetailsDeferred.await()
+                val tracksResult = eventTracksDeferred.await()
+                
+                if (eventResult.isSuccess) {
+                    val eventDetails = eventResult.getOrThrow()
+                    val tracks = if (tracksResult.isSuccess) {
+                        tracksResult.getOrThrow()
+                    } else {
+                        Log.w("EventDetailsVM", "⚠️ Failed to load tracks: ${tracksResult.exceptionOrNull()?.message}")
+                        emptyList()
+                    }
                     
-                    // For now, convert songs array to Track objects (you might need to fetch full track details)
-                    val tracks = emptyList<Track>() // TODO: Implement when you need to show tracks
-                    
+                    Log.d("EventDetailsVM", "✅ Event details loaded: ${eventDetails.title} with ${tracks.size} tracks")
                     _uiState.value = EventDetailsUiState.Success(eventDetails, tracks)
                 } else {
-                    val error = result.exceptionOrNull()
+                    val error = eventResult.exceptionOrNull()
                     Log.e("EventDetailsVM", "❌ Failed to load event details", error)
                     _uiState.value = EventDetailsUiState.Error(error?.message ?: "Failed to load event details")
                 }
@@ -249,7 +258,7 @@ private fun EventDetailsContent(
             EventInfoCard(event = event)
         }
         
-        // Tracks Section (for future implementation)
+        // Tracks Section (update this existing item)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -271,7 +280,7 @@ private fun EventDetailsContent(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${event.track_count} tracks",
+                            text = "${tracks.size} tracks",
                             color = TextSecondary,
                             fontSize = 14.sp
                         )
@@ -279,7 +288,7 @@ private fun EventDetailsContent(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    if (event.track_count == 0) {
+                    if (tracks.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -304,18 +313,30 @@ private fun EventDetailsContent(
                                 Text(
                                     text = "Add songs to this event to see them here",
                                     color = TextSecondary,
-                                    fontSize = 12.sp
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
                     } else {
-                        // TODO: Show actual tracks when backend provides track details
-                        Text(
-                            text = "Track details coming soon...",
-                            color = TextSecondary,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        // Display tracks list
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            tracks.forEachIndexed { index, track ->
+                                EventTrackRow(
+                                    track = track,
+                                    position = index + 1,
+                                    onTrackClick = {
+                                        try {
+                                            navigateToNowPlaying(navController, track)
+                                        } catch (e: Exception) {
+                                            Log.e("EventDetailsScreen", "❌ Navigation error", e)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -502,5 +523,126 @@ private fun EventInfoCard(event: Event) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EventTrackRow(
+    track: Track,
+    position: Int,
+    onTrackClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onTrackClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Position number
+            Text(
+                text = position.toString(),
+                color = TextSecondary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(24.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Track artwork or music note icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(DarkSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                if (track.thumbnailUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(track.thumbnailUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Track artwork",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = "Music",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Track info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = track.title,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = track.artist,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Duration
+            Text(
+                text = track.duration,
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Play icon
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Play track",
+                tint = PrimaryPurple,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// Helper function for navigation
+private fun navigateToNowPlaying(navController: NavController, track: Track) {
+    try {
+        val encodedTitle = URLEncoder.encode(track.title, "UTF-8")
+        val encodedArtist = URLEncoder.encode(track.artist, "UTF-8")
+        val encodedThumbnail = URLEncoder.encode(track.thumbnailUrl, "UTF-8")
+        val encodedDuration = URLEncoder.encode(track.duration, "UTF-8")
+        val encodedDescription = URLEncoder.encode(track.description, "UTF-8")
+        
+        navController.navigate(
+            "now_playing/${track.id}/$encodedTitle/$encodedArtist/$encodedThumbnail/$encodedDuration/$encodedDescription"
+        )
+    } catch (e: Exception) {
+        Log.e("EventDetailsScreen", "❌ Navigation error: ${e.message}")
     }
 }
