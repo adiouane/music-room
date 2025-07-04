@@ -418,13 +418,22 @@ private fun EventCard(
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
-                    Text(
-                        text = "by ${event.organizer.name}",
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Created by",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "by ${event.organizer.name}",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
                 
                 Icon(
@@ -471,23 +480,6 @@ private fun EventCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${event.attendee_count} attending",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Event,
-                        contentDescription = "Tracks",
-                        tint = PrimaryPurple,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${event.track_count} tracks",
                         color = TextSecondary,
                         fontSize = 12.sp
                     )
