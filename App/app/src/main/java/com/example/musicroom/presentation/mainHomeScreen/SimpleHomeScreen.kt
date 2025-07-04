@@ -57,7 +57,7 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
             }
             // Change the composable route
             composable("events") { 
-                EventsScreen() 
+                EventsScreen(navController = navController) // Pass navController for navigation
             }
             // Change the composable route
             composable("playlist") { 

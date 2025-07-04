@@ -107,10 +107,29 @@ data class Artist(
 )
 
 /**
- * Event model (currently empty in the response)
+ * Event model - Updated to match backend Events model
  */
 data class Event(
-    val id: String?,
-    val name: String?,
-    val description: String?
+    val id: String,
+    val title: String,
+    val description: String?,
+    val location: String,
+    val organizer: EventOrganizer,
+    val attendee_count: Int,
+    val track_count: Int,
+    val is_public: Boolean,
+    val event_start_time: String,
+    val event_end_time: String?,
+    val image_url: String?,
+    val created_at: String,
+    val current_user_role: String? = null
+)
+
+/**
+ * Event organizer info
+ */
+data class EventOrganizer(
+    val id: String,
+    val name: String,
+    val avatar: String?
 )
