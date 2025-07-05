@@ -1000,61 +1000,308 @@ class EventsApiService @Inject constructor(
     }
     
     /**
+     * Get all users for invitation
+     */
+    suspend fun getAllUsers(): Result<List<User>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "👥 Fetching all users for invitation")
+                
+                val url = URL(NetworkConfig.BASE_URL + "/api/users/")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📡 Users API Response Code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("EventsAPI", "📄 Users API Response: $responseText")
+                    
+                    val users = parseUsersResponse(responseText)
+                    Log.d("EventsAPI", "✅ Successfully fetched ${users.size} users")
+                    Result.success(users)
+                } else {
+                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    Log.e("EventsAPI", "❌ Failed to fetch users: $responseCode - $errorText")
+                    Result.failure(Exception("Failed to fetch users: $errorText"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Error fetching users", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Invite user to event
+     */
+    suspend fun inviteUserToEvent(eventId: String, userId: String, role: String = "listener"): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "📧 Inviting user $userId to event $eventId with role $role")
+                
+                val url = URL(NetworkConfig.BASE_URL + "/api/events/$eventId/invite/")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    doOutput = true
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                }
+                
+                // Create request body
+                val requestBody = JSONObject().apply {
+                    put("user_id", userId.toInt())
+                    put("role", role)
+                }
+                
+                Log.d("EventsAPI", "📤 Invite request: $requestBody")
+                
+                // Send request
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(requestBody.toString())
+                    writer.flush()
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📡 Invite API Response Code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("EventsAPI", "📄 Invite API Response: $responseText")
+                    
+                    val responseJson = JSONObject(responseText)
+                    val message = responseJson.optString("message", "User invited successfully")
+                    Log.d("EventsAPI", "✅ Successfully invited user")
+                    Result.success(message)
+                } else {
+                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    Log.e("EventsAPI", "❌ Failed to invite user: $responseCode - $errorText")
+                    Result.failure(Exception("Failed to invite user: $errorText"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Error inviting user", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Accept event invitation
+     */
+    suspend fun acceptEventInvitation(eventId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "✅ Accepting invitation for event $eventId")
+                
+                val url = URL(NetworkConfig.BASE_URL + "/api/events/$eventId/accept-invite/")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📡 Accept Invite API Response Code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("EventsAPI", "📄 Accept Invite API Response: $responseText")
+                    
+                    val responseJson = JSONObject(responseText)
+                    val message = responseJson.optString("message", "Invitation accepted successfully")
+                    Log.d("EventsAPI", "✅ Successfully accepted invitation")
+                    Result.success(message)
+                } else {
+                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    Log.e("EventsAPI", "❌ Failed to accept invitation: $responseCode - $errorText")
+                    Result.failure(Exception("Failed to accept invitation: $errorText"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Error accepting invitation", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Decline event invitation
+     */
+    suspend fun declineEventInvitation(eventId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "❌ Declining invitation for event $eventId")
+                
+                val url = URL(NetworkConfig.BASE_URL + "/api/events/$eventId/decline-invite/")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📡 Decline Invite API Response Code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("EventsAPI", "📄 Decline Invite API Response: $responseText")
+                    
+                    val responseJson = JSONObject(responseText)
+                    val message = responseJson.optString("message", "Invitation declined successfully")
+                    Log.d("EventsAPI", "✅ Successfully declined invitation")
+                    Result.success(message)
+                } else {
+                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    Log.e("EventsAPI", "❌ Failed to decline invitation: $responseCode - $errorText")
+                    Result.failure(Exception("Failed to decline invitation: $errorText"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Error declining invitation", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Get user's event notifications/invitations
+     */
+    suspend fun getEventNotifications(): Result<List<EventNotification>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("EventsAPI", "🔔 Fetching event notifications")
+                
+                val url = URL(NetworkConfig.BASE_URL + "/api/users/me/")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    
+                    // Add authorization header
+                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    if (token != null) {
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("EventsAPI", "📡 Notifications API Response Code: $responseCode")
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("EventsAPI", "📄 Notifications API Response: $responseText")
+                    
+                    val notifications = parseEventNotifications(responseText)
+                    Log.d("EventsAPI", "✅ Successfully fetched ${notifications.size} event notifications")
+                    Result.success(notifications)
+                } else {
+                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    Log.e("EventsAPI", "❌ Failed to fetch notifications: $responseCode - $errorText")
+                    Result.failure(Exception("Failed to fetch notifications: $errorText"))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsAPI", "❌ Error fetching notifications", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
      * Parse public events response from JSON
      */
     private fun parsePublicEventsResponse(responseText: String): List<Event> {
         try {
-            // First try to parse as JSONArray directly
-            val eventsArray = try {
-                JSONArray(responseText)
-            } catch (e: Exception) {
-                // If that fails, try to parse as JSONObject and extract array
-                try {
-                    val responseJson = JSONObject(responseText)
-                    responseJson.optJSONArray("events") ?: responseJson.optJSONArray("results") ?: JSONArray()
-                } catch (e2: Exception) {
-                    Log.e("EventsAPI", "❌ Failed to parse response as both JSONArray and JSONObject", e2)
-                    return emptyList()
-                }
-            }
+            Log.d("EventsAPI", "📋 Parsing public events response: $responseText")
+            
+            // The API returns a direct array
+            val eventsArray = JSONArray(responseText)
+            Log.d("EventsAPI", "📋 Found ${eventsArray.length()} public events")
             
             val events = mutableListOf<Event>()
             for (i in 0 until eventsArray.length()) {
                 val eventJson = eventsArray.getJSONObject(i)
+                Log.d("EventsAPI", "📋 Processing event $i: $eventJson")
                 
-                // Parse organizer
-                val organizerJson = eventJson.optJSONObject("organizer")
+                // The organizer is a string, not an object in the public events API
+                val organizerName = eventJson.optString("organizer", "Unknown")
                 val organizer = EventOrganizer(
-                    id = organizerJson?.optString("id") ?: "",
-                    name = organizerJson?.optString("name") ?: "Unknown",
-                    avatar = organizerJson?.optString("avatar")
+                    id = "", // No ID provided in public events
+                    name = organizerName,
+                    avatar = null // No avatar provided in public events
                 )
                 
                 val event = Event(
-                    id = eventJson.optString("id"),
+                    id = eventJson.optInt("id").toString(), // Convert int to string
                     title = eventJson.optString("title"),
-                    description = eventJson.optString("description"),
+                    description = eventJson.optString("description", ""), // Not in API response
                     location = eventJson.optString("location"),
                     organizer = organizer,
                     attendee_count = eventJson.optInt("attendee_count", 0),
-                    track_count = eventJson.optInt("track_count", 0),
+                    track_count = eventJson.optInt("track_count", 0), // Not in API response
                     is_public = eventJson.optBoolean("is_public", true),
                     event_start_time = eventJson.optString("event_start_time"),
-                    event_end_time = eventJson.optString("event_end_time"),
-                    image_url = eventJson.optString("image_url"),
-                    created_at = eventJson.optString("created_at"),
+                    event_end_time = eventJson.optString("event_end_time"), // Not in API response
+                    image_url = eventJson.optString("image_url"), // Not in API response
+                    created_at = eventJson.optString("created_at"), // Not in API response
                     current_user_role = null // Public events don't have user role info
                 )
                 
                 events.add(event)
-                Log.d("EventsAPI", "🎪 Parsed public event: ${event.title}")
+                Log.d("EventsAPI", "🎪 Parsed public event: ${event.title} by ${event.organizer.name}")
             }
             
+            Log.d("EventsAPI", "✅ Successfully parsed ${events.size} public events")
             return events
             
         } catch (e: Exception) {
-            Log.e("EventsAPI", "❌ Error parsing public events JSON", e)
-            throw e
+            Log.e("EventsAPI", "❌ Error parsing public events JSON: $responseText", e)
+            throw Exception("Failed to parse public events: ${e.message}")
         }
     }
     
@@ -1227,20 +1474,113 @@ class EventsApiService @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * Parse users response from JSON
+     */
+    private fun parseUsersResponse(responseText: String): List<User> {
+        return try {
+            Log.d("EventsAPI", "📋 Starting to parse users response")
+            Log.d("EventsAPI", "📋 Raw response: $responseText")
+            
+            // Check if response is empty
+            if (responseText.isBlank()) {
+                Log.e("EventsAPI", "❌ Empty response received")
+                throw Exception("Empty response from server")
+            }
+            
+            // The API returns a direct array like: [{"id":1,"name":"abdessamad",...}, ...]
+            val usersArray = JSONArray(responseText)
+            Log.d("EventsAPI", "📋 Successfully created JSONArray with ${usersArray.length()} items")
+            
+            val users = mutableListOf<User>()
+            for (i in 0 until usersArray.length()) {
+                try {
+                    val userJson = usersArray.getJSONObject(i)
+                    Log.d("EventsAPI", "📋 Processing user $i: $userJson")
+                    
+                    val userId = userJson.optInt("id", -1)
+                    val userName = userJson.optString("name", "Unknown")
+                    val userEmail = userJson.optString("email", "")
+                    val userAvatar = userJson.optString("avatar", "")
+                    
+                    if (userId == -1) {
+                        Log.w("EventsAPI", "⚠️ User at index $i has invalid ID, skipping")
+                        continue
+                    }
+                    
+                    val user = User(
+                        id = userId.toString(),
+                        name = userName,
+                        username = userName, // Use name as username since API doesn't provide username
+                        photoUrl = userAvatar,
+                        email = userEmail
+                    )
+                    
+                    users.add(user)
+                    Log.d("EventsAPI", "👤 Successfully parsed user: ${user.name} (ID: ${user.id})")
+                    
+                } catch (e: Exception) {
+                    Log.e("EventsAPI", "❌ Error parsing user at index $i", e)
+                    // Continue with next user instead of failing completely
+                }
+            }
+            
+            Log.d("EventsAPI", "✅ Successfully parsed ${users.size} out of ${usersArray.length()} users")
+            
+            if (users.isEmpty()) {
+                throw Exception("No valid users found in response")
+            }
+            
+            users
+            
+        } catch (e: Exception) {
+            Log.e("EventsAPI", "❌ Critical error parsing users JSON", e)
+            Log.e("EventsAPI", "❌ Response that failed: $responseText")
+            throw Exception("Failed to parse users: ${e.message}")
+        }
+    }
+
+    /**
+     * Parse event notifications from JSON
+     */
+    private fun parseEventNotifications(responseText: String): List<EventNotification> {
+        try {
+            val jsonResponse = JSONObject(responseText)
+            val eventNotifications = jsonResponse.optJSONObject("event_notifications") ?: JSONObject()
+            
+            val notifications = mutableListOf<EventNotification>() // This line was missing!
+            val keys = eventNotifications.keys()
+            
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val notificationJson = eventNotifications.getJSONObject(key)
+                
+                val notification = EventNotification(
+                    id = key,
+                    eventId = notificationJson.optString("event_id"),
+                    eventTitle = notificationJson.optString("event_title", "Unknown Event"),
+                    inviterName = notificationJson.optString("inviter_name", "Unknown User"),
+                    message = notificationJson.optString("message", "You have been invited to an event"),
+                    timestamp = notificationJson.optLong("timestamp", System.currentTimeMillis())
+                )
+                
+                notifications.add(notification)
+                Log.d("EventsAPI", "🔔 Parsed notification: ${notification.eventTitle} from ${notification.inviterName}")
+            }
+            
+            return notifications.sortedByDescending { it.timestamp }
+            
+        } catch (e: Exception) {
+            Log.e("EventsAPI", "❌ Error parsing event notifications JSON", e)
+            throw e
+        }
+    }
+
 }
 
 /**
- * Data classes for Event API responses
- */
-data class CreateEventResponse(
-    val success: Boolean,
-    val message: String,
-    val eventId: String? = null,
-    val title: String? = null
-)
-
-/**
- * Request data class for creating events
+ * Data classes for Events API
  */
 data class CreateEventRequest(
     val title: String,
@@ -1251,10 +1591,34 @@ data class CreateEventRequest(
     val is_public: Boolean = true
 )
 
-/**
- * Response for adding track to event
- */
+data class CreateEventResponse(
+    val success: Boolean,
+    val message: String,
+    val eventId: String? = null,
+    val title: String? = null
+)
+
 data class AddTrackToEventResponse(
     val success: Boolean,
     val message: String
+)
+
+/**
+ * Data classes for invitation features
+ */
+data class User(
+    val id: String,
+    val name: String,
+    val username: String,
+    val photoUrl: String,
+    val email: String
+)
+
+data class EventNotification(
+    val id: String,
+    val eventId: String,
+    val eventTitle: String,
+    val inviterName: String,
+    val message: String,
+    val timestamp: Long
 )

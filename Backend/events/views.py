@@ -1195,7 +1195,7 @@ def my_events(request):
                 'start_time': event.event_start_time.isoformat() if event.event_start_time else None,
                 'end_time': event.event_end_time.isoformat() if event.event_end_time else None,
                 'is_public': event.is_public,
-                'organizer_id': event.organizer_id,
+                'organizer': event.organizer.name,
                 'created_at': event.created_at.isoformat(),
                 'updated_at': event.updated_at.isoformat(),
                 'attendees_count': event.attendees.count(),

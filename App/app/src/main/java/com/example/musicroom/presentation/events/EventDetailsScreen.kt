@@ -352,6 +352,8 @@ private fun EventDetailsContent(
     onUnvoteTrack: (String) -> Unit,
     navController: NavController
 ) {
+    var showInviteDialog by remember { mutableStateOf(false) }
+    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -365,6 +367,67 @@ private fun EventDetailsContent(
         // Event Info
         item {
             EventInfoCard(event = event)
+        }
+        
+        // Invite Users Card (for private events and owners/editors)
+        if (!event.is_public && (event.current_user_role == "owner" || event.current_user_role == "editor")) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Private Event",
+                                    tint = Color(0xFFFFA500), // Orange color
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Private Event",
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Invite users to join this private event",
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
+                        
+                        Button(
+                            onClick = { showInviteDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA500))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = "Invite Users",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Invite",
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
         
         // Join/Leave Event Button (for non-owners)
@@ -418,7 +481,7 @@ private fun EventDetailsContent(
                 }
             }
         }
-        
+
         // Event Management Options (for owners only)
         if (event.current_user_role == "owner") {
             item {
@@ -445,30 +508,23 @@ private fun EventDetailsContent(
                         ) {
                             Text(
                                 text = "You are the organizer of this event",
-                                color = Color(0xFFFFD700), // Gold color
+                                color = TextSecondary,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Owner",
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.weight(1f)
                             )
                         }
                         
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Edit Event Button
                             OutlinedButton(
                                 onClick = { 
                                     // TODO: Navigate to edit event screen
-                                    Log.d("EventDetailsScreen", "🔧 Edit event clicked")
+                                    Log.d("EventDetailsScreen", "✏️ Edit event clicked")
                                 },
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.outlinedButtonColors(
@@ -564,25 +620,25 @@ private fun EventDetailsContent(
                                     Icon(
                                         imageVector = Icons.Default.MusicNote,
                                         contentDescription = "No tracks",
-                                        modifier = Modifier.size(48.dp),
-                                        tint = TextSecondary
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(48.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Text(
                                         text = "No tracks yet",
                                         color = TextSecondary,
-                                        fontSize = 14.sp
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center
                                     )
                                     Text(
-                                        text = "Add songs to this event to see them here",
-                                        color = TextSecondary,
-                                        fontSize = 12.sp,
+                                        text = "Tracks will appear here when added to the event",
+                                        color = TextSecondary.copy(alpha = 0.7f),
+                                        fontSize = 14.sp,
                                         textAlign = TextAlign.Center
                                     )
                                 }
                             }
                         } else {
-                            // Display tracks list (already sorted by vote count)
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -627,20 +683,20 @@ private fun EventDetailsContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Lock,
-                                contentDescription = "Join required",
-                                modifier = Modifier.size(48.dp),
-                                tint = TextSecondary
+                                contentDescription = "Join to see tracks",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(48.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Join event to access tracks",
-                                color = TextPrimary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "You need to join this event to see and play tracks",
+                                text = "Join the event to see tracks",
                                 color = TextSecondary,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "You need to join this event to view and vote on tracks",
+                                color = TextSecondary.copy(alpha = 0.7f),
                                 fontSize = 14.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -649,6 +705,15 @@ private fun EventDetailsContent(
                 }
             }
         }
+    }
+    
+    // Invite Users Dialog
+    if (showInviteDialog) {
+        InviteUsersDialog(
+            eventId = event.id,
+            eventTitle = event.title,
+            onDismiss = { showInviteDialog = false }
+        )
     }
 }
 
