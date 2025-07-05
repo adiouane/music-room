@@ -663,8 +663,8 @@ def transfer_event_ownership(request, event_id, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
 @swagger_auto_schema(
+    method='get',
     operation_summary="Get event user roles",
     operation_description="Get all users and their roles in the event",
     manual_parameters=[
@@ -712,6 +712,7 @@ def transfer_event_ownership(request, event_id, user_id):
         )
     }
 )
+@api_view(['GET'])
 def get_event_user_roles(request, event_id):
     """Get all user roles in the event"""
     try:
@@ -819,8 +820,8 @@ def remove_user_role_from_event(request, event_id, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
 @swagger_auto_schema(
+    method='get',
     operation_summary="Get available event locations",
     operation_description="Get list of all predefined locations available for event creation",
     responses={
@@ -847,6 +848,7 @@ def remove_user_role_from_event(request, event_id, user_id):
         )
     }
 )
+@api_view(['GET'])
 def get_available_locations(request):
     """Get list of all available locations for events"""
     try:
@@ -1027,9 +1029,8 @@ def decline_event_invitation(request, event_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
+    method='get',
     operation_summary="Get user's events",
     operation_description="Get all events user is involved in (organizing, attending, managing, has roles)",
     responses={
@@ -1055,6 +1056,8 @@ def decline_event_invitation(request, event_id):
         )
     }
 )
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_my_events(request):
     """Get all events user is involved in"""
     try:
@@ -1113,12 +1116,50 @@ def get_my_events(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='get',
+    operation_summary="Get my events",
+    operation_description="Get all events where the authenticated user is involved (organizer, attendee, manager, or has any role)",
+    responses={
+        200: openapi.Response(
+            description="Events retrieved successfully",
+            examples={
+                'application/json': {
+                    'events': [
+                        {
+                            'id': 1,
+                            'title': 'Music Night',
+                            'description': 'A great music event',
+                            'location': 'E1',
+                            'start_time': '2025-07-05T19:00:00Z',
+                            'end_time': '2025-07-05T22:00:00Z',
+                            'is_public': True,
+                            'organizer_id': 1,
+                            'attendees_count': 15,
+                            'user_role': 'organizer',
+                            'can_edit': True
+                        }
+                    ],
+                    'count': 1
+                }
+            }
+        ),
+        401: openapi.Response(
+            description="Authentication required",
+            examples={
+                'application/json': {
+                    'error': 'Authentication credentials were not provided'
+                }
+            }
+        )
+    }
+)
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def my_events(request):
-    """Get all events where the user is involved (organizer, attendee, or has any role)"""
-    user_id = request.GET.get('user_id')
-    if not user_id:
-        return Response({'error': 'user_id parameter is required'}, status=400)
+    """Get all events where the authenticated user is involved (organizer, attendee, or has any role)"""
+    # Only use authenticated user's ID - no user_id parameter to prevent security issues
+    user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
     
     try:
         events = Events.get_my_events(user_id)

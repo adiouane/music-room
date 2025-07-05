@@ -525,21 +525,15 @@ class Events(models.Model):
         
         user_id = str(user_id)
         
-        # Get events where user is organizer
-        organizer_events = cls.objects.filter(organizer_id=user_id)
+        # Use Q objects to combine all conditions into a single query
+        q_filter = Q(organizer_id=user_id) | Q(attendees__id=user_id)
         
-        # Get events where user is attendee
-        attendee_events = cls.objects.filter(attendees__id=user_id)
+        # Add condition for managers (stored in JSON field)
+        # Check if user_id is in the managers JSON array
+        q_filter |= Q(managers__contains=user_id)
         
-        # Get events where user has any role (stored in user_roles JSON field)
-        # This uses JSONField lookup to find events where user_id is a key in user_roles
-        role_events = cls.objects.extra(
-            where=["JSON_EXTRACT(user_roles, %s) IS NOT NULL"],
-            params=[f'$."{user_id}"']
-        )
-        
-        # Combine all querysets and remove duplicates
-        all_events = organizer_events.union(attendee_events, role_events).distinct()
+        # Get all events matching any of the conditions
+        all_events = cls.objects.filter(q_filter).distinct()
         
         return all_events.order_by('-created_at')
     
