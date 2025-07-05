@@ -152,7 +152,7 @@ def create_event(request):
             is_public=is_public
         )
         
-        # Assign creator as owner
+        # Assign creator as owner in user_roles
         event.assign_role(request.user.id, 'owner')
         
         return Response({
@@ -167,7 +167,7 @@ def create_event(request):
 @swagger_auto_schema(
     method='get',
     operation_summary="Get event details",
-    operation_description="Get detailed information about a specific event including user roles",
+    operation_description="Get detailed information about a specific event including user roles and track vote counts",
     manual_parameters=[
         openapi.Parameter(
             'event_id',
@@ -196,7 +196,10 @@ def create_event(request):
                     'attendee_count': 25,
                     'track_count': 10,
                     'is_public': True,
-                    'songs': ['song1', 'song2'],
+                    'songs': [
+                        {'track_id': 'song1', 'vote_count': 5},
+                        {'track_id': 'song2', 'vote_count': 3}
+                    ],
                     'user_roles': {
                         '1': 'owner',
                         '2': 'editor',
@@ -238,6 +241,16 @@ def event_detail(request, event_id):
         if request.user.is_authenticated:
             current_user_role = event.get_user_role(request.user.id)
         
+        # Build songs list with vote counts
+        songs_with_votes = []
+        for track_id in event.songs:
+            # Get vote count for this track using the model method
+            vote_count = event.get_track_votes(track_id)
+            songs_with_votes.append({
+                'track_id': track_id,
+                'vote_count': vote_count
+            })
+        
         event_data = {
             'id': event.id,
             'title': event.title,
@@ -253,7 +266,7 @@ def event_detail(request, event_id):
             'attendee_count': event.attendee_count,
             'track_count': event.track_count,
             'is_public': event.is_public,
-            'songs': event.songs,
+            'songs': songs_with_votes,
             'user_roles': event.get_all_roles(),
             'current_user_role': current_user_role,
         }
@@ -263,6 +276,7 @@ def event_detail(request, event_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Join event")
 def join_event(request, event_id):
     """Join an event"""
@@ -281,6 +295,7 @@ def join_event(request, event_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 @swagger_auto_schema(operation_summary="Leave event")
 def leave_event(request, event_id):
     """Leave an event"""
@@ -909,7 +924,6 @@ def get_available_locations(request):
     }
 )
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def invite_user_to_event(request, event_id):
     """Invite a user to an event with a specific role"""
     try:
@@ -968,7 +982,6 @@ def invite_user_to_event(request, event_id):
     }
 )
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def accept_event_invitation(request, event_id):
     """Accept event invitation"""
     try:
@@ -1010,7 +1023,6 @@ def accept_event_invitation(request, event_id):
     }
 )
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def decline_event_invitation(request, event_id):
     """Decline event invitation"""
     try:
@@ -1057,7 +1069,6 @@ def decline_event_invitation(request, event_id):
     }
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_my_events(request):
     """Get all events user is involved in"""
     try:
@@ -1120,6 +1131,15 @@ def get_my_events(request):
     method='get',
     operation_summary="Get my events",
     operation_description="Get all events where the authenticated user is involved (organizer, attendee, manager, or has any role)",
+    manual_parameters=[
+        openapi.Parameter(
+            'user_id',
+            openapi.IN_QUERY,
+            description="User ID to get events for (optional - defaults to authenticated user)",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+    ],
     responses={
         200: openapi.Response(
             description="Events retrieved successfully",
@@ -1144,22 +1164,23 @@ def get_my_events(request):
                 }
             }
         ),
-        401: openapi.Response(
-            description="Authentication required",
+        400: openapi.Response(
+            description="Bad request",
             examples={
                 'application/json': {
-                    'error': 'Authentication credentials were not provided'
+                    'error': 'Invalid user_id'
                 }
             }
         )
     }
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def my_events(request):
-    """Get all events where the authenticated user is involved (organizer, attendee, or has any role)"""
-    # Only use authenticated user's ID - no user_id parameter to prevent security issues
-    user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
+    """Get all events where the user is involved (organizer, attendee, or has any role)"""
+    # Get user_id from query parameter or use authenticated user
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        user_id = request.user.id if hasattr(request.user, 'id') else request.user.user_id
     
     try:
         events = Events.get_my_events(user_id)
@@ -1192,7 +1213,6 @@ def my_events(request):
         return Response({'error': str(e)}, status=500)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_event_pending_invites(request, event_id):
     """Get pending invites for an event"""
     try:

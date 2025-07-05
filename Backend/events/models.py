@@ -57,23 +57,27 @@ class Events(models.Model):
         return self.title
     
     def add_attendee(self, user):
-        """Add user to event attendees"""
+        """Add user to event attendees with appropriate role"""
         if user not in self.attendees.all():
             self.attendees.add(user)
+            # Assign listener role by default when joining
+            self.assign_role(user.id, 'listener')
             # Remove from pending invites if they were invited
             self.remove_pending_invite(user.id)
             return True
         return False
     
     def remove_attendee(self, user):
-        """Remove user from event attendees"""
+        """Remove user from event attendees and their role"""
         if user in self.attendees.all():
             self.attendees.remove(user)
-            # Also remove from managers if they were a manager
+            # Remove from managers if they were a manager
             user_id = str(user.id)
             if user_id in self.managers:
                 self.managers.remove(user_id)
                 self.save()
+            # Remove user role when leaving
+            self.remove_user_role(user.id)
             return True
         return False
     
@@ -222,18 +226,25 @@ class Events(models.Model):
                 if str(current_organizer.id) not in self.managers:
                     self.managers.append(str(current_organizer.id))
                 
-                # Add new organizer as attendee
+                # Add new organizer as attendee and assign owner role
                 self.attendees.add(user)
+                self.assign_role(user.id, 'owner')
+                
+                # Make previous organizer an editor in user_roles
+                self.assign_role(current_organizer.id, 'editor')
                 
             elif invited_role == 'manager':
                 # Add as manager and attendee
                 if str(user_id) not in self.managers:
                     self.managers.append(str(user_id))
                 self.attendees.add(user)
+                # Assign editor role in user_roles for managers
+                self.assign_role(user.id, 'editor')
                 
             else:  # attendee
                 # Add as regular attendee
                 self.attendees.add(user)
+                self.assign_role(user.id, 'listener')
             
             # Remove from pending invites
             self.remove_pending_invite(user_id)
@@ -359,47 +370,56 @@ class Events(models.Model):
         """Check if user has permission for specific action"""
         user_id = str(user_id)
         
-        # Check if user is organizer
+        # Check database relationships
         is_organizer = str(self.organizer.id) == user_id
-        
-        # Check if user is manager
         is_manager = user_id in self.managers
-        
-        # Check if user is attendee
         is_attendee = self.attendees.filter(id=int(user_id)).exists()
         
-        # Permission matrix based on actual event roles
+        # Check user_roles field
+        user_role = self.get_user_role(user_id)
+        
+        # Permission matrix combining both systems
         permissions = {
-            'organizer': ['edit_event', 'delete_event', 'add_tracks', 'remove_tracks', 'manage_users', 'invite_users', 'invite_organizers', 'invite_managers', 'invite_attendees'],
-            'manager': ['edit_event', 'add_tracks', 'remove_tracks', 'manage_users', 'invite_users', 'invite_attendees'],
-            'attendee': ['vote_tracks']
+            'owner': ['edit_event', 'delete_event', 'add_tracks', 'remove_tracks', 'manage_users', 'invite_users', 'invite_organizers', 'invite_managers', 'invite_attendees'],
+            'editor': ['edit_event', 'add_tracks', 'remove_tracks', 'invite_attendees'],
+            'listener': ['vote_tracks']
         }
         
-        # Check permissions based on actual role
+        # Check permissions based on database role first
         if is_organizer:
-            return action in permissions.get('organizer', [])
+            return action in permissions.get('owner', [])
         elif is_manager:
-            return action in permissions.get('manager', [])
+            return action in permissions.get('editor', [])
+        elif is_attendee and user_role:
+            # For attendees, check their specific role in user_roles
+            return action in permissions.get(user_role, [])
         elif is_attendee:
-            return action in permissions.get('attendee', [])
+            # Default attendee permissions
+            return action in permissions.get('listener', [])
         
         return False
     
     def get_user_actual_role(self, user_id):
-        """Get user's actual role based on database fields (organizer, manager, attendee)"""
+        """Get user's actual role based on database fields and user_roles field"""
         user_id = str(user_id)
         
         # Check if user is organizer
         if str(self.organizer.id) == user_id:
-            return 'organizer'
+            # Return user_roles value if available, otherwise 'organizer'
+            user_role = self.get_user_role(user_id)
+            return user_role if user_role else 'organizer'
         
         # Check if user is manager
         if user_id in self.managers:
-            return 'manager'
+            # Return user_roles value if available, otherwise 'manager'
+            user_role = self.get_user_role(user_id)
+            return user_role if user_role else 'manager'
         
         # Check if user is attendee
         if self.attendees.filter(id=int(user_id)).exists():
-            return 'attendee'
+            # Return user_roles value if available, otherwise 'attendee'
+            user_role = self.get_user_role(user_id)
+            return user_role if user_role else 'attendee'
         
         return None
     
