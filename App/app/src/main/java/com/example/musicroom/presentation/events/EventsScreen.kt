@@ -9,14 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit  // Add this
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Star  // Add this
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -336,6 +338,7 @@ private fun EventsContent(
                     items(uiState.events) { event ->
                         EventCard(
                             event = event,
+                            selectedTab = selectedTab, // Pass the selected tab
                             onClick = { onEventClick(event) }
                         )
                     }
@@ -389,6 +392,7 @@ private fun EventsContent(
 @Composable
 private fun EventCard(
     event: Event,
+    selectedTab: EventTab, // Add selectedTab parameter
     onClick: () -> Unit
 ) {
     Card(
@@ -418,37 +422,81 @@ private fun EventCard(
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Organizer",
-                            tint = PrimaryPurple,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "by ${event.organizer.name}",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
+                    // Show different info based on the selected tab
+                    when (selectedTab) {
+                        EventTab.PUBLIC -> {
+                            // Show organizer for public events
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Organizer",
+                                    tint = PrimaryPurple,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "by ${event.organizer.name}",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        EventTab.MY_EVENTS -> {
+                            // Show user's role for my events
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = when (event.current_user_role) {
+                                        "owner" -> Icons.Default.Star
+                                        "editor" -> Icons.Default.Edit
+                                        "attendee", "listener" -> Icons.Default.Person
+                                        else -> Icons.Default.Person
+                                    },
+                                    contentDescription = "Your Role",
+                                    tint = when (event.current_user_role) {
+                                        "owner" -> Color(0xFFFFD700) // Gold
+                                        "editor" -> Color(0xFF4CAF50) // Green  
+                                        "attendee", "listener" -> PrimaryPurple
+                                        else -> TextSecondary
+                                    },
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = when (event.current_user_role) {
+                                        "owner" -> "Owner"
+                                        "editor" -> "Editor"
+                                        "attendee" -> "Attendee"
+                                        "listener" -> "Listener"
+                                        else -> "Member"
+                                    },
+                                    color = when (event.current_user_role) {
+                                        "owner" -> Color(0xFFFFD700) // Gold
+                                        "editor" -> Color(0xFF4CAF50) // Green
+                                        else -> TextSecondary
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = if (event.current_user_role == "owner") FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
                 
                 Icon(
                     imageVector = if (event.is_public) Icons.Default.Public else Icons.Default.Lock,
                     contentDescription = if (event.is_public) "Public event" else "Private event",
-                    tint = if (event.is_public) Color.Green else Color(0xFFFF9800), // Orange color
+                    tint = if (event.is_public) Color.Green else Color(0xFFFF9800),
                     modifier = Modifier.size(20.dp)
                 )
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Event details
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(

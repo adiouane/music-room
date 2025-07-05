@@ -338,8 +338,8 @@ private fun EventDetailsContent(
             EventInfoCard(event = event)
         }
         
-        // Join/Leave Event Button - Fixed with debug logging
-        if (event.current_user_role != "owner") { // Don't show for event owner
+        // Join/Leave Event Button (for non-owners)
+        if (event.current_user_role != "owner") { 
             item {
                 // Add debug logging
                 Log.d("EventDetailsScreen", "🔍 UI Button Logic:")
@@ -384,6 +384,96 @@ private fun EventDetailsContent(
                                 color = Color.White
                             )
                             Log.d("EventDetailsScreen", "🔘 Button rendered: '${if (isAttending) "Leave" else "Join"}' (${if (isAttending) "Red" else "Purple"})")
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Event Management Options (for owners only)
+        if (event.current_user_role == "owner") {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Event Management",
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "You are the organizer of this event",
+                                color = Color(0xFFFFD700), // Gold color
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "Owner",
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Edit Event Button
+                            OutlinedButton(
+                                onClick = { 
+                                    // TODO: Navigate to edit event screen
+                                    Log.d("EventDetailsScreen", "🔧 Edit event clicked")
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = PrimaryPurple
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit")
+                            }
+                            
+                            // Delete Event Button
+                            OutlinedButton(
+                                onClick = { 
+                                    // TODO: Show delete confirmation dialog
+                                    Log.d("EventDetailsScreen", "🗑️ Delete event clicked")
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color.Red
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Delete")
+                            }
                         }
                     }
                 }
