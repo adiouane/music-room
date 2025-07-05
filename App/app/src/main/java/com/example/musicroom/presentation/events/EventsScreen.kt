@@ -64,7 +64,7 @@ fun EventsScreen(
             .fillMaxSize()
             .background(DarkBackground)
     ) {
-        // Header
+        // Header - Exact same structure as Playlists
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -72,104 +72,156 @@ fun EventsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Events",
-                color = TextPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            // Create Event Button
-            IconButton(
-                onClick = { showCreateDialog = true }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Create Event",
-                    tint = PrimaryPurple,
-                    modifier = Modifier.size(28.dp)
+            Column {
+                Text(
+                    text = "Events",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Discover and manage your events",
+                    fontSize = 14.sp,
+                    color = TextSecondary
                 )
             }
-        }
-        
-        // Create result notification
-        createResult?.let { result ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = when (result) {
-                        is CreateEventResult.Success -> Color.Green.copy(alpha = 0.2f)
-                        is CreateEventResult.Error -> Color.Red.copy(alpha = 0.2f)
-                    }
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            
+            Row {
+                // Refresh button
+                IconButton(
+                    onClick = { viewModel.refreshCurrentTab() }
                 ) {
                     Icon(
-                        imageVector = when (result) {
-                            is CreateEventResult.Success -> Icons.Default.CheckCircle
-                            is CreateEventResult.Error -> Icons.Default.Error
-                        },
-                        contentDescription = null,
-                        tint = when (result) {
-                            is CreateEventResult.Success -> Color.Green
-                            is CreateEventResult.Error -> Color.Red
-                        },
-                        modifier = Modifier.size(20.dp)
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = PrimaryPurple
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = when (result) {
-                            is CreateEventResult.Success -> "Event '${result.title}' created successfully!"
-                            is CreateEventResult.Error -> "Error: ${result.message}"
-                        },
-                        color = when (result) {
-                            is CreateEventResult.Success -> Color.Green
-                            is CreateEventResult.Error -> Color.Red
-                        },
-                        fontSize = 14.sp
+                }
+                
+                // Create event button
+                FloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    containerColor = PrimaryPurple,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Create Event",
+                        tint = Color.White
                     )
                 }
             }
         }
         
-        // Tab Row
-        ScrollableTabRow(
-            selectedTabIndex = selectedTab.ordinal,
-            containerColor = DarkSurface,
-            contentColor = TextPrimary,
-            edgePadding = 16.dp
+        // Custom Tab Buttons - Exact same structure as Playlists
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .background(
+                    DarkSurface,
+                    RoundedCornerShape(12.dp)
+                )
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             EventTab.values().forEach { tab ->
                 val isSelected = selectedTab == tab
-                Tab(
-                    selected = isSelected,
+                
+                Button(
                     onClick = { viewModel.switchTab(tab) },
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) Color.White else Color.Transparent,
+                        contentColor = if (isSelected) DarkBackground else TextSecondary
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = if (isSelected) 2.dp else 0.dp
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = when (tab) {
                                 EventTab.PUBLIC -> Icons.Default.Public
-                                EventTab.MY_EVENTS -> Icons.Default.Event
+                                EventTab.MY_EVENTS -> Icons.Default.Person
                             },
-                            contentDescription = null,
-                            tint = if (isSelected) PrimaryPurple else TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                            contentDescription = tab.displayName,
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = tab.displayName,
-                            color = if (isSelected) PrimaryPurple else TextSecondary,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                         )
+                    }
+                }
+            }
+        }
+        
+        // Create result notification - Exact same structure as Playlists
+        createResult?.let { result ->
+            when (result) {
+                is CreateEventResult.Success -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Green.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Success",
+                                tint = Color.Green,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Event '${result.title}' created successfully!",
+                                color = Color.Green,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+                is CreateEventResult.Error -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Red.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = Color.Red,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Error: ${result.message}",
+                                color = Color.Red,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }
@@ -250,41 +302,40 @@ private fun EventsTabContent(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = when (selectedTab) {
                                 EventTab.PUBLIC -> Icons.Default.Public
                                 EventTab.MY_EVENTS -> Icons.Default.Event
                             },
-                            contentDescription = "No events",
-                            modifier = Modifier.size(64.dp),
-                            tint = TextSecondary
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(64.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = when (selectedTab) {
-                                EventTab.PUBLIC -> "No public events"
-                                EventTab.MY_EVENTS -> "No events yet"
+                                EventTab.PUBLIC -> "No public events available"
+                                EventTab.MY_EVENTS -> "You haven't created any events yet"
                             },
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium
+                            color = TextSecondary,
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = when (selectedTab) {
-                                EventTab.PUBLIC -> "Check back later for new events"
-                                EventTab.MY_EVENTS -> "Create or join events to see them here"
+                                EventTab.PUBLIC -> "Check back later for new events!"
+                                EventTab.MY_EVENTS -> "Tap the + button to create your first event"
                             },
-                            color = TextSecondary,
+                            color = TextSecondary.copy(alpha = 0.7f),
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
                         )
                     }
                 }
             } else {
-                // Events list
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
@@ -293,7 +344,6 @@ private fun EventsTabContent(
                     items(uiState.events) { event ->
                         EventCard(
                             event = event,
-                            selectedTab = selectedTab,
                             onClick = { onEventClick(event) }
                         )
                     }
@@ -308,20 +358,20 @@ private fun EventsTabContent(
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Error,
                         contentDescription = "Error",
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Red
+                        tint = Color.Red,
+                        modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Error loading ${selectedTab.displayName.lowercase()}",
-                        color = TextPrimary,
+                        text = "Failed to load events",
+                        color = Color.Red,
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -330,12 +380,20 @@ private fun EventsTabContent(
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onRefresh,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryPurple
+                        )
                     ) {
-                        Text("Retry")
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Retry",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Try Again")
                     }
                 }
             }
@@ -346,191 +404,140 @@ private fun EventsTabContent(
 @Composable
 private fun EventCard(
     event: Event,
-    selectedTab: EventTab,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(
+            containerColor = DarkSurface
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Header row with title and status
+            // Header with title and privacy indicator
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = event.title,
-                        color = TextPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    // Show role for my events, organizer for public events
-                    when (selectedTab) {
-                        EventTab.MY_EVENTS -> {
-                            if (event.current_user_role != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = when (event.current_user_role) {
-                                            "owner" -> Icons.Default.Star
-                                            "editor" -> Icons.Default.Edit
-                                            else -> Icons.Default.Person
-                                        },
-                                        contentDescription = "Role",
-                                        tint = when (event.current_user_role) {
-                                            "owner" -> Color(0xFFFFD700)
-                                            "editor" -> PrimaryPurple
-                                            else -> TextSecondary
-                                        },
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = event.current_user_role.replaceFirstChar { it.uppercase() },
-                                        color = TextSecondary,
-                                        fontSize = 14.sp
-                                    )
-                                }
-                            }
-                        }
-                        EventTab.PUBLIC -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Organizer",
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "by ${event.organizer.name}",
-                                    color = TextSecondary,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // Public/Private badge
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (event.is_public) 
-                            PrimaryPurple.copy(alpha = 0.2f) 
-                        else 
-                            Color.Red.copy(alpha = 0.2f)
-                    ),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text(
-                        text = if (event.is_public) "Public" else "Private",
-                        color = if (event.is_public) PrimaryPurple else Color.Red,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Event details
-            Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Location",
-                    tint = PrimaryPurple,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = event.location,
-                    color = TextSecondary,
-                    fontSize = 14.sp,
+                    text = event.title,
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Icon(
+                    imageVector = if (event.is_public) Icons.Default.Public else Icons.Default.Lock,
+                    contentDescription = if (event.is_public) "Public Event" else "Private Event",
+                    tint = if (event.is_public) Color.Green else Color(0xFFFFA500), // Fixed: Use Color(0xFFFFA500) instead of Color.Orange
+                    modifier = Modifier.size(20.dp)
                 )
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = "Time",
-                    tint = PrimaryPurple,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            // Description
+            if (!event.description.isNullOrBlank()) { // Fixed: Added null safety check
                 Text(
-                    text = formatEventDateTime(event.event_start_time),
+                    text = event.description, // Now safe to use
                     color = TextSecondary,
                     fontSize = 14.sp,
-                    modifier = Modifier.weight(1f)
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(8.dp))
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            // Location
+            if (event.location.isNotBlank()) { // Location is non-null String according to the Event model
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Location",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = event.location,
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             
             // Stats row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Left stats
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.People,
-                        contentDescription = "Attendees",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${event.attendee_count} attending",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
+                    // Attendee count
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Attendees",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${event.attendee_count}",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    // Track count
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = "Tracks",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${event.track_count}",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
                 
+                // Organizer info
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = "Tracks",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${event.track_count} tracks",
+                        text = "by ${event.organizer.name}",
                         color = TextSecondary,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
