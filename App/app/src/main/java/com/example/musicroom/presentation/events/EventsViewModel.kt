@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.musicroom.data.models.Event
 import com.example.musicroom.data.service.EventsApiService
+import com.example.musicroom.data.service.CreateEventRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,20 +15,46 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
+/**
+ * UI States for different data types
+ */
+sealed class EventsUiState {
+    object Loading : EventsUiState()
+    data class Success(val events: List<Event>) : EventsUiState()
+    data class Error(val message: String) : EventsUiState()
+}
+
+sealed class CreateEventResult {
+    data class Success(val eventId: String, val title: String) : CreateEventResult()
+    data class Error(val message: String) : CreateEventResult()
+}
+
+enum class EventTab(val displayName: String) {
+    PUBLIC("Public Events"),
+    MY_EVENTS("My Events")
+}
+
+/**
+ * ViewModel for Events screen with separate states
+ * Similar to PlaylistDetailsViewModel structure
+ */
 @HiltViewModel
 class EventsViewModel @Inject constructor(
     private val eventsApiService: EventsApiService
 ) : ViewModel() {
     
+    // Separate states for each tab
     private val _publicEventsState = MutableStateFlow<EventsUiState>(EventsUiState.Loading)
     val publicEventsState: StateFlow<EventsUiState> = _publicEventsState.asStateFlow()
     
     private val _myEventsState = MutableStateFlow<EventsUiState>(EventsUiState.Loading)
     val myEventsState: StateFlow<EventsUiState> = _myEventsState.asStateFlow()
     
+    // Tab management
     private val _selectedTab = MutableStateFlow(EventTab.PUBLIC)
     val selectedTab: StateFlow<EventTab> = _selectedTab.asStateFlow()
     
+    // Create event state
     private val _isCreating = MutableStateFlow(false)
     val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
     
@@ -35,118 +62,106 @@ class EventsViewModel @Inject constructor(
     val createResult: StateFlow<CreateEventResult?> = _createResult.asStateFlow()
     
     init {
-        Log.d("EventsViewModel", "🚀 ViewModel initialized, loading events from backend")
-        loadAllEvents()
+        loadPublicEvents()
+        loadMyEvents()
     }
     
-    fun switchTab(tab: EventTab) {
-        Log.d("EventsViewModel", "🔄 Switching to tab: ${tab.displayName}")
-        _selectedTab.value = tab
-        
-        // Load data if not already loaded
-        when (tab) {
-            EventTab.PUBLIC -> {
-                if (_publicEventsState.value is EventsUiState.Loading) {
-                    loadPublicEvents()
+    /**
+     * Load public events
+     */
+    private fun loadPublicEvents() {
+        viewModelScope.launch {
+            try {
+                _publicEventsState.value = EventsUiState.Loading
+                Log.d("EventsVM", "📋 Loading public events...")
+                
+                val result = eventsApiService.getPublicEvents()
+                if (result.isSuccess) {
+                    val events = result.getOrThrow()
+                    Log.d("EventsVM", "✅ Loaded ${events.size} public events")
+                    _publicEventsState.value = EventsUiState.Success(events)
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    Log.e("EventsVM", "❌ Failed to load public events: $error")
+                    _publicEventsState.value = EventsUiState.Error("Failed to load public events: $error")
                 }
-            }
-            EventTab.MY_EVENTS -> {
-                if (_myEventsState.value is EventsUiState.Loading) {
-                    loadMyEvents()
-                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsVM", "❌ Error loading public events", e)
+                _publicEventsState.value = EventsUiState.Error("Failed to load public events: ${e.message}")
             }
         }
     }
     
+    /**
+     * Load user's events
+     */
+    private fun loadMyEvents() {
+        viewModelScope.launch {
+            try {
+                _myEventsState.value = EventsUiState.Loading
+                Log.d("EventsVM", "📋 Loading my events...")
+                
+                val result = eventsApiService.getMyEvents()
+                if (result.isSuccess) {
+                    val events = result.getOrThrow()
+                    Log.d("EventsVM", "✅ Loaded ${events.size} my events")
+                    _myEventsState.value = EventsUiState.Success(events)
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    Log.e("EventsVM", "❌ Failed to load my events: $error")
+                    _myEventsState.value = EventsUiState.Error("Failed to load my events: $error")
+                }
+                
+            } catch (e: Exception) {
+                Log.e("EventsVM", "❌ Error loading my events", e)
+                _myEventsState.value = EventsUiState.Error("Failed to load my events: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Switch between tabs
+     */
+    fun switchTab(tab: EventTab) {
+        _selectedTab.value = tab
+    }
+    
+    /**
+     * Refresh current tab
+     */
     fun refreshCurrentTab() {
-        Log.d("EventsViewModel", "🔄 Refreshing current tab")
         when (_selectedTab.value) {
             EventTab.PUBLIC -> loadPublicEvents()
             EventTab.MY_EVENTS -> loadMyEvents()
         }
     }
     
-    fun loadAllEvents() {
-        Log.d("EventsViewModel", "🔄 Loading all events (public + my events)")
+    /**
+     * Refresh all data
+     */
+    fun refresh() {
         loadPublicEvents()
         loadMyEvents()
     }
     
-    fun loadPublicEvents() {
-        viewModelScope.launch {
-            try {
-                Log.d("EventsViewModel", "📋 Loading public events from backend")
-                _publicEventsState.value = EventsUiState.Loading
-                
-                val result = eventsApiService.getPublicEvents()
-                
-                if (result.isSuccess) {
-                    val events = result.getOrThrow()
-                    Log.d("EventsViewModel", "✅ Successfully loaded ${events.size} public events")
-                    
-                    events.forEachIndexed { index, event ->
-                        Log.d("EventsViewModel", "🎪 Public event $index: ${event.title} at ${event.location}")
-                    }
-                    
-                    _publicEventsState.value = EventsUiState.Success(events)
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e("EventsViewModel", "❌ Failed to load public events", error)
-                    _publicEventsState.value = EventsUiState.Error(error?.message ?: "Failed to load public events")
-                }
-                
-            } catch (e: Exception) {
-                Log.e("EventsViewModel", "❌ Exception loading public events", e)
-                _publicEventsState.value = EventsUiState.Error("Error loading public events: ${e.message}")
-            }
-        }
-    }
-    
-    fun loadMyEvents() {
-        viewModelScope.launch {
-            try {
-                Log.d("EventsViewModel", "📋 Loading my events from backend")
-                _myEventsState.value = EventsUiState.Loading
-                
-                val result = eventsApiService.getMyEvents()
-                
-                if (result.isSuccess) {
-                    val events = result.getOrThrow()
-                    Log.d("EventsViewModel", "✅ Successfully loaded ${events.size} my events")
-                    
-                    events.forEachIndexed { index, event ->
-                        Log.d("EventsViewModel", "🎪 My event $index: ${event.title} at ${event.location}")
-                    }
-                    
-                    _myEventsState.value = EventsUiState.Success(events)
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e("EventsViewModel", "❌ Failed to load my events", error)
-                    _myEventsState.value = EventsUiState.Error(error?.message ?: "Failed to load my events")
-                }
-                
-            } catch (e: Exception) {
-                Log.e("EventsViewModel", "❌ Exception loading my events", e)
-                _myEventsState.value = EventsUiState.Error("Error loading my events: ${e.message}")
-            }
-        }
-    }
-    
+    /**
+     * Create a new event
+     */
     fun createEvent(
         title: String,
-        location: String,
         description: String?,
-        isPublic: Boolean,
-        startTime: String
+        location: String,
+        startTime: String?,
+        isPublic: Boolean
     ) {
         viewModelScope.launch {
             try {
                 _isCreating.value = true
-                Log.d("EventsViewModel", "🆕 Creating event: $title at $location")
+                Log.d("EventsVM", "🎪 Creating event: $title")
                 
-                // For now, use a simple datetime format. You can improve this later with proper date/time picker
-                val formattedStartTime = if (startTime.isNotBlank()) {
-                    // Assume format like "2024-07-15 20:00" and convert to ISO format
+                // Format start time properly
+                val formattedStartTime = if (!startTime.isNullOrBlank()) {
                     if (startTime.contains("T")) {
                         startTime // Already in ISO format
                     } else {
@@ -160,37 +175,46 @@ class EventsViewModel @Inject constructor(
                     sdf.format(Date(currentTime))
                 }
                 
-                val result = eventsApiService.createEvent(
+                val request = CreateEventRequest(
                     title = title,
                     description = description,
                     location = location,
-                    eventStartTime = formattedStartTime,
-                    eventEndTime = null, // Could add end time field later
-                    isPublic = isPublic
+                    event_start_time = formattedStartTime,
+                    event_end_time = null, // Could add end time field later
+                    is_public = isPublic
                 )
+                
+                val result = eventsApiService.createEvent(request)
                 
                 if (result.isSuccess) {
                     val response = result.getOrThrow()
-                    Log.d("EventsViewModel", "✅ Event created successfully: ${response.eventId}")
-                    _createResult.value = CreateEventResult.Success(response.message)
+                    Log.d("EventsVM", "✅ Event created successfully: ${response.eventId}")
+                    _createResult.value = CreateEventResult.Success(
+                        eventId = response.eventId ?: "",
+                        title = response.title ?: title
+                    )
                     
-                    // Refresh the events list
-                    loadAllEvents()
+                    // Refresh both tabs to show the new event
+                    loadPublicEvents()
+                    loadMyEvents()
                 } else {
-                    val error = result.exceptionOrNull()
-                    Log.e("EventsViewModel", "❌ Failed to create event", error)
-                    _createResult.value = CreateEventResult.Error(error?.message ?: "Failed to create event")
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    Log.e("EventsVM", "❌ Failed to create event: $error")
+                    _createResult.value = CreateEventResult.Error(error)
                 }
                 
             } catch (e: Exception) {
-                Log.e("EventsViewModel", "❌ Exception creating event", e)
-                _createResult.value = CreateEventResult.Error("Error creating event: ${e.message}")
+                Log.e("EventsVM", "❌ Error creating event", e)
+                _createResult.value = CreateEventResult.Error("Failed to create event: ${e.message}")
             } finally {
                 _isCreating.value = false
             }
         }
     }
     
+    /**
+     * Clear create result
+     */
     fun clearCreateResult() {
         _createResult.value = null
     }
