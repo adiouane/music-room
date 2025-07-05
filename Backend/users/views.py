@@ -76,15 +76,21 @@ def get_user_by_name_view(request, user_name):
         return Response(user, status=status.HTTP_404_NOT_FOUND)
     return Response(user, status=status.HTTP_200_OK)
 
-@swagger_auto_schema(method='get',operation_summary="Get all users")
+@swagger_auto_schema(method='get', operation_summary="Get all users except current user")
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])  # Require authentication to know the current user
 def get_all_users_view(request):
-    """Get list of all users"""
+    """Get list of all users except current user"""
     users = get_all_users()
     if 'error' in users:
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
-    return Response(users, status=status.HTTP_200_OK)
+
+    current_user_id = request.user.id  # or request.user.pk or request.user.email
+
+    # Exclude current user from the list
+    filtered_users = [user for user in users if user.get('id') != current_user_id]
+
+    return Response(filtered_users, status=status.HTTP_200_OK)
 
 
 # NEW AUTHENTICATION VIEWS FROM ACCOUNTS APP
