@@ -91,7 +91,7 @@ class InviteUsersViewModel @Inject constructor(
         }
     }
     
-    fun inviteUser(eventId: String, user: User, role: String = "listener") {
+    fun inviteUser(eventId: String, user: User, role: String = "attendee") {
         viewModelScope.launch {
             try {
                 _isInviting.value = true
@@ -133,8 +133,11 @@ fun InviteUsersDialog(
     val inviteResult by viewModel.inviteResult.collectAsState()
     val isInviting by viewModel.isInviting.collectAsState()
     
-    var selectedRole by remember { mutableStateOf("listener") }
-    val roles = listOf("listener", "editor")
+    var selectedRole by remember { mutableStateOf("attendee") }
+    val roles = mapOf(
+        "attendee" to "Attendee",
+        "manager" to "Manager"
+    )
     
     // Handle invite result
     LaunchedEffect(inviteResult) {
@@ -154,18 +157,18 @@ fun InviteUsersDialog(
         }
     }
     
-    Dialog(onDismissRequest = { if (!isInviting) onDismiss() }) {
+    Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.8f),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
+                    .padding(24.dp)
+                    .fillMaxWidth()
             ) {
                 // Header
                 Row(
@@ -173,7 +176,7 @@ fun InviteUsersDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column {
                         Text(
                             text = "Invite Users",
                             color = TextPrimary,
@@ -183,15 +186,11 @@ fun InviteUsersDialog(
                         Text(
                             text = "to $eventTitle",
                             color = TextSecondary,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontSize = 14.sp
                         )
                     }
                     
-                    IconButton(
-                        onClick = { if (!isInviting) onDismiss() }
-                    ) {
+                    IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
@@ -216,13 +215,13 @@ fun InviteUsersDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    roles.forEach { role ->
-                        val isSelected = selectedRole == role
+                    roles.forEach { (roleKey, roleDisplayName) ->
+                        val isSelected = selectedRole == roleKey
                         FilterChip(
-                            onClick = { selectedRole = role },
+                            onClick = { selectedRole = roleKey },
                             label = {
                                 Text(
-                                    text = role.capitalize(),
+                                    text = roleDisplayName,
                                     color = if (isSelected) Color.White else TextSecondary
                                 )
                             },

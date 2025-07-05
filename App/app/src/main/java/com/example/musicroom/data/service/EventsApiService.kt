@@ -1049,7 +1049,7 @@ class EventsApiService @Inject constructor(
     /**
      * Invite user to event
      */
-    suspend fun inviteUserToEvent(eventId: String, userId: String, role: String = "listener"): Result<String> {
+    suspend fun inviteUserToEvent(eventId: String, userId: String, role: String = "attendee"): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("EventsAPI", "📧 Inviting user $userId to event $eventId with role $role")
@@ -1062,7 +1062,7 @@ class EventsApiService @Inject constructor(
                     doOutput = true
                     
                     // Add authorization header
-                    val token = tokenManager.getToken() // Fixed: changed from getAccessToken() to getToken()
+                    val token = tokenManager.getToken()
                     if (token != null) {
                         setRequestProperty("Authorization", "Bearer $token")
                     }
@@ -1071,13 +1071,14 @@ class EventsApiService @Inject constructor(
                     readTimeout = 30000
                 }
                 
-                // Create request body
+                // Create request body matching your API format
                 val requestBody = JSONObject().apply {
                     put("user_id", userId.toInt())
                     put("role", role)
                 }
                 
-                Log.d("EventsAPI", "📤 Invite request: $requestBody")
+                Log.d("EventsAPI", "📤 Invite request URL: ${url}")
+                Log.d("EventsAPI", "📤 Invite request body: $requestBody")
                 
                 // Send request
                 OutputStreamWriter(connection.outputStream).use { writer ->
@@ -1088,18 +1089,35 @@ class EventsApiService @Inject constructor(
                 val responseCode = connection.responseCode
                 Log.d("EventsAPI", "📡 Invite API Response Code: $responseCode")
                 
-                if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
-                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-                    Log.d("EventsAPI", "📄 Invite API Response: $responseText")
-                    
-                    val responseJson = JSONObject(responseText)
-                    val message = responseJson.optString("message", "User invited successfully")
-                    Log.d("EventsAPI", "✅ Successfully invited user")
-                    Result.success(message)
-                } else {
-                    val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
-                    Log.e("EventsAPI", "❌ Failed to invite user: $responseCode - $errorText")
-                    Result.failure(Exception("Failed to invite user: $errorText"))
+                when (responseCode) {
+                    HttpURLConnection.HTTP_OK -> {
+                        val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                        Log.d("EventsAPI", "📄 Invite API Response: $responseText")
+                        
+                        val responseJson = JSONObject(responseText)
+                        val message = responseJson.optString("message", "User invited successfully")
+                        Log.d("EventsAPI", "✅ Successfully invited user: $message")
+                        Result.success(message)
+                    }
+                    HttpURLConnection.HTTP_BAD_REQUEST -> {
+                        val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Bad request"
+                        Log.e("EventsAPI", "❌ Bad request (400): $errorText")
+                        Result.failure(Exception("User may already be invited or attending, or invalid role"))
+                    }
+                    HttpURLConnection.HTTP_FORBIDDEN -> {
+                        val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Forbidden"
+                        Log.e("EventsAPI", "❌ Forbidden (403): $errorText")
+                        Result.failure(Exception("Permission denied - insufficient permissions for the requested role"))
+                    }
+                    HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                        Log.e("EventsAPI", "❌ Unauthorized (401)")
+                        Result.failure(Exception("Authentication required - please log in again"))
+                    }
+                    else -> {
+                        val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                        Log.e("EventsAPI", "❌ Failed to invite user: $responseCode - $errorText")
+                        Result.failure(Exception("Failed to invite user: HTTP $responseCode"))
+                    }
                 }
                 
             } catch (e: Exception) {

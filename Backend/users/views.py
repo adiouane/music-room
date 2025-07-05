@@ -82,7 +82,7 @@ def get_user_by_name_view(request, user_name):
 def get_all_users_view(request):
     """Get list of all users except current user"""
     users = get_all_users()
-    )
+    
     if 'error' in users:
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
 
