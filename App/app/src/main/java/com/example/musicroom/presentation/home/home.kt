@@ -40,6 +40,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val actionInProgress by viewModel.actionInProgress.collectAsState()
     
     // Load home data when screen loads
     LaunchedEffect(Unit) {
@@ -56,21 +57,18 @@ fun HomeScreen(
                 navController = navController,
                 onRefresh = { viewModel.loadHomeData() },
                 onDismissEventNotification = { eventId, inviterName ->
-                    // TODO: Implement notification dismissal
-                    Log.d("HomeScreen", "Dismiss event notification: $eventId from $inviterName")
+                    viewModel.declineEventInvitation(eventId, inviterName)
                 },
                 onDismissPlaylistNotification = { playlistId, inviterName ->
-                    // TODO: Implement notification dismissal
-                    Log.d("HomeScreen", "Dismiss playlist notification: $playlistId from $inviterName")
+                    viewModel.declinePlaylistInvitation(playlistId, inviterName)
                 },
                 onAcceptEventInvitation = { eventId ->
-                    // TODO: Implement event invitation acceptance
-                    Log.d("HomeScreen", "Accept event invitation: $eventId")
+                    viewModel.acceptEventInvitation(eventId)
                 },
                 onAcceptPlaylistInvitation = { playlistId ->
-                    // TODO: Implement playlist invitation acceptance
-                    Log.d("HomeScreen", "Accept playlist invitation: $playlistId")
-                }
+                    viewModel.acceptPlaylistInvitation(playlistId)
+                },
+                actionInProgress = actionInProgress
             )
         }
         is HomeUiState.Error -> {
@@ -149,7 +147,8 @@ private fun HomeContent(
     onDismissEventNotification: (String, String) -> Unit,
     onDismissPlaylistNotification: (String, String) -> Unit,
     onAcceptEventInvitation: (String) -> Unit,
-    onAcceptPlaylistInvitation: (String) -> Unit
+    onAcceptPlaylistInvitation: (String) -> Unit,
+    actionInProgress: Boolean
 ) {
     LazyColumn(
         modifier = Modifier
@@ -174,7 +173,8 @@ private fun HomeContent(
                     onDismissPlaylistNotification = onDismissPlaylistNotification,
                     onAcceptEventInvitation = onAcceptEventInvitation,
                     onAcceptPlaylistInvitation = onAcceptPlaylistInvitation,
-                    navController = navController
+                    navController = navController,
+                    actionInProgress = actionInProgress
                 )
             }
         }
@@ -330,7 +330,8 @@ private fun NotificationsSection(
     onDismissPlaylistNotification: (String, String) -> Unit,
     onAcceptEventInvitation: (String) -> Unit,
     onAcceptPlaylistInvitation: (String) -> Unit,
-    navController: NavController
+    navController: NavController,
+    actionInProgress: Boolean
 ) {
     Column {
         Text(
@@ -348,11 +349,20 @@ private fun NotificationsSection(
                 title = "Event Invitation",
                 message = notification.message,
                 from = notification.inviter_name,
-                onAccept = { onAcceptEventInvitation(notification.event_id) },
-                onDismiss = { onDismissEventNotification(notification.event_id, notification.inviter_name) },
+                onAccept = { 
+                    if (!actionInProgress) {
+                        onAcceptEventInvitation(notification.event_id)
+                    }
+                },
+                onDismiss = { 
+                    if (!actionInProgress) {
+                        onDismissEventNotification(notification.event_id, notification.inviter_name)
+                    }
+                },
                 onClick = { 
                     navController.navigate("event_details/${notification.event_id}")
-                }
+                },
+                isLoading = actionInProgress
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -363,11 +373,20 @@ private fun NotificationsSection(
                 title = "Playlist Invitation",
                 message = notification.message,
                 from = notification.inviter_name,
-                onAccept = { onAcceptPlaylistInvitation(notification.playlist_id) },
-                onDismiss = { onDismissPlaylistNotification(notification.playlist_id, notification.inviter_name) },
+                onAccept = { 
+                    if (!actionInProgress) {
+                        onAcceptPlaylistInvitation(notification.playlist_id)
+                    }
+                },
+                onDismiss = { 
+                    if (!actionInProgress) {
+                        onDismissPlaylistNotification(notification.playlist_id, notification.inviter_name)
+                    }
+                },
                 onClick = { 
                     navController.navigate("playlist_tracks/${notification.playlist_id}")
-                }
+                },
+                isLoading = actionInProgress
             )
             Spacer(modifier = Modifier.height(8.dp))
         }

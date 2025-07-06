@@ -28,7 +28,8 @@ fun NotificationCard(
     onAccept: () -> Unit,
     onDismiss: () -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -86,15 +87,16 @@ fun NotificationCard(
                     }
                 }
                 
-                // Dismiss button
+                // Dismiss button (disabled when loading)
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
+                    enabled = !isLoading
                 ) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Dismiss",
-                        tint = TextSecondary,
+                        tint = if (isLoading) TextSecondary.copy(alpha = 0.5f) else TextSecondary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -125,19 +127,28 @@ fun NotificationCard(
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    enabled = !isLoading
                 ) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = "Accept",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Accept",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = TextPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Accept",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Accept",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
                 
                 // View button
@@ -149,18 +160,21 @@ fun NotificationCard(
                     ),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    enabled = !isLoading
                 ) {
                     Icon(
                         Icons.Default.Visibility,
                         contentDescription = "View",
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isLoading) PrimaryPurple.copy(alpha = 0.5f) else PrimaryPurple
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "View",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = if (isLoading) PrimaryPurple.copy(alpha = 0.5f) else PrimaryPurple
                     )
                 }
             }
