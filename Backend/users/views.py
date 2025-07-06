@@ -82,9 +82,7 @@ def get_user_by_name_view(request, user_name):
 @permission_classes([AllowAny]) # Require authentication to know the current user
 def get_all_users_view(request):
     """Get list of all users except current user"""
-    """Get list of all users except current user"""
     users = get_all_users()
-    
     
     if 'error' in users:
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
