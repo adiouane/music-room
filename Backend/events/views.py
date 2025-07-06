@@ -10,6 +10,7 @@ from events.services import get_event_songs
 from .models import Events
 from users.models import User
 
+
 def check_event_permission(request, events, action='view'):
     """Check event permissions"""
     if not request.user.is_authenticated:
