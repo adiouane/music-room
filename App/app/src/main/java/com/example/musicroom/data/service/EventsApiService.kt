@@ -380,38 +380,36 @@ class EventsApiService @Inject constructor(
             try {
                 Log.d("EventsAPI", "🎵 Adding track $trackId to event $eventId")
                 
-                val url = "${NetworkConfig.BASE_URL}/api/events/$eventId/tracks/"
-                val requestBody = JSONObject().apply {
-                    put("track_id", trackId)
-                }.toString()
+                // Fix: Use the correct endpoint that matches your swagger
+                val url = "${NetworkConfig.BASE_URL}/api/events/$eventId/tracks/$trackId/add/"
                 
-                Log.d("EventsAPI", "📤 Add track request: $requestBody")
+                Log.d("EventsAPI", "🔗 Add track URL: $url")
                 
                 val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")
                     setRequestProperty("Accept", "application/json")
-                    doOutput = true
+                    // Note: No request body needed since track_id is in the URL path
                     
                     // Add authorization header
                     val token = tokenManager.getToken()
                     if (token != null) {
                         setRequestProperty("Authorization", "Bearer $token")
+                        Log.d("EventsAPI", "🔑 Added authorization header")
+                    } else {
+                        Log.w("EventsAPI", "⚠️ No authentication token available")
                     }
                     
                     if (NetworkConfig.isCodespaces()) {
                         setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                        Log.d("EventsAPI", "🌐 Added CORS origin header for Codespaces")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
                     readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
                 }
                 
-                // Write request body
-                OutputStreamWriter(connection.outputStream).use { writer ->
-                    writer.write(requestBody)
-                    writer.flush()
-                }
+                // No need to write request body since all parameters are in the URL
                 
                 val responseCode = connection.responseCode
                 Log.d("EventsAPI", "📨 Add track response code: $responseCode")
@@ -431,43 +429,61 @@ class EventsApiService @Inject constructor(
                 when (responseCode) {
                     200, 201 -> {
                         try {
+                            val jsonResponse = JSONObject(responseText)
+                            val message = jsonResponse.optString("message", "Track added successfully")
+                            
+                            val response = AddTrackToEventResponse(
+                                success = true,
+                                message = message
+                            )
+                            
+                            Log.d("EventsAPI", "✅ Track added to event successfully: $message")
+                            Result.success(response)
+                        } catch (e: Exception) {
+                            Log.e("EventsAPI", "❌ Error parsing add track response", e)
+                            // Fallback success response if JSON parsing fails but status is 200/201
                             val response = AddTrackToEventResponse(
                                 success = true,
                                 message = "Track added successfully"
                             )
-                            
-                            Log.d("EventsAPI", "✅ Track added to event successfully")
                             Result.success(response)
-                        } catch (e: Exception) {
-                            Log.e("EventsAPI", "❌ Error parsing add track response", e)
-                            Result.failure(Exception("Failed to parse add track response: ${e.message}"))
                         }
                     }
                     400 -> {
-                        Log.e("EventsAPI", "❌ Bad request: $responseText")
-                        Result.failure(Exception("Invalid track or event"))
+                        Log.e("EventsAPI", "❌ Bad request (400): $responseText")
+                        val errorMessage = try {
+                            val errorJson = JSONObject(responseText)
+                            errorJson.optString("message", errorJson.optString("detail", "Invalid track or event"))
+                        } catch (e: Exception) {
+                            "Invalid track or event"
+                        }
+                        Result.failure(Exception(errorMessage))
                     }
                     401 -> {
-                        Log.e("EventsAPI", "❌ Unauthorized - token may be expired")
-                        Result.failure(Exception("Authentication required"))
+                        Log.e("EventsAPI", "❌ Unauthorized (401): $responseText")
+                        Result.failure(Exception("You need to be logged in to add tracks"))
                     }
                     403 -> {
-                        Log.e("EventsAPI", "❌ Access denied")
+                        Log.e("EventsAPI", "❌ Forbidden (403): $responseText")
                         Result.failure(Exception("You don't have permission to add tracks to this event"))
                     }
                     404 -> {
-                        Log.e("EventsAPI", "❌ Event not found")
-                        Result.failure(Exception("Event not found"))
+                        Log.e("EventsAPI", "❌ Not found (404): $responseText")
+                        Result.failure(Exception("Event or track not found"))
+                    }
+                    405 -> {
+                        Log.e("EventsAPI", "❌ Method not allowed (405): $responseText")
+                        Result.failure(Exception("Invalid request method - this should not happen"))
                     }
                     else -> {
-                        Log.e("EventsAPI", "❌ Error response: $responseText")
-                        Result.failure(Exception("Failed to add track: HTTP $responseCode"))
+                        Log.e("EventsAPI", "❌ Unexpected response code: $responseCode")
+                        Result.failure(Exception("Failed to add track to event: HTTP $responseCode"))
                     }
                 }
                 
             } catch (e: Exception) {
                 Log.e("EventsAPI", "❌ Network error adding track to event", e)
-                Result.failure(e)
+                Result.failure(Exception("Network error: ${e.message}"))
             }
         }
     }
