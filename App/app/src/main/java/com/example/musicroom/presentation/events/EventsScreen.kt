@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.musicroom.data.models.Event
 import com.example.musicroom.presentation.theme.*
+import com.example.musicroom.presentation.events.CreateEventDialog
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -256,12 +257,12 @@ fun EventsScreen(
     // Create Event Dialog
     if (showCreateDialog) {
         CreateEventDialog(
-            onDismiss = { showCreateDialog = false },
-            onConfirm = { title, description, location, startTime, isPublic ->
-                viewModel.createEvent(title, description, location, startTime, isPublic)
+            isCreating = isCreating,
+            onCreateEvent = { title, location, description, isPublic, startTime, endTime ->
+                viewModel.createEvent(title, description, location, startTime, endTime, isPublic)
                 showCreateDialog = false
             },
-            isCreating = isCreating
+            onDismiss = { showCreateDialog = false }
         )
     }
 }
@@ -539,167 +540,6 @@ private fun EventCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CreateEventDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String?, String, String?, Boolean) -> Unit,
-    isCreating: Boolean
-) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var isPublic by remember { mutableStateOf(true) }
-    
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Text(
-                    text = "Create Event",
-                    color = TextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Title field
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Event Title", color = TextSecondary) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = TextSecondary
-                    ),
-                    singleLine = true,
-                    enabled = !isCreating
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Location field
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location", color = TextSecondary) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = TextSecondary
-                    ),
-                    singleLine = true,
-                    enabled = !isCreating
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Description field
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Optional)", color = TextSecondary) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = TextSecondary
-                    ),
-                    maxLines = 3,
-                    enabled = !isCreating
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Public/Private toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Public Event",
-                        color = TextPrimary,
-                        fontSize = 16.sp
-                    )
-                    Switch(
-                        checked = isPublic,
-                        onCheckedChange = { isPublic = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = PrimaryPurple,
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color.DarkGray
-                        ),
-                        enabled = !isCreating
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = TextSecondary
-                        ),
-                        enabled = !isCreating
-                    ) {
-                        Text("Cancel")
-                    }
-                    
-                    Button(
-                        onClick = {
-                            if (title.isNotBlank() && location.isNotBlank()) {
-                                onConfirm(
-                                    title.trim(),
-                                    description.trim().takeIf { it.isNotBlank() },
-                                    location.trim(),
-                                    null, // Start time - using default in ViewModel
-                                    isPublic
-                                )
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                        enabled = !isCreating && title.isNotBlank() && location.isNotBlank()
-                    ) {
-                        if (isCreating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Create")
-                        }
-                    }
                 }
             }
         }
