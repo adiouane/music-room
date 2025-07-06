@@ -91,6 +91,44 @@ data class AddTrackToPlaylistResponse(
 )
 
 /**
+ * Data models matching the new swagger API responses
+ */
+data class PlaylistOwner(
+    val id: Int,
+    val name: String,
+    val avatar: String
+)
+
+data class MyPlaylistItem(
+    val id: Int,
+    val name: String,
+    val owner: PlaylistOwner,  // Object with id, name, avatar
+    val track_count: Int,
+    val followers_count: Int,
+    val is_public: Boolean,
+    val user_role: List<String>,
+    val can_edit: Boolean,
+    val created_at: String
+)
+
+data class MyPlaylistsResponse(
+    val playlists: List<MyPlaylistItem>,
+    val count: Int
+)
+
+/**
+ * Data models for public playlists endpoint - simpler format
+ */
+data class PublicPlaylistItem(
+    val id: Int,
+    val name: String,
+    val owner: String,  // Simple string, not object
+    val track_count: Int,
+    val followers_count: Int,
+    val created_at: String
+)
+
+/**
  * Enhanced API Service for playlist operations
  */
 @Singleton
@@ -99,7 +137,7 @@ class PlaylistApiService @Inject constructor(
 ) {
     
     /**
-     * Get all public playlists
+     * Get all public playlists - Updated for new API format
      */
     suspend fun getPublicPlaylists(): Result<List<PublicPlaylist>> {
         return withContext(Dispatchers.IO) {
@@ -109,7 +147,7 @@ class PlaylistApiService @Inject constructor(
                 val fullUrl = NetworkConfig.BASE_URL + "/api/playlists/"
                 Log.d("PlaylistAPI", "📡 Public URL: $fullUrl")
                 
-                val connection = createConnection(fullUrl, "GET")
+                val connection = createConnection(fullUrl, "GET", requireAuth = true)  // May need auth
                 val responseCode = connection.responseCode
                 val responseText = getResponseText(connection, responseCode)
                 
@@ -119,7 +157,7 @@ class PlaylistApiService @Inject constructor(
                 when (responseCode) {
                     200 -> {
                         Log.d("PlaylistAPI", "✅ Public playlists successful response, parsing...")
-                        val playlists = parsePlaylistsResponse(responseText, isOwner = false)
+                        val playlists = parsePublicPlaylistsResponse(responseText)
                         Log.d("PlaylistAPI", "✅ Successfully parsed ${playlists.size} public playlists")
                         Result.success(playlists)
                     }
@@ -153,7 +191,7 @@ class PlaylistApiService @Inject constructor(
     }
     
     /**
-     * Get user's own playlists - Enhanced with detailed logging
+     * Get user's own playlists - Updated for new API format
      */
     suspend fun getMyPlaylists(): Result<List<PublicPlaylist>> {
         return withContext(Dispatchers.IO) {
@@ -183,12 +221,12 @@ class PlaylistApiService @Inject constructor(
                 when (responseCode) {
                     200 -> {
                         Log.d("PlaylistAPI", "✅ My playlists successful response, parsing...")
-                        val playlists = parsePlaylistsResponse(responseText, isOwner = true)
+                        val playlists = parseMyPlaylistsResponse(responseText)
                         Log.d("PlaylistAPI", "✅ Successfully parsed ${playlists.size} user's playlists")
                         
                         // Log each playlist for debugging
                         playlists.forEachIndexed { index, playlist ->
-                            Log.d("PlaylistAPI", "🎵 Playlist $index: ${playlist.name} (${if (playlist.isPublic) "public" else "private"}) - ${playlist.songCount} tracks")
+                            Log.d("PlaylistAPI", "🎵 Playlist $index: ${playlist.name} (${if (playlist.isPublic) "public" else "private"}) - ${playlist.songCount} tracks - Owner: ${playlist.createdBy}")
                         }
                         
                         Result.success(playlists)
@@ -198,12 +236,12 @@ class PlaylistApiService @Inject constructor(
                         Result.failure(Exception("Authentication required. Please log in again."))
                     }
                     403 -> {
-                        Log.e("PlaylistAPI", "❌ Forbidden")
+                        Log.e("PlaylistAPI", "❌ Forbidden - insufficient permissions")
                         Result.failure(Exception("Access denied. Check your permissions."))
                     }
                     404 -> {
-                        Log.e("PlaylistAPI", "❌ Endpoint not found")
-                        Result.failure(Exception("My playlists service is temporarily unavailable"))
+                        Log.e("PlaylistAPI", "❌ My playlists endpoint not found")
+                        Result.failure(Exception("Playlists service is temporarily unavailable"))
                     }
                     500 -> {
                         Log.e("PlaylistAPI", "❌ Server error")
@@ -216,7 +254,7 @@ class PlaylistApiService @Inject constructor(
                 }
                 
             } catch (e: Exception) {
-                Log.e("PlaylistAPI", "❌ Exception fetching my playlists", e)
+                Log.e("PlaylistAPI", "❌ Network error fetching my playlists", e)
                 Result.failure(Exception("Network error: ${e.message}"))
             }
         }
@@ -602,13 +640,25 @@ class PlaylistApiService @Inject constructor(
             Log.d("PlaylistAPI", "📝 Parsing playlists response...")
             Log.d("PlaylistAPI", "📄 Raw response: $responseText")
             
-            val jsonArray = JSONArray(responseText)
+            val jsonResponse = JSONObject(responseText)
+            
+            // Handle the new API response format with "playlists" array and "count"
+            val playlistsArray = if (jsonResponse.has("playlists")) {
+                // New format: {"playlists": [...], "count": N}
+                Log.d("PlaylistAPI", "📊 Using new API format with playlists array")
+                jsonResponse.getJSONArray("playlists")
+            } else {
+                // Old format: direct array [...]
+                Log.d("PlaylistAPI", "📊 Using old API format with direct array")
+                JSONArray(responseText)
+            }
+            
             val playlists = mutableListOf<PublicPlaylist>()
             
-            Log.d("PlaylistAPI", "📊 Found ${jsonArray.length()} playlists in response")
+            Log.d("PlaylistAPI", "📊 Found ${playlistsArray.length()} playlists in response")
             
-            for (i in 0 until jsonArray.length()) {
-                val playlistJson = jsonArray.getJSONObject(i)
+            for (i in 0 until playlistsArray.length()) {
+                val playlistJson = playlistsArray.getJSONObject(i)
                 
                 // Log each playlist JSON for debugging
                 Log.d("PlaylistAPI", "📋 Parsing playlist $i: $playlistJson")
@@ -619,21 +669,41 @@ class PlaylistApiService @Inject constructor(
                 val followersCount = playlistJson.optInt("followers_count", 0)
                 val isPublic = playlistJson.optBoolean("is_public", true)
                 val createdAt = playlistJson.optString("created_at", null)
+                val canEdit = playlistJson.optBoolean("can_edit", false)
+                
+                // Parse owner information if available
+                var createdBy: String? = null
+                if (playlistJson.has("owner")) {
+                    val ownerJson = playlistJson.getJSONObject("owner")
+                    createdBy = ownerJson.optString("name", "Unknown")
+                }
+                
+                // Parse user role if available
+                var isOwnerPlaylist = isOwner
+                if (playlistJson.has("user_role")) {
+                    val userRolesArray = playlistJson.getJSONArray("user_role")
+                    for (j in 0 until userRolesArray.length()) {
+                        if (userRolesArray.getString(j) == "owner") {
+                            isOwnerPlaylist = true
+                            break
+                        }
+                    }
+                }
                 
                 val playlist = PublicPlaylist(
                     id = id,
                     name = name,
                     isPublic = isPublic,
-                    createdBy = if (isOwner) "You" else null,
+                    createdBy = createdBy ?: if (isOwnerPlaylist) "You" else null,
                     createdAt = createdAt,
                     updatedAt = null,
                     songCount = trackCount,
                     followersCount = followersCount,
                     description = playlistJson.optString("description", null),
-                    isOwner = isOwner
+                    isOwner = isOwnerPlaylist
                 )
                 
-                Log.d("PlaylistAPI", "✅ Parsed playlist: ${playlist.name} (ID: ${playlist.id}, tracks: ${playlist.songCount}, public: ${playlist.isPublic})")
+                Log.d("PlaylistAPI", "✅ Parsed playlist: ${playlist.name} (ID: ${playlist.id}, tracks: ${playlist.songCount}, public: ${playlist.isPublic}, owner: ${playlist.createdBy})")
                 playlists.add(playlist)
             }
             
@@ -792,6 +862,133 @@ class PlaylistApiService @Inject constructor(
         } catch (e: Exception) {
             Log.e("PlaylistAPI", "❌ Error parsing add track response", e)
             AddTrackToPlaylistResponse("Track added successfully")
+        }
+    }
+
+    /**
+     * Parse public playlists response - handles direct array format
+     */
+    private fun parsePublicPlaylistsResponse(responseText: String): List<PublicPlaylist> {
+        return try {
+            Log.d("PlaylistAPI", "📝 Parsing public playlists response...")
+            Log.d("PlaylistAPI", "📄 Raw response: $responseText")
+            
+            val jsonArray = JSONArray(responseText)
+            val playlists = mutableListOf<PublicPlaylist>()
+            
+            Log.d("PlaylistAPI", "📊 Found ${jsonArray.length()} public playlists in response")
+            
+            for (i in 0 until jsonArray.length()) {
+                val playlistJson = jsonArray.getJSONObject(i)
+                
+                // Log each playlist JSON for debugging
+                Log.d("PlaylistAPI", "📋 Parsing public playlist $i: $playlistJson")
+                
+                val id = playlistJson.optInt("id", 0).toString()
+                val name = playlistJson.optString("name", "Untitled Playlist")
+                val owner = playlistJson.optString("owner", "Unknown")
+                val trackCount = playlistJson.optInt("track_count", 0)
+                val followersCount = playlistJson.optInt("followers_count", 0)
+                val createdAt = playlistJson.optString("created_at", null)
+                
+                val playlist = PublicPlaylist(
+                    id = id,
+                    name = name,
+                    isPublic = true,  // All public playlists are public by definition
+                    createdBy = owner,
+                    createdAt = createdAt,
+                    updatedAt = null,
+                    songCount = trackCount,
+                    followersCount = followersCount,
+                    description = null,
+                    isOwner = false  // User doesn't own public playlists from this endpoint
+                )
+                
+                Log.d("PlaylistAPI", "✅ Parsed public playlist: ${playlist.name} (ID: ${playlist.id}, tracks: ${playlist.songCount}, owner: ${playlist.createdBy})")
+                playlists.add(playlist)
+            }
+            
+            Log.d("PlaylistAPI", "📊 Successfully parsed ${playlists.size} public playlists")
+            playlists
+        } catch (e: Exception) {
+            Log.e("PlaylistAPI", "❌ Error parsing public playlists response", e)
+            Log.e("PlaylistAPI", "📄 Failed to parse response: $responseText")
+            emptyList()
+        }
+    }
+
+    /**
+     * Parse my playlists response - handles object with playlists array format
+     */
+    private fun parseMyPlaylistsResponse(responseText: String): List<PublicPlaylist> {
+        return try {
+            Log.d("PlaylistAPI", "📝 Parsing my playlists response...")
+            Log.d("PlaylistAPI", "📄 Raw response: $responseText")
+            
+            val jsonResponse = JSONObject(responseText)
+            val playlistsArray = jsonResponse.getJSONArray("playlists")
+            val count = jsonResponse.optInt("count", 0)
+            
+            Log.d("PlaylistAPI", "📊 Found ${playlistsArray.length()} playlists (count: $count)")
+            
+            val playlists = mutableListOf<PublicPlaylist>()
+            
+            for (i in 0 until playlistsArray.length()) {
+                val playlistJson = playlistsArray.getJSONObject(i)
+                
+                // Log each playlist JSON for debugging
+                Log.d("PlaylistAPI", "📋 Parsing my playlist $i: $playlistJson")
+                
+                val id = playlistJson.optInt("id", 0).toString()
+                val name = playlistJson.optString("name", "Untitled Playlist")
+                val trackCount = playlistJson.optInt("track_count", 0)
+                val followersCount = playlistJson.optInt("followers_count", 0)
+                val isPublic = playlistJson.optBoolean("is_public", true)
+                val canEdit = playlistJson.optBoolean("can_edit", false)
+                val createdAt = playlistJson.optString("created_at", null)
+                
+                // Parse owner information
+                var ownerName = "Unknown"
+                if (playlistJson.has("owner")) {
+                    val ownerJson = playlistJson.getJSONObject("owner")
+                    ownerName = ownerJson.optString("name", "Unknown")
+                }
+                
+                // Parse user role
+                var isOwner = false
+                if (playlistJson.has("user_role")) {
+                    val userRolesArray = playlistJson.getJSONArray("user_role")
+                    for (j in 0 until userRolesArray.length()) {
+                        if (userRolesArray.getString(j) == "owner") {
+                            isOwner = true
+                            break
+                        }
+                    }
+                }
+                
+                val playlist = PublicPlaylist(
+                    id = id,
+                    name = name,
+                    isPublic = isPublic,
+                    createdBy = ownerName,
+                    createdAt = createdAt,
+                    updatedAt = null,
+                    songCount = trackCount,
+                    followersCount = followersCount,
+                    description = null,
+                    isOwner = isOwner
+                )
+                
+                Log.d("PlaylistAPI", "✅ Parsed my playlist: ${playlist.name} (ID: ${playlist.id}, tracks: ${playlist.songCount}, public: ${playlist.isPublic}, owner: ${playlist.createdBy}, can_edit: $canEdit)")
+                playlists.add(playlist)
+            }
+            
+            Log.d("PlaylistAPI", "📊 Successfully parsed ${playlists.size} my playlists")
+            playlists
+        } catch (e: Exception) {
+            Log.e("PlaylistAPI", "❌ Error parsing my playlists response", e)
+            Log.e("PlaylistAPI", "📄 Failed to parse response: $responseText")
+            emptyList()
         }
     }
 }
