@@ -284,60 +284,116 @@ def logout_user(refresh_token):
         return {'error': 'Invalid token'}
 
 def reset_password_request(email):
-    """Send password reset email"""
+    """Send password reset OTP to email"""
     try:
         if not User.objects.filter(email=email).exists():
             return {'error': 'User with this email does not exist'}
         
         user = User.objects.get(email=email)
         
-        # Generate password reset token
-        token = jwt.encode({
-            'user_id': user.id,
-            'action': 'password_reset',
-            'exp': datetime.utcnow() + timedelta(hours=1)
-        }, settings.SECRET_KEY, algorithm='HS256')
+        # Generate 6-digit OTP
+        import random
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
         
-        # Link points directly to backend password reset endpoint
-        reset_url = f"{settings.DEFAULT_API_URL}api/users/password-reset-confirm/?token={token}"
+        # Save OTP to user
+        user.password_reset_otp = otp
+        user.password_reset_otp_created_at = datetime.utcnow()
+        user.password_reset_otp_verified = False
+        user.save()
+        
+        # Send OTP via email
         send_mail(
-            'Reset your MusicRoom password',
-            f'Please click the link to reset your password: {reset_url}',
+            'MusicRoom Password Reset OTP',
+            f'Your password reset OTP is: {otp}\n\nThis OTP will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.',
             settings.EMAIL_HOST_USER,
             [user.email],
             fail_silently=False,
         )
         
-        return {'message': 'Password reset email sent'}
+        return {'message': 'Password reset OTP sent to your email'}
     except Exception as e:
         return {'error': str(e)}
 
-def reset_password_confirm(token, password):
-    """Confirm password reset with token"""
+def verify_password_reset_otp(email, otp):
+    """Verify OTP for password reset"""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user = User.objects.get(id=payload['user_id'])
+        user = User.objects.get(email=email)
         
-        # Check if this is a password reset token
-        if payload.get('action') != 'password_reset':
-            return {'error': 'Invalid token type'}
+        # Check if OTP exists
+        if not user.password_reset_otp:
+            return {'error': 'No OTP found. Please request a new password reset.'}
         
+        # Check if OTP is expired (10 minutes)
+        if user.password_reset_otp_created_at:
+            time_diff = datetime.utcnow() - user.password_reset_otp_created_at.replace(tzinfo=None)
+            if time_diff.total_seconds() > 600:  # 10 minutes
+                # Clear expired OTP
+                user.password_reset_otp = None
+                user.password_reset_otp_created_at = None
+                user.password_reset_otp_verified = False
+                user.save()
+                return {'error': 'OTP has expired. Please request a new password reset.'}
+        
+        # Check if OTP matches
+        if user.password_reset_otp != otp:
+            return {'error': 'Invalid OTP. Please try again.'}
+        
+        # Mark OTP as verified
+        user.password_reset_otp_verified = True
+        user.save()
+        
+        return {'message': 'OTP verified successfully. You can now set your new password.'}
+        
+    except User.DoesNotExist:
+        return {'error': 'User with this email does not exist'}
+    except Exception as e:
+        return {'error': str(e)}
+
+def reset_password_confirm(email, otp, password):
+    """Confirm password reset with OTP and new password"""
+    try:
+        user = User.objects.get(email=email)
+        
+        # Check if OTP is verified
+        if not user.password_reset_otp_verified:
+            return {'error': 'OTP not verified. Please verify OTP first.'}
+        
+        # Check if OTP exists and matches
+        if not user.password_reset_otp or user.password_reset_otp != otp:
+            return {'error': 'Invalid OTP.'}
+        
+        # Check if OTP is still valid (extend to 15 minutes for password change)
+        if user.password_reset_otp_created_at:
+            time_diff = datetime.utcnow() - user.password_reset_otp_created_at.replace(tzinfo=None)
+            if time_diff.total_seconds() > 900:  # 15 minutes
+                # Clear expired OTP
+                user.password_reset_otp = None
+                user.password_reset_otp_created_at = None
+                user.password_reset_otp_verified = False
+                user.save()
+                return {'error': 'OTP session has expired. Please request a new password reset.'}
+        
+        # Set new password
         user.set_password(password)
+        
+        # Clear OTP data
+        user.password_reset_otp = None
+        user.password_reset_otp_created_at = None
+        user.password_reset_otp_verified = False
         user.save()
         
         return {'message': 'Password reset successful! You can now log in with your new password.'}
-    except jwt.ExpiredSignatureError:
-        return {'error': 'Password reset link has expired. Please request a new password reset.'}
-    except (jwt.DecodeError, User.DoesNotExist):
-        return {'error': 'Invalid password reset link'}
+        
+    except User.DoesNotExist:
+        return {'error': 'User with this email does not exist'}
     except Exception as e:
         return {'error': str(e)}
 
-def link_social_account(user, provider, access_token):
+def link_social_account(user, provider, token):
     """Link social media account to user profile"""
     try:
         if provider == "facebook":
-            social_id = verify_facebook_token(access_token)
+            social_id = verify_facebook_token(token)
             
             if User.objects.exclude(id=user.id).filter(facebook_id=social_id).exists():
                 return {'error': 'This Facebook account is already linked to another user'}
@@ -346,7 +402,7 @@ def link_social_account(user, provider, access_token):
             user.save()
             
         elif provider == "google":
-            social_id = verify_google_token(access_token)
+            social_id = verify_google_token(token)
             
             if User.objects.exclude(id=user.id).filter(google_id=social_id).exists():
                 return {'error': 'This Google account is already linked to another user'}
@@ -373,18 +429,40 @@ def verify_facebook_token(token):
     return data['id']
 
 def verify_google_token(token):
-    """Verify Google access token and return user ID"""
-    url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
-    response = requests.get(url)
+    """Verify Google token (supports both ID tokens and access tokens) and return user ID"""
+    # First, try as ID token
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'sub' in data:
+                return data['sub']
+    except Exception:
+        pass
     
-    if response.status_code != 200:
-        raise ValidationError("Invalid Google token")
+    # If ID token fails, try as access token
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?access_token={token}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            # For access tokens, we need to make another call to get user info
+            if 'scope' in data:  # This confirms it's a valid access token
+                user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token}"
+                user_response = requests.get(user_info_url, timeout=10)
+                
+                if user_response.status_code == 200:
+                    user_data = user_response.json()
+                    if 'id' in user_data:
+                        return user_data['id']
+    except Exception:
+        pass
     
-    data = response.json()
-    if 'sub' not in data:
-        raise ValidationError("Could not retrieve Google user ID")
-    
-    return data['sub']
+    # If both fail, raise an error
+    raise ValidationError("Invalid Google token")
 
 def get_user_profile(user):
     """Get user profile data"""

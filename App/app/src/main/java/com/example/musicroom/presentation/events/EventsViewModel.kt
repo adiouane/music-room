@@ -146,13 +146,14 @@ class EventsViewModel @Inject constructor(
     }
     
     /**
-     * Create new event
+     * Create a new event
      */
     fun createEvent(
         title: String,
         description: String?,
         location: String,
         startTime: String?,
+        endTime: String?,
         isPublic: Boolean
     ) {
         viewModelScope.launch {
@@ -161,6 +162,7 @@ class EventsViewModel @Inject constructor(
                 Log.d("EventsVM", "🎪 Creating event: $title")
                 Log.d("EventsVM", "📍 Location: $location")
                 Log.d("EventsVM", "⏰ Start time input: $startTime")
+                Log.d("EventsVM", "⏰ End time input: $endTime")
                 
                 // Validate inputs
                 if (title.isBlank()) {
@@ -173,51 +175,39 @@ class EventsViewModel @Inject constructor(
                     return@launch
                 }
                 
+                if (startTime.isNullOrBlank()) {
+                    _createResult.value = CreateEventResult.Error("Event start time is required")
+                    return@launch
+                }
+                
                 // Format start time properly
-                val formattedStartTime = if (!startTime.isNullOrBlank()) {
-                    if (startTime.contains("T")) {
-                        // Already in ISO format
-                        if (startTime.endsWith("Z")) {
-                            startTime
-                        } else {
-                            "${startTime}Z"
-                        }
-                    } else {
-                        // Convert date-time format to ISO
-                        try {
-                            // If it's in format like "2025-07-06 15:30"
-                            val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
-                            val date = inputFormat.parse(startTime)
-                            
-                            val outputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                            outputFormat.timeZone = TimeZone.getTimeZone("UTC")
-                            outputFormat.format(date ?: Date())
-                        } catch (e: Exception) {
-                            Log.w("EventsVM", "⚠️ Could not parse start time, using current time + 1 hour")
-                            // Default to current time + 1 hour
-                            val currentTime = System.currentTimeMillis() + (60 * 60 * 1000)
-                            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                            sdf.timeZone = TimeZone.getTimeZone("UTC")
-                            sdf.format(Date(currentTime))
-                        }
+                val formattedStartTime = formatDateTime(startTime)
+                if (formattedStartTime == null) {
+                    _createResult.value = CreateEventResult.Error("Invalid start time format. Please use YYYY-MM-DD HH:MM")
+                    return@launch
+                }
+                
+                // Format end time if provided
+                val formattedEndTime = if (!endTime.isNullOrBlank()) {
+                    val formatted = formatDateTime(endTime)
+                    if (formatted == null) {
+                        _createResult.value = CreateEventResult.Error("Invalid end time format. Please use YYYY-MM-DD HH:MM")
+                        return@launch
                     }
+                    formatted
                 } else {
-                    // Default to current time + 1 hour
-                    val currentTime = System.currentTimeMillis() + (60 * 60 * 1000)
-                    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                    sdf.timeZone = TimeZone.getTimeZone("UTC")
-                    sdf.format(Date(currentTime))
+                    null
                 }
                 
                 Log.d("EventsVM", "⏰ Formatted start time: $formattedStartTime")
+                Log.d("EventsVM", "⏰ Formatted end time: $formattedEndTime")
                 
                 val request = CreateEventRequest(
                     title = title.trim(),
                     description = description?.trim(),
                     location = location,
                     event_start_time = formattedStartTime,
-                    event_end_time = null, // Could add end time field later
+                    event_end_time = formattedEndTime,
                     is_public = isPublic
                 )
                 
@@ -247,6 +237,34 @@ class EventsViewModel @Inject constructor(
             } finally {
                 _isCreating.value = false
             }
+        }
+    }
+    
+    /**
+     * Format datetime string to ISO format
+     */
+    private fun formatDateTime(dateTimeString: String): String? {
+        return try {
+            if (dateTimeString.contains("T")) {
+                // Already in ISO format
+                if (dateTimeString.endsWith("Z")) {
+                    dateTimeString
+                } else {
+                    "${dateTimeString}Z"
+                }
+            } else {
+                // Convert date-time format to ISO
+                val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                val date = inputFormat.parse(dateTimeString)
+                
+                val outputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                outputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                outputFormat.format(date ?: return null)
+            }
+        } catch (e: Exception) {
+            Log.w("EventsVM", "⚠️ Could not parse datetime: $dateTimeString", e)
+            null
         }
     }
     

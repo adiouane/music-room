@@ -284,12 +284,12 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL': None,
     'LOGOUT_URL': None,
     'VALIDATOR_URL': None,
-    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev/'),
+    'DEFAULT_API_URL': os.getenv('DEFAULT_API_URL', 'http://localhost:8000/api/v1/'),
 }
 
 # Add this for drf-yasg URL configuration
 SWAGGER_SETTINGS.update({
-    'DEFAULT_HOST': 'crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev',
+    'DEFAULT_HOST': 'http://localhost:8000/api/v1/',
     'DEFAULT_SCHEME': 'https',
     'SUPPORTED_SUBMIT_METHODS': ['get', 'post', 'put', 'delete', 'patch'],
 })

@@ -429,7 +429,7 @@ private fun UserCard(
                 Text(
                     text = user.name,
                     color = TextPrimary,
-                    fontSize = 16.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -438,7 +438,7 @@ private fun UserCard(
                     Text(
                         text = "@${user.username}",
                         color = TextSecondary,
-                        fontSize = 14.sp,
+                        fontSize = 8.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -464,8 +464,8 @@ private fun UserCard(
                         contentDescription = "Invite",
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Invite", fontSize = 12.sp)
+                    // Spacer(modifier = Modifier.width(4.dp))
+                    // Text("Invite", fontSize = 12.sp)
                 }
             }
         }

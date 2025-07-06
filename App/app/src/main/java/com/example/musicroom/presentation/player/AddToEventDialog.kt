@@ -8,11 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,23 +67,23 @@ class AddToEventViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.value = AddToEventUiState.Loading
-                Log.d("AddToEventVM", "🔄 Loading my manageable events for track addition")
+                Log.d("AddToEventVM", "🔄 Loading my events for track addition")
                 
-                val result = eventsApiService.getUserManageableEvents()
+                val result = eventsApiService.getMyEvents()
                 
                 if (result.isSuccess) {
                     val myEvents: List<Event> = result.getOrThrow()
                     _uiState.value = AddToEventUiState.Success(myEvents)
-                    Log.d("AddToEventVM", "✅ Loaded ${myEvents.size} manageable events")
+                    Log.d("AddToEventVM", "✅ Loaded ${myEvents.size} my events")
                 } else {
                     val error = result.exceptionOrNull()
-                    Log.e("AddToEventVM", "❌ Failed to load events", error)
+                    Log.e("AddToEventVM", "❌ Failed to load my events", error)
                     _uiState.value = AddToEventUiState.Error(error?.message ?: "Failed to load events")
                 }
                 
             } catch (e: Exception) {
-                Log.e("AddToEventVM", "❌ Failed to load events", e)
-                _uiState.value = AddToEventUiState.Error("Failed to load events")
+                Log.e("AddToEventVM", "❌ Failed to load my events", e)
+                _uiState.value = AddToEventUiState.Error("Failed to load events: ${e.message}")
             }
         }
     }
@@ -159,7 +155,7 @@ fun AddToEventDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 500.dp),
+                .heightIn(max = 600.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = DarkSurface)
         ) {
@@ -175,7 +171,7 @@ fun AddToEventDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Add to Event",
+                        text = "Add Track to My Event",
                         color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
@@ -189,13 +185,40 @@ fun AddToEventDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Track info
-                Text(
-                    text = "Adding: ${track.title} by ${track.artist}",
-                    color = TextSecondary,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = PrimaryPurple.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = "Track",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = track.title,
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "by ${track.artist}",
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -244,7 +267,7 @@ fun AddToEventDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.CheckCircle,
+                                        imageVector = Icons.Default.Error,
                                         contentDescription = "Error",
                                         tint = DarkError,
                                         modifier = Modifier.size(16.dp)
@@ -282,13 +305,13 @@ fun AddToEventDialog(
                     }
                 }
                 
-                // Events list
+                // My Events list
                 when (val currentState = uiState) {
                     is AddToEventUiState.Loading -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp),
+                                .height(300.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
@@ -311,7 +334,7 @@ fun AddToEventDialog(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp),
+                                    .height(300.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(
@@ -338,6 +361,16 @@ fun AddToEventDialog(
                                 }
                             }
                         } else {
+                            // Events list header
+                            Text(
+                                text = "Select an event to add this track:",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
                             // Events list
                             LazyColumn(
                                 modifier = Modifier.heightIn(max = 300.dp),
@@ -358,12 +391,19 @@ fun AddToEventDialog(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp),
+                                .height(300.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Error,
+                                    contentDescription = "Error",
+                                    modifier = Modifier.size(48.dp),
+                                    tint = DarkError
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "Failed to load events",
                                     color = DarkError,
@@ -433,11 +473,25 @@ private fun EventItemCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "${event.track_count} tracks • ${event.attendee_count} attending",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "${event.track_count} tracks",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "${event.attendee_count} attending",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "• ${event.location}",
+                            color = PrimaryPurple,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
             

@@ -16,7 +16,8 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, name, password, **extra_fields)
-
+    
+        
 class User(AbstractBaseUser, PermissionsMixin):
     # Use AutoField for compatibility with existing data
     id = models.AutoField(primary_key=True)
@@ -65,6 +66,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     event_notifications = models.JSONField(default=dict)  # {"event_id_inviter_id": {"event_id": 1, "inviter_name": "John", "message": "..."}}
     playlist_notifications = models.JSONField(default=dict)  # {"playlist_id_inviter_id": {"playlist_id": 1, "inviter_name": "John", "message": "..."}}
     
+    # OTP fields for password reset
+    password_reset_otp = models.CharField(max_length=6, blank=True, null=True)
+    password_reset_otp_created_at = models.DateTimeField(blank=True, null=True)
+    password_reset_otp_verified = models.BooleanField(default=False)
+    
     # Auto-generated fields (keeping your structure)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -74,6 +80,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_verified = models.BooleanField(default=False)    # Your existing field
     is_active = models.BooleanField(default=True)       # Your existing field
     is_staff = models.BooleanField(default=False)       # Required for admin
+    
+    # OTP fields for password reset
+    password_reset_otp = models.CharField(max_length=6, blank=True, null=True)
+    password_reset_otp_created_at = models.DateTimeField(blank=True, null=True)
+    password_reset_otp_verified = models.BooleanField(default=False)
     
     # Set up the user manager
     objects = UserManager()
@@ -91,5 +102,3 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.name
-
-
