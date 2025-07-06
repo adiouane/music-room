@@ -52,7 +52,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
-    url='https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev/',  # Add this line
+    url='http://localhost:8000/api/v1/',  # Add this line
 
 )
 
