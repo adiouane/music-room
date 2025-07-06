@@ -70,6 +70,9 @@ fun AuthContainer(onLoginSuccess: () -> Unit) {
                 onBackToLoginClick = { 
                     currentScreen = AuthScreenState.Login 
                 },
+                onPasswordResetComplete = {
+                    currentScreen = AuthScreenState.Login
+                },
                 viewModel = authViewModel
             )
         }

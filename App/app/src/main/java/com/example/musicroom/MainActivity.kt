@@ -89,6 +89,7 @@ import java.nio.charset.StandardCharsets
 import com.example.musicroom.presentation.playlist.PlaylistTracksScreen
 import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen // Fixed: correct package path
 import com.example.musicroom.presentation.events.EventDetailsScreen // Add this import with the other presentation imports
+import com.example.musicroom.presentation.auth.ForgotPasswordScreen // Add import for ForgotPasswordScreen
 
 @AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
@@ -233,6 +234,24 @@ class MainActivity : ComponentActivity() {
                         EventDetailsScreen(
                             eventId = eventId,
                             navController = navController
+                        )
+                    }
+                    
+                    // Forgot Password Screen
+                    composable("forgot_password") {
+                        ForgotPasswordScreen(
+                            onBackToLoginClick = {
+                                navController.navigate("login") {
+                                    popUpTo("forgot_password") { inclusive = true }
+                                }
+                            },
+                            onPasswordResetComplete = {
+                                // Navigate back to login with success message
+                                navController.navigate("login") {
+                                    popUpTo("forgot_password") { inclusive = true }
+                                }
+                                // You can add a success message here if needed
+                            }
                         )
                     }
                 }
