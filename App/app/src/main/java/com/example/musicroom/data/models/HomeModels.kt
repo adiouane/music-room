@@ -14,7 +14,8 @@ data class HomeResponse(
     val popular_songs: SongsSection,
     val recently_listened: SongsSection,
     val popular_artists: ArtistsSection,
-    val events: List<Event>
+    val events: List<Event>,
+    val notifications: NotificationsSection
 )
 
 /**
@@ -30,10 +31,38 @@ data class ApiHeaders(
 )
 
 /**
+ * Notifications section
+ */
+data class NotificationsSection(
+    val event_notifications: List<EventNotification>,
+    val playlist_notifications: List<PlaylistNotification>
+)
+
+/**
+ * Event notification model
+ */
+data class EventNotification(
+    val event_id: String,
+    val inviter_name: String,
+    val message: String,
+    val event_title: String? = null
+)
+
+/**
+ * Playlist notification model
+ */
+data class PlaylistNotification(
+    val playlist_id: String,
+    val inviter_name: String,
+    val message: String,
+    val playlist_name: String? = null
+)
+
+/**
  * Playlists section
  */
 data class PlaylistsSection(
-    val headers: ApiHeaders,
+    val headers: ApiHeaders?,
     val results: List<Playlist>
 )
 
@@ -55,7 +84,7 @@ data class Playlist(
  * Songs section
  */
 data class SongsSection(
-    val headers: ApiHeaders,
+    val headers: ApiHeaders?,
     val results: List<Song>
 )
 
@@ -89,7 +118,7 @@ data class Song(
  * Artists section
  */
 data class ArtistsSection(
-    val headers: ApiHeaders,
+    val headers: ApiHeaders?,
     val results: List<Artist>
 )
 
@@ -138,6 +167,6 @@ data class EventOrganizer(
  * Events section for home screen
  */
 data class EventsSection(
-    val headers: ApiHeaders,
+    val headers: ApiHeaders?,
     val results: List<Event>
 )

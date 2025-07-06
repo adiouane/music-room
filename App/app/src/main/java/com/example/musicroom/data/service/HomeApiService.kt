@@ -115,13 +115,9 @@ class HomeApiService @Inject constructor(
     
     /**
      * Parse the JSON response into HomeResponse object
-     * This is a simplified parsing - you might want to use a proper JSON library like Gson
      */
     private fun parseHomeResponse(jsonString: String): HomeResponse {
         val json = JSONObject(jsonString)
-        
-        // For now, return a simplified version with basic data
-        // You can expand this to fully parse all the complex nested structures
         
         return HomeResponse(
             user_playlists = parsePlaylistsSection(json.optJSONObject("user_playlists")),
@@ -129,14 +125,15 @@ class HomeApiService @Inject constructor(
             popular_songs = parseSongsSection(json.optJSONObject("popular_songs")),
             recently_listened = parseSongsSection(json.optJSONObject("recently_listened")),
             popular_artists = parseArtistsSection(json.optJSONObject("popular_artists")),
-            events = emptyList() // Parse events if needed
+            events = parseEventsList(json.optJSONArray("events")),
+            notifications = parseNotificationsSection(json.optJSONObject("notifications"))
         )
     }
     
     private fun parsePlaylistsSection(json: JSONObject?): com.example.musicroom.data.models.PlaylistsSection {
         if (json == null) {
             return com.example.musicroom.data.models.PlaylistsSection(
-                headers = com.example.musicroom.data.models.ApiHeaders("error", -1, "No data", "", 0, null),
+                headers = null,
                 results = emptyList()
             )
         }
@@ -171,7 +168,7 @@ class HomeApiService @Inject constructor(
     private fun parseSongsSection(json: JSONObject?): com.example.musicroom.data.models.SongsSection {
         if (json == null) {
             return com.example.musicroom.data.models.SongsSection(
-                headers = com.example.musicroom.data.models.ApiHeaders("error", -1, "No data", "", 0, null),
+                headers = null,
                 results = emptyList()
             )
         }
@@ -218,7 +215,7 @@ class HomeApiService @Inject constructor(
     private fun parseArtistsSection(json: JSONObject?): com.example.musicroom.data.models.ArtistsSection {
         if (json == null) {
             return com.example.musicroom.data.models.ArtistsSection(
-                headers = com.example.musicroom.data.models.ApiHeaders("error", -1, "No data", "", 0, null),
+                headers = null,
                 results = emptyList()
             )
         }
@@ -249,7 +246,109 @@ class HomeApiService @Inject constructor(
         return com.example.musicroom.data.models.ArtistsSection(headers, artists)
     }
     
-    private fun parseHeaders(json: JSONObject?): com.example.musicroom.data.models.ApiHeaders {
+    private fun parseEventsList(jsonArray: org.json.JSONArray?): List<com.example.musicroom.data.models.Event> {
+        val events = mutableListOf<com.example.musicroom.data.models.Event>()
+        
+        jsonArray?.let { array ->
+            for (i in 0 until array.length()) {
+                val eventJson = array.optJSONObject(i)
+                eventJson?.let { json ->
+                    // Parse organizer
+                    val organizerJson = json.optJSONObject("organizer")
+                    val organizer = if (organizerJson != null) {
+                        com.example.musicroom.data.models.EventOrganizer(
+                            id = organizerJson.optString("id"),
+                            name = organizerJson.optString("name"),
+                            avatar = organizerJson.optString("avatar")
+                        )
+                    } else {
+                        // Fallback: organizer might be a string (organizer name)
+                        val organizerName = json.optString("organizer", "Unknown")
+                        com.example.musicroom.data.models.EventOrganizer(
+                            id = "",
+                            name = organizerName,
+                            avatar = null
+                        )
+                    }
+                    
+                    events.add(
+                        com.example.musicroom.data.models.Event(
+                            id = json.optString("id"),
+                            title = json.optString("title"),
+                            description = json.optString("description"),
+                            location = json.optString("location"),
+                            organizer = organizer,
+                            attendee_count = json.optInt("attendee_count", 0),
+                            track_count = json.optInt("track_count", 0),
+                            is_public = json.optBoolean("is_public", true),
+                            event_start_time = json.optString("event_start_time"),
+                            event_end_time = json.optString("event_end_time"),
+                            image_url = json.optString("image_url"),
+                            created_at = json.optString("created_at"),
+                            current_user_role = json.optString("current_user_role")
+                        )
+                    )
+                }
+            }
+        }
+        
+        return events
+    }
+    
+    private fun parseNotificationsSection(json: JSONObject?): com.example.musicroom.data.models.NotificationsSection {
+        if (json == null) {
+            return com.example.musicroom.data.models.NotificationsSection(
+                event_notifications = emptyList(),
+                playlist_notifications = emptyList()
+            )
+        }
+        
+        val eventNotifications = mutableListOf<com.example.musicroom.data.models.EventNotification>()
+        val playlistNotifications = mutableListOf<com.example.musicroom.data.models.PlaylistNotification>()
+        
+        // Parse event notifications
+        val eventNotificationsArray = json.optJSONArray("event_notifications")
+        eventNotificationsArray?.let { array ->
+            for (i in 0 until array.length()) {
+                val notificationJson = array.optJSONObject(i)
+                notificationJson?.let {
+                    eventNotifications.add(
+                        com.example.musicroom.data.models.EventNotification(
+                            event_id = it.optString("event_id"),
+                            inviter_name = it.optString("inviter_name"),
+                            message = it.optString("message"),
+                            event_title = it.optString("event_title")
+                        )
+                    )
+                }
+            }
+        }
+        
+        // Parse playlist notifications
+        val playlistNotificationsArray = json.optJSONArray("playlist_notifications")
+        playlistNotificationsArray?.let { array ->
+            for (i in 0 until array.length()) {
+                val notificationJson = array.optJSONObject(i)
+                notificationJson?.let {
+                    playlistNotifications.add(
+                        com.example.musicroom.data.models.PlaylistNotification(
+                            playlist_id = it.optString("playlist_id"),
+                            inviter_name = it.optString("inviter_name"),
+                            message = it.optString("message"),
+                            playlist_name = it.optString("playlist_name")
+                        )
+                    )
+                }
+            }
+        }
+        
+        return com.example.musicroom.data.models.NotificationsSection(
+            event_notifications = eventNotifications,
+            playlist_notifications = playlistNotifications
+        )
+    }
+    
+    private fun parseHeaders(json: JSONObject?): com.example.musicroom.data.models.ApiHeaders? {
         return if (json != null) {
             com.example.musicroom.data.models.ApiHeaders(
                 status = json.optString("status"),
@@ -260,7 +359,7 @@ class HomeApiService @Inject constructor(
                 next = json.optString("next")
             )
         } else {
-            com.example.musicroom.data.models.ApiHeaders("error", -1, "No headers", "", 0, null)
+            null
         }
     }
 }

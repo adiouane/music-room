@@ -9,8 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,86 +27,57 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.musicroom.data.models.*
+import com.example.musicroom.data.models.Track
 import com.example.musicroom.presentation.theme.*
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.ui.graphics.Color
 
+/**
+ * Home Screen - Main dashboard with playlists, recommendations, and notifications
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val homeState by viewModel.homeState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-    ) {
-        // Top bar with refresh button
-        TopAppBar(
-            title = { 
-                Text(
-                    "Music Room", 
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
-                ) 
-            },
-            actions = {
-                IconButton(onClick = { viewModel.refreshHomeData() }) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = TextPrimary
-                    )
+    // Load home data when screen loads
+    LaunchedEffect(Unit) {
+        viewModel.loadHomeData()
+    }
+    
+    when (val currentState = uiState) {
+        is HomeUiState.Loading -> {
+            LoadingScreen()
+        }
+        is HomeUiState.Success -> {
+            HomeContent(
+                homeData = currentState.data,
+                navController = navController,
+                onRefresh = { viewModel.loadHomeData() },
+                onDismissEventNotification = { eventId, inviterName ->
+                    // TODO: Implement notification dismissal
+                    Log.d("HomeScreen", "Dismiss event notification: $eventId from $inviterName")
+                },
+                onDismissPlaylistNotification = { playlistId, inviterName ->
+                    // TODO: Implement notification dismissal
+                    Log.d("HomeScreen", "Dismiss playlist notification: $playlistId from $inviterName")
+                },
+                onAcceptEventInvitation = { eventId ->
+                    // TODO: Implement event invitation acceptance
+                    Log.d("HomeScreen", "Accept event invitation: $eventId")
+                },
+                onAcceptPlaylistInvitation = { playlistId ->
+                    // TODO: Implement playlist invitation acceptance
+                    Log.d("HomeScreen", "Accept playlist invitation: $playlistId")
                 }
-                // Add this to your existing TopAppBar actions in HomeScreen
-                IconButton(
-                    onClick = { /* TODO: show invitations */ }
-                ) {
-                    Box {
-                        Icon(
-                            imageVector = Icons.Default.NotificationsNone,
-                            contentDescription = "Notifications",
-                            tint = TextPrimary
-                        )
-                        // Red badge when has invitations
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(Color.Red, shape = androidx.compose.foundation.shape.CircleShape)
-                                .align(Alignment.TopEnd)
-                        )
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = DarkBackground
             )
-        )
-        
-        when (val currentState = homeState) {
-            is HomeState.Loading -> {
-                LoadingScreen()
-            }
-            is HomeState.Success -> {
-                HomeContent(
-                    homeData = currentState.homeData,
-                    navController = navController,
-                    onRefresh = { viewModel.refreshHomeData() }
-                )
-            }
-            is HomeState.Error -> {
-                ErrorScreen(
-                    message = currentState.message,
-                    onRetry = { viewModel.refreshHomeData() }
-                )
-            }
-            is HomeState.Idle -> {
-                // Initial state, should quickly transition to Loading
-            }
+        }
+        is HomeUiState.Error -> {
+            ErrorScreen(
+                message = currentState.message,
+                onRetry = { viewModel.loadHomeData() }
+            )
         }
     }
 }
@@ -127,7 +98,7 @@ private fun LoadingScreen() {
             )
             Text(
                 "Loading your music...",
-                color = TextSecondary,
+                color = TextPrimary,
                 fontSize = 16.sp
             )
         }
@@ -158,7 +129,7 @@ private fun ErrorScreen(
                 message,
                 color = TextSecondary,
                 fontSize = 14.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
             Button(
                 onClick = onRetry,
@@ -174,7 +145,11 @@ private fun ErrorScreen(
 private fun HomeContent(
     homeData: HomeResponse,
     navController: NavController,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onDismissEventNotification: (String, String) -> Unit,
+    onDismissPlaylistNotification: (String, String) -> Unit,
+    onAcceptEventInvitation: (String) -> Unit,
+    onAcceptPlaylistInvitation: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -185,6 +160,23 @@ private fun HomeContent(
         // Welcome header
         item {
             WelcomeHeader(navController)
+        }
+        
+        // Notifications Section
+        val hasNotifications = homeData.notifications.event_notifications.isNotEmpty() ||
+                homeData.notifications.playlist_notifications.isNotEmpty()
+        
+        if (hasNotifications) {
+            item {
+                NotificationsSection(
+                    notifications = homeData.notifications,
+                    onDismissEventNotification = onDismissEventNotification,
+                    onDismissPlaylistNotification = onDismissPlaylistNotification,
+                    onAcceptEventInvitation = onAcceptEventInvitation,
+                    onAcceptPlaylistInvitation = onAcceptPlaylistInvitation,
+                    navController = navController
+                )
+            }
         }
         
         // User Playlists Section
@@ -311,9 +303,73 @@ private fun HomeContent(
             }
         }
         
+        // Events Section
+        if (homeData.events.isNotEmpty()) {
+            item {
+                EventsSection(
+                    title = "Recent Events",
+                    events = homeData.events,
+                    onEventClick = { event ->
+                        navController.navigate("event_details/${event.id}")
+                    }
+                )
+            }
+        }
+        
         // Bottom padding for better scrolling
         item {
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun NotificationsSection(
+    notifications: NotificationsSection,
+    onDismissEventNotification: (String, String) -> Unit,
+    onDismissPlaylistNotification: (String, String) -> Unit,
+    onAcceptEventInvitation: (String) -> Unit,
+    onAcceptPlaylistInvitation: (String) -> Unit,
+    navController: NavController
+) {
+    Column {
+        Text(
+            text = "Notifications",
+            color = TextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Event notifications
+        notifications.event_notifications.forEach { notification ->
+            NotificationCard(
+                title = "Event Invitation",
+                message = notification.message,
+                from = notification.inviter_name,
+                onAccept = { onAcceptEventInvitation(notification.event_id) },
+                onDismiss = { onDismissEventNotification(notification.event_id, notification.inviter_name) },
+                onClick = { 
+                    navController.navigate("event_details/${notification.event_id}")
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        
+        // Playlist notifications
+        notifications.playlist_notifications.forEach { notification ->
+            NotificationCard(
+                title = "Playlist Invitation",
+                message = notification.message,
+                from = notification.inviter_name,
+                onAccept = { onAcceptPlaylistInvitation(notification.playlist_id) },
+                onDismiss = { onDismissPlaylistNotification(notification.playlist_id, notification.inviter_name) },
+                onClick = { 
+                    navController.navigate("playlist_tracks/${notification.playlist_id}")
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -595,7 +651,98 @@ private fun ArtistCard(
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventsSection(
+    title: String,
+    events: List<Event>,
+    onEventClick: (Event) -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            color = TextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(events) { event ->
+                EventCard(
+                    event = event,
+                    onClick = { onEventClick(event) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventCard(
+    event: Event,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(200.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // Event image placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(
+                        color = PrimaryPurple.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Event,
+                    contentDescription = "Event",
+                    tint = PrimaryPurple,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = event.title,
+                color = TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Text(
+                text = event.organizer.name,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Text(
+                text = "${event.attendee_count} attendees",
+                color = TextSecondary,
+                fontSize = 10.sp
             )
         }
     }

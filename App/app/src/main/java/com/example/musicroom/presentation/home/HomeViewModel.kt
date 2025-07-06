@@ -12,11 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed class HomeState {
-    object Idle : HomeState()
-    object Loading : HomeState()
-    data class Success(val homeData: HomeResponse) : HomeState()
-    data class Error(val message: String) : HomeState()
+sealed class HomeUiState {
+    object Loading : HomeUiState()
+    data class Success(val data: HomeResponse) : HomeUiState()
+    data class Error(val message: String) : HomeUiState()
 }
 
 @HiltViewModel
@@ -24,8 +23,8 @@ class HomeViewModel @Inject constructor(
     private val homeApiService: HomeApiService
 ) : ViewModel() {
     
-    private val _homeState = MutableStateFlow<HomeState>(HomeState.Idle)
-    val homeState: StateFlow<HomeState> = _homeState.asStateFlow()
+    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     
     init {
         loadHomeData()
@@ -37,7 +36,7 @@ class HomeViewModel @Inject constructor(
     fun loadHomeData() {
         viewModelScope.launch {
             try {
-                _homeState.value = HomeState.Loading
+                _uiState.value = HomeUiState.Loading
                 Log.d("HomeViewModel", "🏠 Loading home data...")
                 
                 val result = homeApiService.getHomeData()
@@ -50,16 +49,16 @@ class HomeViewModel @Inject constructor(
                     Log.d("HomeViewModel", "🔥 Popular songs: ${homeData.popular_songs.results.size}")
                     Log.d("HomeViewModel", "🎤 Popular artists: ${homeData.popular_artists.results.size}")
                     
-                    _homeState.value = HomeState.Success(homeData)
+                    _uiState.value = HomeUiState.Success(homeData)
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
                     Log.e("HomeViewModel", "❌ Failed to load home data: $error")
-                    _homeState.value = HomeState.Error(error)
+                    _uiState.value = HomeUiState.Error(error)
                 }
                 
             } catch (e: Exception) {
                 Log.e("HomeViewModel", "❌ Unexpected error loading home data: ${e.message}")
-                _homeState.value = HomeState.Error("An unexpected error occurred")
+                _uiState.value = HomeUiState.Error("An unexpected error occurred")
             }
         }
     }
@@ -69,12 +68,5 @@ class HomeViewModel @Inject constructor(
      */
     fun refreshHomeData() {
         loadHomeData()
-    }
-    
-    /**
-     * Clear the current state
-     */
-    fun clearState() {
-        _homeState.value = HomeState.Idle
     }
 }
