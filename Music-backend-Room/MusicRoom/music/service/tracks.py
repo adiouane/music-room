@@ -8,6 +8,7 @@ CLIENT_ID = settings.JAMENDO_CLIENT_ID  # Store this in your .env
 
 def get_jamendo_track(track_id):
     url = f"{JAMENDO_BASE_URL}/tracks"
+    print(f"Fetching track details for ID: {track_id}")
     params = {
         "client_id": CLIENT_ID,
         "format": "json",
@@ -89,6 +90,18 @@ def get_random_songs(limit):
         "client_id": CLIENT_ID,
         "format": "json",
         "limit": limit
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+def jamendo_track_search(query):
+    """Search for tracks by name"""
+    url = f"{JAMENDO_BASE_URL}/tracks"
+    params = {
+        "client_id": CLIENT_ID,
+        "format": "json",
+        "namesearch": query,
+        "limit": 10
     }
     response = requests.get(url, params=params)
     return response.json()

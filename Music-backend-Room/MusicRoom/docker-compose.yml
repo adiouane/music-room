@@ -45,15 +45,14 @@ services:
       - DEBUG=1
       - DATABASE_URL=postgresql://postgres:postgres123@db:5432/musicroom
       - REDIS_URL=redis://redis:6379/1
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     command: >
-      sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate &&
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput --clear &&
              python manage.py runserver 0.0.0.0:8000"
 
 volumes:

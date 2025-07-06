@@ -17,15 +17,18 @@ def get_user_playlist_stats(user):
         return {'error': str(e)}
 
 def get_popular_playlists(limit=10):
-    """Get most followed playlists"""
+    """Get most followed user playlists (no Jamendo)"""
     try:
-        playlists = Playlist.objects.filter(is_public=True).order_by('-followers__count')[:limit]
+        playlists = Playlist.objects.filter(
+            is_public=True
+        ).order_by('-followers__count')[:limit]
+        
         return playlists
     except Exception as e:
         return []
 
 def search_playlists(query, user=None):
-    """Search playlists by name"""
+    """Search user playlists by name (no Jamendo)"""
     try:
         playlists = Playlist.objects.filter(
             name__icontains=query,
@@ -41,5 +44,28 @@ def search_playlists(query, user=None):
             playlists = playlists.union(user_playlists)
         
         return playlists[:20]
+    except Exception as e:
+        return []
+    
+def get_user_playlists(user_id, limit):
+    """Get user's own playlists"""
+    try:
+        user = User.objects.get(id=user_id)
+        playlists = Playlist.objects.filter(owner=user)[:limit]
+        
+        playlists_data = []
+        for playlist in playlists:
+            playlists_data.append({
+                'id': playlist.id,
+                'name': playlist.name,
+                'track_count': len(playlist.tracks),
+                'is_public': playlist.is_public,
+                'followers_count': playlist.followers.count(),
+                'created_at': playlist.date.isoformat(),
+            })
+        
+        return playlists_data
+    except User.DoesNotExist:
+        return []
     except Exception as e:
         return []
