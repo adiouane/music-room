@@ -58,10 +58,13 @@ object NetworkConfig {
         const val GET_PLAYLISTS = "/playlists/"
         const val CREATE_PLAYLIST = "/playlists/create/"
         
-        // Events endpoints
-        const val GET_EVENTS = "/events/"
-        const val CREATE_EVENT = "/events/create/"
+        // Events endpoints - Updated to match Swagger documentation
+        const val GET_EVENTS = "/api/events/"
+        const val CREATE_EVENT = "/api/events/create/"
         const val JOIN_EVENT = "/events/join/"
+        const val ACCEPT_EVENT_INVITE = "/api/events/{event_id}/accept-invite/"
+        const val DECLINE_EVENT_INVITE = "/api/events/{event_id}/decline-invite/"
+        const val INVITE_TO_EVENT = "/api/events/{event_id}/invite/"
     }
     
     // ⚙️ NETWORK SETTINGS

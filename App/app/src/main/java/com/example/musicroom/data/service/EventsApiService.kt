@@ -215,18 +215,26 @@ class EventsApiService @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("EventsAPI", "🎪 Creating new event: ${request.title}")
+                Log.d("EventsAPI", "📍 Location: ${request.location}")
+                Log.d("EventsAPI", "⏰ Start time: ${request.event_start_time}")
+                Log.d("EventsAPI", "🌐 Is public: ${request.is_public}")
                 
-                val url = "${NetworkConfig.BASE_URL}/api/events/"
+                // Use the correct endpoint from NetworkConfig
+                val url = NetworkConfig.getFullUrl(NetworkConfig.Endpoints.CREATE_EVENT)
+                Log.d("EventsAPI", "🔗 Using endpoint: $url")
+                
                 val requestBody = JSONObject().apply {
                     put("title", request.title)
                     put("description", request.description ?: "")
                     put("location", request.location)
                     put("event_start_time", request.event_start_time)
-                    put("event_end_time", request.event_end_time ?: "")
+                    if (!request.event_end_time.isNullOrBlank()) {
+                        put("event_end_time", request.event_end_time)
+                    }
                     put("is_public", request.is_public)
                 }.toString()
                 
-                Log.d("EventsAPI", "📤 Create event request: $requestBody")
+                Log.d("EventsAPI", "📤 Create event request body: $requestBody")
                 
                 val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
@@ -238,10 +246,14 @@ class EventsApiService @Inject constructor(
                     val token = tokenManager.getToken()
                     if (token != null) {
                         setRequestProperty("Authorization", "Bearer $token")
+                        Log.d("EventsAPI", "🔑 Added authorization header")
+                    } else {
+                        Log.w("EventsAPI", "⚠️ No authentication token available")
                     }
                     
                     if (NetworkConfig.isCodespaces()) {
                         setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                        Log.d("EventsAPI", "🌐 Added CORS origin header for Codespaces")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
@@ -283,7 +295,7 @@ class EventsApiService @Inject constructor(
                                 title = title
                             )
                             
-                            Log.d("EventsAPI", "✅ Event created successfully: $eventId")
+                            Log.d("EventsAPI", "✅ Event created successfully with ID: $eventId")
                             Result.success(response)
                         } catch (e: Exception) {
                             Log.e("EventsAPI", "❌ Error parsing create event response", e)
@@ -291,28 +303,71 @@ class EventsApiService @Inject constructor(
                         }
                     }
                     400 -> {
-                        Log.e("EventsAPI", "❌ Bad request: $responseText")
+                        Log.e("EventsAPI", "❌ Bad request (400): $responseText")
                         val errorMessage = try {
                             val errorJson = JSONObject(responseText)
-                            errorJson.optString("message", "Invalid event data")
+                            val errors = mutableListOf<String>()
+                            
+                            // Check for field-specific errors
+                            if (errorJson.has("title")) {
+                                val titleErrors = errorJson.get("title")
+                                if (titleErrors is JSONArray) {
+                                    errors.add("Title: ${titleErrors.getString(0)}")
+                                } else {
+                                    errors.add("Title: $titleErrors")
+                                }
+                            }
+                            if (errorJson.has("location")) {
+                                val locationErrors = errorJson.get("location")
+                                if (locationErrors is JSONArray) {
+                                    errors.add("Location: ${locationErrors.getString(0)}")
+                                } else {
+                                    errors.add("Location: $locationErrors")
+                                }
+                            }
+                            if (errorJson.has("event_start_time")) {
+                                val timeErrors = errorJson.get("event_start_time")
+                                if (timeErrors is JSONArray) {
+                                    errors.add("Start time: ${timeErrors.getString(0)}")
+                                } else {
+                                    errors.add("Start time: $timeErrors")
+                                }
+                            }
+                            if (errorJson.has("non_field_errors")) {
+                                val nonFieldErrors = errorJson.getJSONArray("non_field_errors")
+                                for (i in 0 until nonFieldErrors.length()) {
+                                    errors.add(nonFieldErrors.getString(i))
+                                }
+                            }
+                            
+                            if (errors.isNotEmpty()) {
+                                errors.joinToString("; ")
+                            } else {
+                                errorJson.optString("message", errorJson.optString("detail", "Invalid event data"))
+                            }
                         } catch (e: Exception) {
-                            "Invalid event data"
+                            Log.e("EventsAPI", "❌ Error parsing error response", e)
+                            "Invalid event data. Please check all required fields and ensure location is valid."
                         }
                         Result.failure(Exception(errorMessage))
                     }
                     401 -> {
-                        Log.e("EventsAPI", "❌ Unauthorized - token may be expired")
-                        Result.failure(Exception("Authentication required"))
+                        Log.e("EventsAPI", "❌ Unauthorized (401) - token may be expired")
+                        Result.failure(Exception("Authentication required - please log in again"))
+                    }
+                    403 -> {
+                        Log.e("EventsAPI", "❌ Forbidden (403) - insufficient permissions")
+                        Result.failure(Exception("You don't have permission to create events"))
                     }
                     else -> {
-                        Log.e("EventsAPI", "❌ Error response: $responseText")
-                        Result.failure(Exception("Failed to create event: HTTP $responseCode"))
+                        Log.e("EventsAPI", "❌ Unexpected error response ($responseCode): $responseText")
+                        Result.failure(Exception("Failed to create event: HTTP $responseCode - $responseText"))
                     }
                 }
                 
             } catch (e: Exception) {
                 Log.e("EventsAPI", "❌ Network error creating event", e)
-                Result.failure(e)
+                Result.failure(Exception("Network error: ${e.message}"))
             }
         }
     }

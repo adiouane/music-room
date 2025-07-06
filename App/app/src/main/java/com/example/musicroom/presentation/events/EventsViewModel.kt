@@ -146,7 +146,7 @@ class EventsViewModel @Inject constructor(
     }
     
     /**
-     * Create a new event
+     * Create new event
      */
     fun createEvent(
         title: String,
@@ -159,31 +159,69 @@ class EventsViewModel @Inject constructor(
             try {
                 _isCreating.value = true
                 Log.d("EventsVM", "🎪 Creating event: $title")
+                Log.d("EventsVM", "📍 Location: $location")
+                Log.d("EventsVM", "⏰ Start time input: $startTime")
+                
+                // Validate inputs
+                if (title.isBlank()) {
+                    _createResult.value = CreateEventResult.Error("Event title is required")
+                    return@launch
+                }
+                
+                if (location.isBlank()) {
+                    _createResult.value = CreateEventResult.Error("Event location is required")
+                    return@launch
+                }
                 
                 // Format start time properly
                 val formattedStartTime = if (!startTime.isNullOrBlank()) {
                     if (startTime.contains("T")) {
-                        startTime // Already in ISO format
+                        // Already in ISO format
+                        if (startTime.endsWith("Z")) {
+                            startTime
+                        } else {
+                            "${startTime}Z"
+                        }
                     } else {
-                        "$startTime:00Z" // Convert to ISO format
+                        // Convert date-time format to ISO
+                        try {
+                            // If it's in format like "2025-07-06 15:30"
+                            val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                            val date = inputFormat.parse(startTime)
+                            
+                            val outputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                            outputFormat.timeZone = TimeZone.getTimeZone("UTC")
+                            outputFormat.format(date ?: Date())
+                        } catch (e: Exception) {
+                            Log.w("EventsVM", "⚠️ Could not parse start time, using current time + 1 hour")
+                            // Default to current time + 1 hour
+                            val currentTime = System.currentTimeMillis() + (60 * 60 * 1000)
+                            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                            sdf.timeZone = TimeZone.getTimeZone("UTC")
+                            sdf.format(Date(currentTime))
+                        }
                     }
                 } else {
-                    // Default to current time + 1 hour using SimpleDateFormat (API 21+)
-                    val currentTime = System.currentTimeMillis() + (60 * 60 * 1000) // 1 hour from now
+                    // Default to current time + 1 hour
+                    val currentTime = System.currentTimeMillis() + (60 * 60 * 1000)
                     val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
                     sdf.timeZone = TimeZone.getTimeZone("UTC")
                     sdf.format(Date(currentTime))
                 }
                 
+                Log.d("EventsVM", "⏰ Formatted start time: $formattedStartTime")
+                
                 val request = CreateEventRequest(
-                    title = title,
-                    description = description,
+                    title = title.trim(),
+                    description = description?.trim(),
                     location = location,
                     event_start_time = formattedStartTime,
                     event_end_time = null, // Could add end time field later
                     is_public = isPublic
                 )
                 
+                Log.d("EventsVM", "📤 Sending create event request")
                 val result = eventsApiService.createEvent(request)
                 
                 if (result.isSuccess) {
