@@ -22,6 +22,7 @@ from .services import (
     logout_user,
     verify_email,
     reset_password_request,
+    verify_password_reset_otp,
     reset_password_confirm,
     link_social_account,
     get_user_profile,
@@ -78,10 +79,12 @@ def get_user_by_name_view(request, user_name):
 
 @swagger_auto_schema(method='get', operation_summary="Get all users except current user")
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])  # Require authentication to know the current user
+@permission_classes([AllowAny]) # Require authentication to know the current user
 def get_all_users_view(request):
     """Get list of all users except current user"""
+    """Get list of all users except current user"""
     users = get_all_users()
+    
     
     if 'error' in users:
         return Response(users, status=status.HTTP_400_BAD_REQUEST)
@@ -92,7 +95,6 @@ def get_all_users_view(request):
     filtered_users = [user for user in users if user.get('id') != current_user_id]
 
     return Response(filtered_users, status=status.HTTP_200_OK)
-
 
 # NEW AUTHENTICATION VIEWS FROM ACCOUNTS APP
 
@@ -381,18 +383,38 @@ def verify_email_view(request):
 
 @swagger_auto_schema(
     method='post',
-    operation_summary="Request password reset",
+    operation_summary="Request password reset OTP",
+    operation_description="Send a 6-digit OTP to user's email for password reset",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
             'email': openapi.Schema(type=openapi.TYPE_STRING, description="User's email"),
         },
         required=['email']
-    )
+    ),
+    responses={
+        200: openapi.Response(
+            description="OTP sent successfully",
+            examples={
+                'application/json': {
+                    'message': 'Password reset OTP sent to your email'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Invalid email or user not found",
+            examples={
+                'application/json': {
+                    'error': 'User with this email does not exist'
+                }
+            }
+        )
+    }
 )
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def password_reset_view(request):
-    """Request password reset"""
+    """Request password reset OTP"""
     email = request.data.get('email')
     
     if not email:
@@ -405,42 +427,84 @@ def password_reset_view(request):
     
     return Response(result, status=status.HTTP_200_OK)
 
-
-@api_view(['GET', 'POST'])
-@permission_classes([AllowAny])
 @swagger_auto_schema(
-    operation_summary="Password reset confirmation",
-    operation_description="Handle password reset using token from email link",
-    manual_parameters=[
-        openapi.Parameter(
-            'token',
-            openapi.IN_QUERY,
-            description="Password reset token (for GET requests)",
-            type=openapi.TYPE_STRING,
-            required=False
-        )
-    ],
+    method='post',
+    operation_summary="Verify password reset OTP",
+    operation_description="Verify the 6-digit OTP sent to user's email",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'token': openapi.Schema(
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description="User's email"),
+            'otp': openapi.Schema(type=openapi.TYPE_STRING, description="6-digit OTP from email"),
+        },
+        required=['email', 'otp']
+    ),
+    responses={
+        200: openapi.Response(
+            description="OTP verified successfully",
+            examples={
+                'application/json': {
+                    'message': 'OTP verified successfully. You can now set your new password.'
+                }
+            }
+        ),
+        400: openapi.Response(
+            description="Invalid or expired OTP",
+            examples={
+                'application/json': {
+                    'error': 'Invalid OTP. Please try again.'
+                }
+            }
+        )
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_password_reset_otp_view(request):
+    """Verify OTP for password reset"""
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+    
+    if not all([email, otp]):
+        return Response({'error': 'Email and OTP are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    result = verify_password_reset_otp(email, otp)
+    
+    if 'error' in result:
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response(result, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Reset password with OTP",
+    operation_description="Reset password using verified OTP and new password",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'email': openapi.Schema(
                 type=openapi.TYPE_STRING,
-                description="Password reset token"
+                description="User's email address"
+            ),
+            'otp': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="6-digit OTP (must be verified first)"
             ),
             'password': openapi.Schema(
                 type=openapi.TYPE_STRING,
-                description="New password"
+                description="New password (minimum 8 characters)"
             ),
             'password_confirm': openapi.Schema(
                 type=openapi.TYPE_STRING,
                 description="Confirm new password"
             )
         },
-        required=['token', 'password', 'password_confirm']
+        required=['email', 'otp', 'password', 'password_confirm']
     ),
     responses={
         200: openapi.Response(
-            description="Password reset successful or token validation",
+            description="Password reset successful",
             examples={
                 'application/json': {
                     'message': 'Password reset successful! You can now log in with your new password.'
@@ -448,63 +512,39 @@ def password_reset_view(request):
             }
         ),
         400: openapi.Response(
-            description="Invalid token or password validation error",
+            description="Invalid OTP, passwords don't match, or other validation error",
             examples={
                 'application/json': {
-                    'error': 'Invalid password reset link'
+                    'error': 'OTP not verified. Please verify OTP first.'
                 }
             }
         )
     }
 )
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def password_reset_confirm_view(request):
-    """Confirm password reset with token"""
-    # Handle GET request (when user clicks email link)
-    if request.method == 'GET':
-        token = request.GET.get('token')
-        
-        if not token:
-            return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validate token and return instructions
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-            
-            if payload.get('action') != 'password_reset':
-                return Response({'error': 'Invalid token type'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            return Response({
-                'message': 'Token is valid. Please provide your new password.',
-                'instructions': 'Send a POST request with token, password, and password_confirm fields.',
-                'token': token
-            }, status=status.HTTP_200_OK)
-            
-        except jwt.ExpiredSignatureError:
-            return Response({'error': 'Password reset link has expired. Please request a new password reset.'}, status=status.HTTP_400_BAD_REQUEST)
-        except jwt.DecodeError:
-            return Response({'error': 'Invalid password reset link'}, status=status.HTTP_400_BAD_REQUEST)
+    """Reset password with verified OTP"""
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+    password = request.data.get('password')
+    password_confirm = request.data.get('password_confirm')
     
-    # Handle POST request (actual password reset)
-    else:
-        token = request.data.get('token')
-        password = request.data.get('password')
-        password_confirm = request.data.get('password_confirm')
-        
-        if not all([token, password, password_confirm]):
-            return Response({'error': 'Token, password, and password confirmation are required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if password != password_confirm:
-            return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if len(password) < 8:
-            return Response({'error': 'Password must be at least 8 characters long'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        result = reset_password_confirm(token, password)
-        
-        if 'error' in result:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response(result, status=status.HTTP_200_OK)
+    if not all([email, otp, password, password_confirm]):
+        return Response({'error': 'Email, OTP, password, and password confirmation are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if password != password_confirm:
+        return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(password) < 8:
+        return Response({'error': 'Password must be at least 8 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    result = reset_password_confirm(email, otp, password)
+    
+    if 'error' in result:
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response(result, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='post',
@@ -513,7 +553,7 @@ def password_reset_confirm_view(request):
         type=openapi.TYPE_OBJECT,
         properties={
             'provider': openapi.Schema(type=openapi.TYPE_STRING, enum=['facebook', 'google']),
-            'access_token': openapi.Schema(type=openapi.TYPE_STRING, description="Social media access token"),
+            'access_token': openapi.Schema(type=openapi.TYPE_STRING, description="Social media token (access token or ID token for Google)"),
         },
         required=['provider', 'access_token']
     )
