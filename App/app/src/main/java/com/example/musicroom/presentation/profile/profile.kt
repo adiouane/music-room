@@ -26,7 +26,6 @@ import java.util.Locale
 enum class ProfileSection {
     PUBLIC_INFO,
     FRIENDS_INFO,
-    PRIVATE,
     MUSIC_PREFERENCES
 }
 
@@ -93,15 +92,15 @@ fun ProfileScreen(
                     isUpdating = uiState.isUpdating,
                     selectedSection = selectedSection,
                     onSectionSelected = { selectedSection = it },
-                    onUpdateProfile = { name, bio, dateOfBirth, phoneNumber, profilePrivacy, emailPrivacy, phonePrivacy, musicPreferences, likedArtists, likedAlbums, likedSongs, genres ->
+                    onUpdateProfile = { name, bio, dateOfBirth, phoneNumber, musicPreferences, likedArtists, likedAlbums, likedSongs, genres ->
                         viewModel.updateProfile(
                             name = name,
                             bio = bio,
                             dateOfBirth = dateOfBirth,
                             phoneNumber = phoneNumber,
-                            profilePrivacy = profilePrivacy,
-                            emailPrivacy = emailPrivacy,
-                            phonePrivacy = phonePrivacy,
+                            profilePrivacy = null,
+                            emailPrivacy = null,
+                            phonePrivacy = null,
                             musicPreferences = musicPreferences,
                             likedArtists = likedArtists,
                             likedAlbums = likedAlbums,
@@ -133,9 +132,6 @@ private fun ProfileContent(
         bio: String?,
         dateOfBirth: String?,
         phoneNumber: String?,
-        profilePrivacy: String?,
-        emailPrivacy: String?,
-        phonePrivacy: String?,
         musicPreferences: List<String>?,
         likedArtists: List<String>?,
         likedAlbums: List<String>?,
@@ -228,10 +224,6 @@ private fun ProfileContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-      
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         ProfileSectionCard(
             title = "Music Preferences",
             description = "Your favorite genres and artists",
@@ -252,7 +244,7 @@ private fun ProfileContent(
                         onUpdateProfile(
                             updatedData["name"], 
                             updatedData["bio"], 
-                            null, null, null, null, null, null, null, null, null, null
+                            null, null, null, null, null, null, null
                         )
                     }
                     ProfileSection.FRIENDS_INFO -> {
@@ -260,15 +252,6 @@ private fun ProfileContent(
                             null, null, 
                             updatedData["dateOfBirth"], 
                             updatedData["phoneNumber"], 
-                            null, null, null, null, null, null, null, null
-                        )
-                    }
-                    ProfileSection.PRIVATE -> {
-                        onUpdateProfile(
-                            null, null, null, null,
-                            updatedData["profilePrivacy"],
-                            updatedData["emailPrivacy"],
-                            updatedData["phonePrivacy"],
                             null, null, null, null, null
                         )
                     }
@@ -276,7 +259,7 @@ private fun ProfileContent(
                         val genres = updatedData["genres"]?.split(",")?.map { it.trim() }
                         val artists = updatedData["artists"]?.split(",")?.map { it.trim() }
                         onUpdateProfile(
-                            null, null, null, null, null, null, null,
+                            null, null, null, null,
                             genres, artists, null, null, genres
                         )
                     }
@@ -342,25 +325,6 @@ private fun EditDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    ProfileSection.PRIVATE -> {
-                        Text("Profile Privacy", color = TextPrimary)
-                        PrivacyDropdown(
-                            value = fields["profilePrivacy"] ?: "public",
-                            onValueChange = { fields = fields.toMutableMap().apply { put("profilePrivacy", it) } }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Email Privacy", color = TextPrimary)
-                        PrivacyDropdown(
-                            value = fields["emailPrivacy"] ?: "friends",
-                            onValueChange = { fields = fields.toMutableMap().apply { put("emailPrivacy", it) } }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Phone Privacy", color = TextPrimary)
-                        PrivacyDropdown(
-                            value = fields["phonePrivacy"] ?: "private",
-                            onValueChange = { fields = fields.toMutableMap().apply { put("phonePrivacy", it) } }
-                        )
-                    }
                     ProfileSection.MUSIC_PREFERENCES -> {
                         OutlinedTextField(
                             value = fields["genres"] ?: "",
@@ -396,53 +360,6 @@ private fun EditDialog(
     )
 }
 
-@Composable
-private fun PrivacyDropdown(
-    value: String,
-    onValueChange: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val options = listOf("public", "friends", "private")
-    
-    Box {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { },
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true },
-            trailingIcon = {
-                Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null
-                )
-            }
-        )
-        
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { 
-                        Text(
-                            option.replaceFirstChar { 
-                                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
-                            }
-                        ) 
-                    },
-                    onClick = {
-                        onValueChange(option)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
 private fun getInitialFields(section: ProfileSection, userProfile: UserProfile): Map<String, String> {
     return when (section) {
         ProfileSection.PUBLIC_INFO -> mapOf(
@@ -452,11 +369,6 @@ private fun getInitialFields(section: ProfileSection, userProfile: UserProfile):
         ProfileSection.FRIENDS_INFO -> mapOf(
             "phoneNumber" to userProfile.phoneNumber,
             "dateOfBirth" to (userProfile.dateOfBirth ?: "")
-        )
-        ProfileSection.PRIVATE -> mapOf(
-            "profilePrivacy" to userProfile.profilePrivacy,
-            "emailPrivacy" to userProfile.emailPrivacy,
-            "phonePrivacy" to userProfile.phonePrivacy
         )
         ProfileSection.MUSIC_PREFERENCES -> mapOf(
             "genres" to userProfile.genres.joinToString(", "),
