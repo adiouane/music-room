@@ -78,7 +78,6 @@ def get_user_by_name_view(request, user_name):
     return Response(user, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(method='get', operation_summary="Get all users except current user")
-@swagger_auto_schema(method='get', operation_summary="Get all users except current user")
 @api_view(['GET'])
 @permission_classes([AllowAny]) # Require authentication to know the current user
 def get_all_users_view(request):
