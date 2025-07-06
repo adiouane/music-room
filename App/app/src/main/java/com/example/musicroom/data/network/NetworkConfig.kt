@@ -10,7 +10,7 @@ object NetworkConfig {
     private const val CURRENT_ENVIRONMENT = "DEVELOPMENT"
     
     // 🌐 BASE URLS FOR DIFFERENT ENVIRONMENTS
-    private const val CODESPACES_BASE_URL = "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev"
+    private const val CODESPACES_BASE_URL = "https://ideal-telegram-wj6jvgpvqj526g9-8000.app.github.dev"
     private const val LOCAL_BASE_URL_EMULATOR = "http://10.0.2.2:8000"        
     private const val LOCAL_BASE_URL_PHYSICAL = "http://10.32.130.109:8000"   
     private const val STAGING_BASE_URL = "https://staging-api.musicroom.com"
