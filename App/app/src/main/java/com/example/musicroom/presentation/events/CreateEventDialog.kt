@@ -1,5 +1,7 @@
 package com.example.musicroom.presentation.events
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.musicroom.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,31 +36,33 @@ fun CreateEventDialog(
     var description by remember { mutableStateOf("") }
     var isPublic by remember { mutableStateOf(true) }
     
-    // Date and Time states
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showStartTimePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
-    var showEndTimePicker by remember { mutableStateOf(false) }
+    // Simple date and time states
+    var showStartDateTimePicker by remember { mutableStateOf(false) }
+    var showEndDateTimePicker by remember { mutableStateOf(false) }
     
-    var startDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var startTimeHour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
-    var startTimeMinute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
+    // Use simple state for date and time
+    var startYear by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.YEAR)) }
+    var startMonth by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MONTH)) }
+    var startDay by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
+    var startHour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    var startMinute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
     
-    var endDateMillis by remember { mutableLongStateOf(System.currentTimeMillis() + (2 * 60 * 60 * 1000)) } // +2 hours
-    var endTimeHour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY) + 2) }
-    var endTimeMinute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
+    var endYear by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.YEAR)) }
+    var endMonth by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MONTH)) }
+    var endDay by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
+    var endHour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY) + 2) }
+    var endMinute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
     
     var hasEndTime by remember { mutableStateOf(false) }
     
-    // Format date and time display
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    // Format display
+    val monthNames = listOf(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    )
     
-    val startDateDisplay = dateFormat.format(Date(startDateMillis))
-    val startTimeDisplay = String.format("%02d:%02d", startTimeHour, startTimeMinute)
-    
-    val endDateDisplay = dateFormat.format(Date(endDateMillis))
-    val endTimeDisplay = String.format("%02d:%02d", endTimeHour, endTimeMinute)
+    val startDateTimeDisplay = "${monthNames[startMonth]} $startDay, $startYear at ${String.format("%02d:%02d", startHour, startMinute)}"
+    val endDateTimeDisplay = "${monthNames[endMonth]} $endDay, $endYear at ${String.format("%02d:%02d", endHour, endMinute)}"
     
     // Validation
     val titleError = when {
@@ -72,7 +77,7 @@ fun CreateEventDialog(
         else -> null
     }
     
-    // Location dropdown with predefined choices matching backend
+    // Location dropdown
     var showLocationDropdown by remember { mutableStateOf(false) }
     val predefinedLocations = listOf(
         "E1", "E2", "P1", "P2", "C3", "C4", 
@@ -166,7 +171,7 @@ fun CreateEventDialog(
                     }
                 }
                 
-                // Start Date and Time Section
+                // Start Date and Time
                 Text(
                     text = "Event Start Time *",
                     color = TextPrimary,
@@ -174,65 +179,52 @@ fun CreateEventDialog(
                     fontWeight = FontWeight.Medium
                 )
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Custom clickable field for start date/time
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isCreating) { 
+                            showStartDateTimePicker = true 
+                        }
+                        .border(
+                            width = 1.dp,
+                            color = PrimaryPurple,
+                            shape = RoundedCornerShape(4.dp)
+                        ),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    shape = RoundedCornerShape(4.dp)
                 ) {
-                    // Start Date
-                    OutlinedTextField(
-                        value = startDateDisplay,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Date") },
-                        enabled = !isCreating,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = "Start Date",
-                                tint = PrimaryPurple
-                            )
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .then(
-                                if (!isCreating) {
-                                    Modifier.clickable { showStartDatePicker = true }
-                                } else Modifier
-                            ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            focusedLabelColor = PrimaryPurple,
-                            cursorColor = PrimaryPurple
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Event,
+                            contentDescription = "Start DateTime",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(24.dp)
                         )
-                    )
-                    
-                    // Start Time
-                    OutlinedTextField(
-                        value = startTimeDisplay,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Time") },
-                        enabled = !isCreating,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = "Start Time",
-                                tint = PrimaryPurple
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Start Date & Time",
+                                color = PrimaryPurple,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .then(
-                                if (!isCreating) {
-                                    Modifier.clickable { showStartTimePicker = true }
-                                } else Modifier
-                            ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            focusedLabelColor = PrimaryPurple,
-                            cursorColor = PrimaryPurple
+                            Text(
+                                text = startDateTimeDisplay,
+                                color = TextPrimary,
+                                fontSize = 16.sp
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = PrimaryPurple,
+                            modifier = Modifier.size(20.dp)
                         )
-                    )
+                    }
                 }
                 
                 // Voting concept info card
@@ -261,7 +253,7 @@ fun CreateEventDialog(
                     }
                 }
                 
-                // End Time Toggle and Fields
+                // End Time Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -285,69 +277,56 @@ fun CreateEventDialog(
                 }
                 
                 if (hasEndTime) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Custom clickable field for end date/time
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isCreating) { 
+                                showEndDateTimePicker = true 
+                            }
+                            .border(
+                                width = 1.dp,
+                                color = PrimaryPurple,
+                                shape = RoundedCornerShape(4.dp)
+                            ),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        shape = RoundedCornerShape(4.dp)
                     ) {
-                        // End Date
-                        OutlinedTextField(
-                            value = endDateDisplay,
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("End Date") },
-                            enabled = !isCreating,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "End Date",
-                                    tint = PrimaryPurple
-                                )
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .then(
-                                    if (!isCreating) {
-                                        Modifier.clickable { showEndDatePicker = true }
-                                    } else Modifier
-                                ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryPurple,
-                                focusedLabelColor = PrimaryPurple,
-                                cursorColor = PrimaryPurple
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EventBusy,
+                                contentDescription = "End DateTime",
+                                tint = PrimaryPurple,
+                                modifier = Modifier.size(24.dp)
                             )
-                        )
-                        
-                        // End Time
-                        OutlinedTextField(
-                            value = endTimeDisplay,
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("End Time") },
-                            enabled = !isCreating,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.AccessTime,
-                                    contentDescription = "End Time",
-                                    tint = PrimaryPurple
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "End Date & Time",
+                                    color = PrimaryPurple,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .then(
-                                    if (!isCreating) {
-                                        Modifier.clickable { showEndTimePicker = true }
-                                    } else Modifier
-                                ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryPurple,
-                                focusedLabelColor = PrimaryPurple,
-                                cursorColor = PrimaryPurple
+                                Text(
+                                    text = endDateTimeDisplay,
+                                    color = TextPrimary,
+                                    fontSize = 16.sp
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = PrimaryPurple,
+                                modifier = Modifier.size(20.dp)
                             )
-                        )
+                        }
                     }
                 }
                 
-                // Description (optional)
+                // Description
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -397,24 +376,18 @@ fun CreateEventDialog(
             Button(
                 onClick = {
                     if (titleError == null && locationError == null) {
-                        // Format start time
-                        val startCalendar = Calendar.getInstance().apply {
-                            timeInMillis = startDateMillis
-                            set(Calendar.HOUR_OF_DAY, startTimeHour)
-                            set(Calendar.MINUTE, startTimeMinute)
-                            set(Calendar.SECOND, 0)
-                        }
-                        val startTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(startCalendar.time)
+                        // Format start time for backend
+                        val startTimeFormatted = String.format(
+                            "%04d-%02d-%02d %02d:%02d",
+                            startYear, startMonth + 1, startDay, startHour, startMinute
+                        )
                         
                         // Format end time if enabled
                         val endTimeFormatted = if (hasEndTime) {
-                            val endCalendar = Calendar.getInstance().apply {
-                                timeInMillis = endDateMillis
-                                set(Calendar.HOUR_OF_DAY, endTimeHour)
-                                set(Calendar.MINUTE, endTimeMinute)
-                                set(Calendar.SECOND, 0)
-                            }
-                            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(endCalendar.time)
+                            String.format(
+                                "%04d-%02d-%02d %02d:%02d",
+                                endYear, endMonth + 1, endDay, endHour, endMinute
+                            )
                         } else null
                         
                         onCreateEvent(
@@ -454,107 +427,111 @@ fun CreateEventDialog(
         containerColor = DarkSurface
     )
 
-    // Simple Date and Time Picker Dialogs (without experimental features)
-    if (showStartDatePicker) {
-        SimpleDatePickerDialog(
-            onDateSelected = { year, month, dayOfMonth ->
-                val calendar = Calendar.getInstance()
-                calendar.set(year, month, dayOfMonth)
-                startDateMillis = calendar.timeInMillis
-                showStartDatePicker = false
+    // Start Date Time Picker
+    if (showStartDateTimePicker) {
+        SimpleFixedDateTimePicker(
+            title = "Select Start Date & Time",
+            initialYear = startYear,
+            initialMonth = startMonth,
+            initialDay = startDay,
+            initialHour = startHour,
+            initialMinute = startMinute,
+            onDateTimeSelected = { year, month, day, hour, minute ->
+                startYear = year
+                startMonth = month
+                startDay = day
+                startHour = hour
+                startMinute = minute
+                showStartDateTimePicker = false
             },
-            onDismiss = { showStartDatePicker = false },
-            initialYear = Calendar.getInstance().apply { timeInMillis = startDateMillis }.get(Calendar.YEAR),
-            initialMonth = Calendar.getInstance().apply { timeInMillis = startDateMillis }.get(Calendar.MONTH),
-            initialDay = Calendar.getInstance().apply { timeInMillis = startDateMillis }.get(Calendar.DAY_OF_MONTH)
+            onDismiss = { showStartDateTimePicker = false }
         )
     }
 
-    if (showEndDatePicker) {
-        SimpleDatePickerDialog(
-            onDateSelected = { year, month, dayOfMonth ->
-                val calendar = Calendar.getInstance()
-                calendar.set(year, month, dayOfMonth)
-                endDateMillis = calendar.timeInMillis
-                showEndDatePicker = false
+    // End Date Time Picker
+    if (showEndDateTimePicker) {
+        SimpleFixedDateTimePicker(
+            title = "Select End Date & Time",
+            initialYear = endYear,
+            initialMonth = endMonth,
+            initialDay = endDay,
+            initialHour = endHour,
+            initialMinute = endMinute,
+            onDateTimeSelected = { year, month, day, hour, minute ->
+                endYear = year
+                endMonth = month
+                endDay = day
+                endHour = hour
+                endMinute = minute
+                showEndDateTimePicker = false
             },
-            onDismiss = { showEndDatePicker = false },
-            initialYear = Calendar.getInstance().apply { timeInMillis = endDateMillis }.get(Calendar.YEAR),
-            initialMonth = Calendar.getInstance().apply { timeInMillis = endDateMillis }.get(Calendar.MONTH),
-            initialDay = Calendar.getInstance().apply { timeInMillis = endDateMillis }.get(Calendar.DAY_OF_MONTH)
-        )
-    }
-
-    if (showStartTimePicker) {
-        SimpleTimePickerDialog(
-            onTimeSelected = { hour, minute ->
-                startTimeHour = hour
-                startTimeMinute = minute
-                showStartTimePicker = false
-            },
-            onDismiss = { showStartTimePicker = false },
-            initialHour = startTimeHour,
-            initialMinute = startTimeMinute
-        )
-    }
-
-    if (showEndTimePicker) {
-        SimpleTimePickerDialog(
-            onTimeSelected = { hour, minute ->
-                endTimeHour = hour
-                endTimeMinute = minute
-                showEndTimePicker = false
-            },
-            onDismiss = { showEndTimePicker = false },
-            initialHour = endTimeHour,
-            initialMinute = endTimeMinute
+            onDismiss = { showEndDateTimePicker = false }
         )
     }
 }
 
 @Composable
-private fun SimpleDatePickerDialog(
-    onDateSelected: (Int, Int, Int) -> Unit,
-    onDismiss: () -> Unit,
+private fun SimpleFixedDateTimePicker(
+    title: String,
     initialYear: Int,
     initialMonth: Int,
-    initialDay: Int
+    initialDay: Int,
+    initialHour: Int,
+    initialMinute: Int,
+    onDateTimeSelected: (Int, Int, Int, Int, Int) -> Unit,
+    onDismiss: () -> Unit
 ) {
     var selectedYear by remember { mutableIntStateOf(initialYear) }
     var selectedMonth by remember { mutableIntStateOf(initialMonth) }
     var selectedDay by remember { mutableIntStateOf(initialDay) }
+    var selectedHour by remember { mutableIntStateOf(initialHour) }
+    var selectedMinute by remember { mutableIntStateOf(initialMinute) }
     
-    val months = listOf(
+    val monthNames = listOf(
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     )
     
-    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-    val years = (currentYear..currentYear + 5).toList()
-    val days = (1..31).toList()
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Select Date",
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface)
+        ) {
             Column(
+                modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Year selection
-                Text("Year", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                LazyRow {
-                    items(years) { year ->
+                // Title
+                Text(
+                    text = title,
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                // Current selection display
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = PrimaryPurple.copy(alpha = 0.1f))
+                ) {
+                    Text(
+                        text = "${monthNames[selectedMonth]} $selectedDay, $selectedYear at ${String.format("%02d:%02d", selectedHour, selectedMinute)}",
+                        modifier = Modifier.padding(12.dp),
+                        color = PrimaryPurple,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                // Year Selection
+                Text("Year", color = TextPrimary, fontWeight = FontWeight.Medium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items((2025..2030).toList()) { year ->
                         FilterChip(
                             onClick = { selectedYear = year },
                             label = { Text(year.toString()) },
                             selected = selectedYear == year,
-                            modifier = Modifier.padding(horizontal = 4.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = PrimaryPurple,
                                 selectedLabelColor = Color.White
@@ -563,15 +540,14 @@ private fun SimpleDatePickerDialog(
                     }
                 }
                 
-                // Month selection
-                Text("Month", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                LazyRow {
-                    items(months.size) { index ->
+                // Month Selection
+                Text("Month", color = TextPrimary, fontWeight = FontWeight.Medium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(monthNames.size) { index ->
                         FilterChip(
                             onClick = { selectedMonth = index },
-                            label = { Text(months[index]) },
+                            label = { Text(monthNames[index].take(3)) },
                             selected = selectedMonth == index,
-                            modifier = Modifier.padding(horizontal = 4.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = PrimaryPurple,
                                 selectedLabelColor = Color.White
@@ -580,75 +556,14 @@ private fun SimpleDatePickerDialog(
                     }
                 }
                 
-                // Day selection
-                Text("Day", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                LazyRow {
-                    items(days) { day ->
+                // Day Selection
+                Text("Day", color = TextPrimary, fontWeight = FontWeight.Medium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items((1..31).toList()) { day ->
                         FilterChip(
                             onClick = { selectedDay = day },
                             label = { Text(day.toString()) },
                             selected = selectedDay == day,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PrimaryPurple,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onDateSelected(selectedYear, selectedMonth, selectedDay) }
-            ) {
-                Text("OK", color = PrimaryPurple)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
-            }
-        },
-        containerColor = DarkSurface
-    )
-}
-
-@Composable
-private fun SimpleTimePickerDialog(
-    onTimeSelected: (Int, Int) -> Unit,
-    onDismiss: () -> Unit,
-    initialHour: Int,
-    initialMinute: Int
-) {
-    var selectedHour by remember { mutableIntStateOf(initialHour) }
-    var selectedMinute by remember { mutableIntStateOf(initialMinute) }
-    
-    val hours = (0..23).toList()
-    val minutes = (0..59 step 5).toList() // 5-minute intervals
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Select Time",
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Hour selection
-                Text("Hour", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                LazyRow {
-                    items(hours) { hour ->
-                        FilterChip(
-                            onClick = { selectedHour = hour },
-                            label = { Text(String.format("%02d", hour)) },
-                            selected = selectedHour == hour,
-                            modifier = Modifier.padding(horizontal = 2.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = PrimaryPurple,
                                 selectedLabelColor = Color.White
@@ -657,15 +572,14 @@ private fun SimpleTimePickerDialog(
                     }
                 }
                 
-                // Minute selection
-                Text("Minute", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                LazyRow {
-                    items(minutes) { minute ->
+                // Hour Selection
+                Text("Hour", color = TextPrimary, fontWeight = FontWeight.Medium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items((0..23).toList()) { hour ->
                         FilterChip(
-                            onClick = { selectedMinute = minute },
-                            label = { Text(String.format("%02d", minute)) },
-                            selected = selectedMinute == minute,
-                            modifier = Modifier.padding(horizontal = 2.dp),
+                            onClick = { selectedHour = hour },
+                            label = { Text(String.format("%02d", hour)) },
+                            selected = selectedHour == hour,
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = PrimaryPurple,
                                 selectedLabelColor = Color.White
@@ -673,20 +587,42 @@ private fun SimpleTimePickerDialog(
                         )
                     }
                 }
+                
+                // Minute Selection
+                Text("Minute", color = TextPrimary, fontWeight = FontWeight.Medium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items((0..59 step 5).toList()) { minute ->
+                        FilterChip(
+                            onClick = { selectedMinute = minute },
+                            label = { Text(String.format("%02d", minute)) },
+                            selected = selectedMinute == minute,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryPurple,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+                
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            onDateTimeSelected(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                    ) {
+                        Text("OK")
+                    }
+                }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onTimeSelected(selectedHour, selectedMinute) }
-            ) {
-                Text("OK", color = PrimaryPurple)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
-            }
-        },
-        containerColor = DarkSurface
-    )
+        }
+    }
 }
