@@ -150,6 +150,15 @@ data class JWTTokens(
     val refresh: String
 )
 
+/**
+ * Logout response model
+ */
+data class LogoutResponse(
+    val success: Boolean,
+    val message: String,
+    val refreshToken: String? = null
+)
+
 // ========================================================================================
 // AUTHENTICATION API SERVICE CLASS
 // ========================================================================================
@@ -196,7 +205,7 @@ class AuthApiService @Inject constructor() {
                     
                     // Add CORS headers for Codespaces
                     if (NetworkConfig.isCodespaces()) {
-                        setRequestProperty("Origin", "https://ideal-telegram-wj6jvgpvqj526g9-8000.app.github.dev")
+                        setRequestProperty("Origin", "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
@@ -535,6 +544,100 @@ class AuthApiService @Inject constructor() {
             } catch (e: Exception) {
                 Log.e("AuthAPI", "❌ Google Sign-In error: ${e.message}")
                 Result.failure(e)
+            }
+        }
+    }
+    
+    /**
+     * Logout user by blacklisting refresh token
+     */
+    suspend fun logout(refreshToken: String): Result<LogoutResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("AuthAPI", "🚪 Starting user logout")
+                
+                val url = "${NetworkConfig.BASE_URL}/api/users/logout/"
+                val requestBody = JSONObject().apply {
+                    put("refresh_token", refreshToken)
+                }.toString()
+                
+                Log.d("AuthAPI", "📤 Logout request body: $requestBody")
+                
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    doOutput = true
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                }
+                
+                // Write request body
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(requestBody)
+                    writer.flush()
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("AuthAPI", "📨 Logout response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("AuthAPI", "📨 Logout response: $responseText")
+                
+                when (responseCode) {
+                    201, 200 -> {
+                        try {
+                            val jsonResponse = JSONObject(responseText)
+                            val response = LogoutResponse(
+                                success = true,
+                                message = jsonResponse.optString("message", "Successfully logged out"),
+                                refreshToken = jsonResponse.optString("refresh_token", refreshToken)
+                            )
+                            
+                            Log.d("AuthAPI", "✅ Logout successful")
+                            Result.success(response)
+                        } catch (e: Exception) {
+                            // If JSON parsing fails but status is success, still treat as success
+                            Log.d("AuthAPI", "✅ Logout successful (simple response)")
+                            val response = LogoutResponse(
+                                success = true,
+                                message = "Successfully logged out",
+                                refreshToken = refreshToken
+                            )
+                            Result.success(response)
+                        }
+                    }
+                    400 -> {
+                        Log.e("AuthAPI", "❌ Bad request: $responseText")
+                        Result.failure(Exception("Invalid refresh token"))
+                    }
+                    401 -> {
+                        Log.e("AuthAPI", "❌ Unauthorized: $responseText")
+                        Result.failure(Exception("Authentication failed"))
+                    }
+                    else -> {
+                        Log.e("AuthAPI", "❌ Logout failed: $responseCode - $responseText")
+                        Result.failure(Exception("Logout failed: HTTP $responseCode"))
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e("AuthAPI", "❌ Network error during logout", e)
+                Result.failure(Exception("Network error: ${e.message}"))
             }
         }
     }

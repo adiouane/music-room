@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -32,13 +34,23 @@ enum class ProfileSection {
 @Composable
 fun ProfileScreen(
     user: User,
+    onNavigateToLogin: () -> Unit = {}, // Keep this name for backward compatibility, even though it goes to auth
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedSection by remember { mutableStateOf<ProfileSection?>(null) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
         viewModel.loadUserProfile()
+    }
+    
+    // Handle logout success
+    LaunchedEffect(uiState.logoutSuccess) {
+        if (uiState.logoutSuccess) {
+            onNavigateToLogin()
+            viewModel.clearLogoutSuccess()
+        }
     }
     
     Box(
@@ -90,8 +102,10 @@ fun ProfileScreen(
                 ProfileContent(
                     userProfile = uiState.userProfile!!,
                     isUpdating = uiState.isUpdating,
+                    isLoggingOut = uiState.isLoggingOut,
                     selectedSection = selectedSection,
                     onSectionSelected = { selectedSection = it },
+                    onLogoutClick = { showLogoutDialog = true },
                     onUpdateProfile = { name, bio, dateOfBirth, phoneNumber, musicPreferences, likedArtists, likedAlbums, likedSongs, genres ->
                         viewModel.updateProfile(
                             name = name,
@@ -113,6 +127,18 @@ fun ProfileScreen(
         }
     }
     
+    // Logout confirmation dialog
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                viewModel.logout()
+                showLogoutDialog = false
+            },
+            onDismiss = { showLogoutDialog = false },
+            isLoggingOut = uiState.isLoggingOut
+        )
+    }
+    
     // Show error snackbar
     uiState.error?.let { error ->
         LaunchedEffect(error) {
@@ -125,8 +151,10 @@ fun ProfileScreen(
 private fun ProfileContent(
     userProfile: UserProfile,
     isUpdating: Boolean,
+    isLoggingOut: Boolean,
     selectedSection: ProfileSection?,
     onSectionSelected: (ProfileSection?) -> Unit,
+    onLogoutClick: () -> Unit,
     onUpdateProfile: (
         name: String?,
         bio: String?,
@@ -230,6 +258,75 @@ private fun ProfileContent(
             icon = Icons.Default.MusicNote,
             onClick = { onSectionSelected(ProfileSection.MUSIC_PREFERENCES) }
         )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Logout Button Section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkError.copy(alpha = 0.1f)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = "Logout",
+                        tint = DarkError,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Sign Out",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Sign out of your account",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onLogoutClick,
+                    enabled = !isLoggingOut,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkError,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    if (isLoggingOut) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Signing Out...")
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign Out")
+                    }
+                }
+            }
+        }
     }
 
     // Simple edit dialogs without external dependencies
@@ -427,4 +524,67 @@ private fun ProfileSectionCard(
             )
         }
     }
+}
+
+@Composable
+private fun LogoutConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    isLoggingOut: Boolean
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isLoggingOut) onDismiss() },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.ExitToApp,
+                contentDescription = "Logout",
+                tint = DarkError,
+                modifier = Modifier.size(28.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Sign Out",
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to sign out of your account? You'll need to log in again to access your music and playlists.",
+                color = TextSecondary
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isLoggingOut,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DarkError,
+                    contentColor = Color.White
+                )
+            ) {
+                if (isLoggingOut) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Signing Out...")
+                } else {
+                    Text("Sign Out")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoggingOut
+            ) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface
+    )
 }

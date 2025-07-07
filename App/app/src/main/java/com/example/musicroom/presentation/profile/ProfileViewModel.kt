@@ -2,8 +2,10 @@ package com.example.musicroom.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.musicroom.data.auth.TokenManager
 import com.example.musicroom.data.models.UserProfile
 import com.example.musicroom.data.repository.UserProfileRepository
+import com.example.musicroom.data.service.AuthApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +15,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val userProfileRepository: UserProfileRepository
+    private val userProfileRepository: UserProfileRepository,
+    private val authApiService: AuthApiService,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -91,8 +95,53 @@ class ProfileViewModel @Inject constructor(
         }
     }
     
+    fun logout() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoggingOut = true, error = null)
+            
+            val refreshToken = tokenManager.getRefreshToken()
+            
+            if (refreshToken != null) {
+                // Call logout API to blacklist refresh token
+                authApiService.logout(refreshToken)
+                    .onSuccess { response ->
+                        // Clear all tokens from storage
+                        tokenManager.clearTokens()
+                        
+                        _uiState.value = _uiState.value.copy(
+                            isLoggingOut = false,
+                            logoutSuccess = true,
+                            error = null
+                        )
+                    }
+                    .onFailure { error ->
+                        // Even if API fails, clear tokens locally
+                        tokenManager.clearTokens()
+                        
+                        _uiState.value = _uiState.value.copy(
+                            isLoggingOut = false,
+                            logoutSuccess = true, // Still consider it success since tokens are cleared
+                            error = null
+                        )
+                    }
+            } else {
+                // No refresh token, just clear tokens
+                tokenManager.clearTokens()
+                _uiState.value = _uiState.value.copy(
+                    isLoggingOut = false,
+                    logoutSuccess = true,
+                    error = null
+                )
+            }
+        }
+    }
+    
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+    
+    fun clearLogoutSuccess() {
+        _uiState.value = _uiState.value.copy(logoutSuccess = false)
     }
 }
 
@@ -100,5 +149,7 @@ data class ProfileUiState(
     val userProfile: UserProfile? = null,
     val isLoading: Boolean = false,
     val isUpdating: Boolean = false,
+    val isLoggingOut: Boolean = false,
+    val logoutSuccess: Boolean = false,
     val error: String? = null
 )

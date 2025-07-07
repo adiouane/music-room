@@ -64,7 +64,15 @@ fun SimpleHomeScreen(user: User, navController: NavController) {
                 PublicPlaylistsScreen(navController = navController) // Use main navController for playlist navigation
             }
             composable("profile") { 
-                ProfileScreen(user) 
+                ProfileScreen(
+                    user = user,
+                    onNavigateToLogin = {
+                        // Navigate back to auth screen and clear the entire backstack
+                        navController.navigate("auth") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                ) 
             }
             
             composable(
