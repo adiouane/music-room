@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.playlist
+package com.example.musicroomi.presentation.playlist
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
@@ -39,13 +39,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.PlaylistApiService
-import com.example.musicroom.data.service.PlaylistWithTracks
-import com.example.musicroom.data.service.PlaylistTrackDetails
-import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.presentation.player.InviteUserDialog
-import com.example.musicroom.R
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.PlaylistApiService
+import com.example.musicroomi.data.service.PlaylistWithTracks
+import com.example.musicroomi.data.service.PlaylistTrackDetails
+import com.example.musicroomi.presentation.theme.*
+import com.example.musicroomi.presentation.player.InviteUserDialog
+import com.example.musicroomi.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -465,7 +465,7 @@ fun PlaylistContent(
 
 @Composable
 fun PlaylistHeaderInfo(
-    playlistInfo: com.example.musicroom.data.service.PlaylistInfo,
+    playlistInfo: com.example.musicroomi.data.service.PlaylistInfo,
     onInviteClick: (() -> Unit)? = null
 ) {
     Card(

@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.music
+package com.example.musicroomi.presentation.music
 
 import android.util.Log
 import androidx.compose.foundation.layout.*
@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.presentation.theme.*
 
 private val musicCategories = listOf(
     "Popular", "Random", "Jazz", "Electronic", "Rock", "Classical", "Ambient", "Hip Hop"

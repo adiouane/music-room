@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.events
+package com.example.musicroomi.presentation.events
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 

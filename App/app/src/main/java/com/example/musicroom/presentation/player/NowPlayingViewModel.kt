@@ -1,10 +1,10 @@
-package com.example.musicroom.presentation.player
+package com.example.musicroomi.presentation.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.MusicPlayerService
-import com.example.musicroom.data.service.RepeatMode
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.MusicPlayerService
+import com.example.musicroomi.data.service.RepeatMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow 

@@ -1,4 +1,4 @@
-package com.example.musicroom.di
+package com.example.musicroomi.di
 
 import android.content.Context
 import com.example.musicroom.data.auth.GoogleAuthUiClient

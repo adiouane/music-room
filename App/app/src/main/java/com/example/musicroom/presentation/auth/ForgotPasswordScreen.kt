@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,7 +15,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 
 enum class PasswordResetStep {
     EMAIL_INPUT,

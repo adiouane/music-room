@@ -42,17 +42,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.gms.google-services")    // Google Services for Google Sign-In
-    id("dagger.hilt.android.plugin")        // Dependency injection
-    id("kotlin-kapt")                       // Annotation processing
+    id("com.google.gms.google-services")
+    id("dagger.hilt.android.plugin")
+    id("kotlin-kapt")
 }
 
 android {
-    namespace = "com.example.musicroom"
+    namespace = "com.example.musicroomi"
     compileSdk = 35
     
     defaultConfig {        
-        applicationId = "com.example.musicroom" 
+        applicationId = "com.example.musicroomi" 
         minSdk = 24         // Android 7.0 - Good device coverage
         targetSdk = 35      // Latest Android version
         versionCode = 1
@@ -60,29 +60,17 @@ android {
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
-    buildTypes {
-        debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.32.130.109:8000\"")
-            buildConfigField("Boolean", "IS_DEBUG", "true")
-        }
-        release {
-            buildConfigField("String", "BASE_URL", "\"https://api.musicroom.com\"")
-            buildConfigField("Boolean", "IS_DEBUG", "false")
-            // ...other release config...
-        }
-    }
     
     // ============================================================================
     // JAVA/KOTLIN COMPATIBILITY - Java 11 for modern language features
     // ============================================================================
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
     
     // ============================================================================
@@ -91,6 +79,10 @@ android {
     buildFeatures {
         compose = true      // Enable Jetpack Compose
         buildConfig = true  // Generate BuildConfig class
+    }
+    
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
     
     // ============================================================================
@@ -109,6 +101,11 @@ android {
         checkReleaseBuilds = false
         // Disable lint for test sources that are causing issues
         checkTestSources = false
+    }
+    
+    // Add this for Hilt
+    kapt {
+        correctErrorTypes = true
     }
 }
 
@@ -161,25 +158,25 @@ dependencies {
     implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.animation:animation-core")
 
-    implementation(libs.coil.compose)
-    
-    // Hilt dependency injection
-    implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
-
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
-    
-    // Coroutines
-    implementation(libs.kotlinx.coroutines.android)
-    
     // Material Icons Extended
-    implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.material.icons.extended.v150)
+    implementation("androidx.compose.material:material-icons-extended:1.5.8")
+    
+    // Lifecycle Compose for collectAsStateWithLifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
+    
+    // Hilt dependency injection
+    implementation("com.google.dagger:hilt-android:2.48")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
     // Retrofit dependencies
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -193,8 +190,16 @@ dependencies {
     implementation("androidx.media3:media3-session:1.2.1")
     
     // Google Sign-In
-    implementation(libs.play.services.auth)
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    
+    // Firebase BOM
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    
+    // Modern Google Sign-In with Credential Manager
+    implementation("androidx.credentials:credentials:1.2.2")
+    implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
     
     // For JSON parsing (if not already added)
     implementation("org.json:json:20230227")

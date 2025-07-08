@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.artist
+package com.example.musicroomi.presentation.artist
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -27,10 +27,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.musicroom.data.models.Song
-import com.example.musicroom.data.models.Artist
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.Song
+import com.example.musicroomi.data.models.Artist
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.presentation.theme.*
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 

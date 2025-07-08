@@ -1,13 +1,16 @@
 from django.conf import settings
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
 import jwt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from .models import User
 from .services import (
     get_all_users, 
     get_user_by_id, 
@@ -27,7 +30,8 @@ from .services import (
     link_social_account,
     get_user_profile,
     update_user_profile,
-    get_user_by_name
+    get_user_by_name,
+    verify_google_token
 )
 
 
@@ -622,3 +626,132 @@ def profile_update_view(request):
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
     
     return Response({'message': 'Profile updated successfully', 'user': result}, status=status.HTTP_200_OK)
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Google Sign-In",
+    operation_description="Authenticate or create user with Google ID token",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'id_token': openapi.Schema(type=openapi.TYPE_STRING, description="Google ID token"),
+            'access_token': openapi.Schema(type=openapi.TYPE_STRING, description="Google access token (optional)"),
+        },
+        required=['id_token']
+    ),
+    responses={
+        200: openapi.Response(
+            description="Authentication successful",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                    'message': openapi.Schema(type=openapi.TYPE_STRING),
+                    'tokens': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'access': openapi.Schema(type=openapi.TYPE_STRING),
+                            'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                        }
+                    ),
+                    'user': openapi.Schema(type=openapi.TYPE_OBJECT),
+                    'is_new_user': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                }
+            )
+        ),
+        400: openapi.Response(description="Invalid input"),
+        401: openapi.Response(description="Invalid Google token"),
+    }
+)
+@api_view(['POST'])
+def google_signin_view(request):
+    """Google Sign-In endpoint that creates or authenticates users"""
+    try:
+        data = request.data
+        id_token = data.get('id_token')
+        access_token = data.get('access_token')
+        
+        if not id_token:
+            return Response({'error': 'ID token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify the Google token and get user info
+        try:
+            google_user_id = verify_google_token(id_token)
+            
+            # Get user info from Google
+            import requests
+            token_info_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
+            token_response = requests.get(token_info_url, timeout=10)
+            
+            if token_response.status_code != 200:
+                return Response({'error': 'Invalid Google token'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            google_user_info = token_response.json()
+            
+            # Extract user information
+            email = google_user_info.get('email')
+            name = google_user_info.get('name', '')
+            picture = google_user_info.get('picture', '')
+            
+            if not email:
+                return Response({'error': 'Email not provided by Google'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if user exists with this Google ID
+            user = None
+            is_new_user = False
+            
+            try:
+                user = User.objects.get(google_id=google_user_id)
+            except User.DoesNotExist:
+                # Try to find user by email
+                try:
+                    user = User.objects.get(email=email)
+                    # Link Google account to existing user
+                    user.google_id = google_user_id
+                    if picture:
+                        user.avatar = picture
+                    user.save()
+                except User.DoesNotExist:
+                    # Create new user
+                    user = User.objects.create_user(
+                        username=email,  # Use email as username
+                        email=email,
+                        name=name,
+                        google_id=google_user_id,
+                        avatar=picture,
+                        is_email_verified=True  # Google accounts are pre-verified
+                    )
+                    is_new_user = True
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            # Return response
+            response_data = {
+                'success': True,
+                'message': 'Welcome to MusicRoom!' if is_new_user else 'Welcome back!',
+                'tokens': {
+                    'access': access_token,
+                    'refresh': refresh_token,
+                },
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'name': user.name,
+                    'username': user.username,
+                    'avatar': user.avatar,
+                },
+                'is_new_user': is_new_user
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({'error': 'Google authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

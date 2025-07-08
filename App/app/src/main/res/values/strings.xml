@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">MusicRoom</string>
+    <string name="app_name">Music Room</string>
+    
+    <!-- Get this from Firebase Console > Project Settings > General > Your apps > Web app -->
+    <!-- Replace with your actual web client ID -->
+    <string name="web_client_id">585476940653-3ikbesv5t9l3h2qc0ae5hdsfbl9slupr.apps.googleusercontent.com</string>
 </resources>

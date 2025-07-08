@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.playlist
+package com.example.musicroomi.presentation.playlist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.musicroom.R
-import com.example.musicroom.presentation.theme.*
-// import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
+import com.example.musicroomi.R
+import com.example.musicroomi.presentation.theme.*
+// import com.example.musicroomi.presentation.playlist.PlaylistDetailsScreen
 
 // Data models for playlist
 data class PlaylistResponse(
@@ -359,7 +359,7 @@ private fun PlaylistTrackItem(
             
             // Duration
             Text(
-                text = com.example.musicroom.presentation.playlist.formatDuration(track.duration.toIntOrNull() ?: 0),
+                text = com.example.musicroomi.presentation.playlist.formatDuration(track.duration.toIntOrNull() ?: 0),
                 color = TextSecondary,
                 fontSize = 12.sp
             )

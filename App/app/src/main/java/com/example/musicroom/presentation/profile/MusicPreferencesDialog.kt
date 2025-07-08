@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.profile
+package com.example.musicroomi.presentation.profile
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.example.musicroom.data.models.MusicPreferences
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.MusicPreferences
+import com.example.musicroomi.presentation.theme.*
 
 @Composable
 fun MusicPreferencesDialog(

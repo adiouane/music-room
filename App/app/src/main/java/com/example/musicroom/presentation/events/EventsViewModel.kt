@@ -1,11 +1,11 @@
-package com.example.musicroom.presentation.events
+package com.example.musicroomi.presentation.events
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.Event
-import com.example.musicroom.data.service.EventsApiService
-import com.example.musicroom.data.service.CreateEventRequest
+import com.example.musicroomi.data.models.Event
+import com.example.musicroomi.data.service.EventsApiService
+import com.example.musicroomi.data.service.CreateEventRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

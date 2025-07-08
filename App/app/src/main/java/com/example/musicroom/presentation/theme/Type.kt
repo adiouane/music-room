@@ -1,4 +1,4 @@
-// package com.example.musicroom.ui.theme
+// package com.example.musicroomi.ui.theme
 
 // import androidx.compose.material3.Typography
 // import androidx.compose.ui.text.TextStyle
@@ -33,7 +33,7 @@
 //     */
 // )
 
-package com.example.musicroom.presentation.theme
+package com.example.musicroomi.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

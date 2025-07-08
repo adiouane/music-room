@@ -1,4 +1,4 @@
-package com.example.musicroom.data.models
+package com.example.musicroomi.data.models
 
 /**
  * Data models for the home screen API response

@@ -1,7 +1,7 @@
-package com.example.musicroom.data.service
+package com.example.musicroomi.data.service
 
 import android.util.Log
-import com.example.musicroom.data.network.NetworkConfig
+import com.example.musicroomi.data.network.NetworkConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -205,7 +205,7 @@ class AuthApiService @Inject constructor() {
                     
                     // Add CORS headers for Codespaces
                     if (NetworkConfig.isCodespaces()) {
-                        setRequestProperty("Origin", "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev")
+                        setRequestProperty("Origin", "https://verbose-space-palm-tree-44rwj5jrwv2qjrr-8000.app.github.dev")
                     }
                     
                     connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
@@ -514,36 +514,172 @@ class AuthApiService @Inject constructor() {
     
     /**
      * ========================================================================
-     * GOOGLE SIGN-IN API
+     * GOOGLE SIGN-IN API - Creates user if doesn't exist
      * ========================================================================
      * 
-     * Authenticates user with Google OAuth credentials.
+     * Authenticates user with Google OAuth credentials and creates user account
+     * in your backend if it's the first time signing in.
      * ========================================================================
      */
     suspend fun signInWithGoogle(idToken: String, accessToken: String? = null): Result<GoogleSignInResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("AuthAPI", "🔗 Attempting Google Sign-In")
+                Log.d("AuthAPI", "🔗 Attempting Google Sign-In with backend user creation")
+                Log.d("AuthAPI", "🎫 ID Token: ${idToken.take(50)}...")
                 
-                // Mock data for testing - replace with real API call
-                // Mock success response
-                val response = GoogleSignInResponse(
-                    success = true,
-                    message = "Google Sign-In successful",
-                    token = "mock_jwt_token_${System.currentTimeMillis()}",
-                    user = UserInfo(
-                        id = "google_user_${idToken.hashCode()}",
-                        email = "google.user@example.com",
-                        name = "Google User"
-                    )
-                )
+                val requestBody = JSONObject().apply {
+                    put("id_token", idToken)
+                    if (accessToken != null) {
+                        put("access_token", accessToken)
+                    }
+                }
                 
-                Log.d("AuthAPI", "✅ Google Sign-In response: ${response.success}")
+                val fullUrl = NetworkConfig.getFullUrl(NetworkConfig.Endpoints.GOOGLE_SIGNIN)
+                Log.d("AuthAPI", "📡 Google Sign-In URL: $fullUrl")
+                
+                val url = URL(fullUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                
+                connection.apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    doInput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("User-Agent", "MusicRoom-Android-App")
+                    
+                    if (NetworkConfig.isCodespaces()) {
+                        setRequestProperty("Origin", NetworkConfig.getCurrentBaseUrl())
+                    }
+                    
+                    connectTimeout = NetworkConfig.Settings.CONNECT_TIMEOUT.toInt()
+                    readTimeout = NetworkConfig.Settings.READ_TIMEOUT.toInt()
+                }
+                
+                Log.d("AuthAPI", "📤 Sending Google Sign-In request: ${requestBody.toString()}")
+                
+                // Send the request
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(requestBody.toString())
+                    writer.flush()
+                }
+                
+                val responseCode = connection.responseCode
+                Log.d("AuthAPI", "📨 Google Sign-In response code: $responseCode")
+                
+                val responseText = if (responseCode in 200..299) {
+                    BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                } else {
+                    BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { reader ->
+                        reader.readText()
+                    }
+                }
+                
+                Log.d("AuthAPI", "📨 Google Sign-In response: $responseText")
+                
+                val response = when (responseCode) {
+                    200, 201 -> {
+                        try {
+                            val jsonResponse = JSONObject(responseText)
+                            
+                            // Parse user object from your backend response
+                            val userObject = jsonResponse.optJSONObject("user")
+                            val user = if (userObject != null) {
+                                UserInfo(
+                                    id = userObject.optInt("id", 0).toString(),
+                                    email = userObject.optString("email", ""),
+                                    name = userObject.optString("name", ""),
+                                    username = userObject.optString("username"),
+                                    avatar = userObject.optString("avatar", "default_avatar.png")
+                                )
+                            } else {
+                                // Fallback - extract from response directly
+                                UserInfo(
+                                    id = jsonResponse.optInt("id", 0).toString(),
+                                    email = jsonResponse.optString("email", ""),
+                                    name = jsonResponse.optString("name", ""),
+                                    username = jsonResponse.optString("username"),
+                                    avatar = jsonResponse.optString("avatar", "default_avatar.png")
+                                )
+                            }
+                            
+                            // Parse tokens object
+                            val tokensObject = jsonResponse.optJSONObject("tokens")
+                            val accessToken = tokensObject?.optString("access")
+                            val refreshToken = tokensObject?.optString("refresh")
+                            
+                            val isNewUser = jsonResponse.optBoolean("is_new_user", false)
+                            val message = if (isNewUser) {
+                                "Welcome to Music Room! Your account has been created."
+                            } else {
+                                "Welcome back to Music Room!"
+                            }
+                            
+                            Log.d("AuthAPI", "✅ Google Sign-In successful - User: ${user.name}, New: $isNewUser")
+                            
+                            GoogleSignInResponse(
+                                success = true,
+                                message = message,
+                                token = accessToken ?: "mock_jwt_token_${System.currentTimeMillis()}",
+                                user = user
+                            )
+                        } catch (e: Exception) {
+                            Log.e("AuthAPI", "Error parsing Google Sign-In response: ${e.message}", e)
+                            GoogleSignInResponse(
+                                success = false,
+                                message = "Failed to parse Google Sign-In response"
+                            )
+                        }
+                    }
+                    400 -> {
+                        val errorMessage = try {
+                            val jsonResponse = JSONObject(responseText)
+                            jsonResponse.optString("message") 
+                                ?: jsonResponse.optString("error")
+                                ?: "Invalid Google credentials"
+                        } catch (e: Exception) {
+                            "Invalid Google credentials"
+                        }
+                        
+                        GoogleSignInResponse(
+                            success = false,
+                            message = errorMessage
+                        )
+                    }
+                    401 -> {
+                        GoogleSignInResponse(
+                            success = false,
+                            message = "Google authentication failed"
+                        )
+                    }
+                    404 -> {
+                        GoogleSignInResponse(
+                            success = false,
+                            message = "Google Sign-In endpoint not found. Please check if backend is running."
+                        )
+                    }
+                    500 -> {
+                        GoogleSignInResponse(
+                            success = false,
+                            message = "Server error during Google Sign-In. Please try again later."
+                        )
+                    }
+                    else -> {
+                        GoogleSignInResponse(
+                            success = false,
+                            message = "Unexpected error occurred during Google Sign-In (Code: $responseCode)"
+                        )
+                    }
+                }
+                
+                Log.d("AuthAPI", "🏁 Google Sign-In final response: success=${response.success}")
                 Result.success(response)
                 
             } catch (e: Exception) {
-                Log.e("AuthAPI", "❌ Google Sign-In error: ${e.message}")
-                Result.failure(e)
+                Log.e("AuthAPI", "❌ Google Sign-In error: ${e.message}", e)
+                Result.failure(Exception("Network error during Google Sign-In: ${e.message}"))
             }
         }
     }

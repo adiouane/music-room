@@ -8,95 +8,103 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.tasks.Task
-import kotlinx.coroutines.suspendCancellableCoroutine
-import javax.inject.Inject
-import javax.inject.Singleton
-import kotlin.coroutines.resume
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.tasks.await
+import com.example.musicroomi.R
 
-@Singleton
-class GoogleAuthUiClient @Inject constructor(
+class GoogleAuthUiClient(
     private val context: Context
-) {    private val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        .requestServerAuthCode("860522913120-0fct4vg9vro5cl6fhh89h1a08bb5inl1.apps.googleusercontent.com")
-        .requestIdToken("860522913120-0fct4vg9vro5cl6fhh89h1a08bb5inl1.apps.googleusercontent.com")
+) {
+    private val auth = FirebaseAuth.getInstance()
+    
+    private val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        .requestIdToken(context.getString(R.string.web_client_id))
         .requestEmail()
-        .requestProfile()
         .build()
 
     private val googleSignInClient: GoogleSignInClient = GoogleSignIn.getClient(context, googleSignInOptions)
 
     fun getSignInIntent(): Intent {
-        Log.d("GoogleAuthUiClient", "Creating Google Sign-In intent")
+        Log.d("GoogleAuthUiClient", "🔗 Creating Google Sign-In intent")
         return googleSignInClient.signInIntent
-    }    fun signInWithIntent(data: Intent?): GoogleSignInResult {
-        Log.d("GoogleAuthUiClient", "Processing Google Sign-In result")
+    }
+
+    suspend fun signInWithIntent(data: Intent?): GoogleSignInResult {
         return try {
+            Log.d("GoogleAuthUiClient", "🔑 Processing Google Sign-In result")
+            
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             val account = task.getResult(ApiException::class.java)
-            Log.d("GoogleAuthUiClient", "Google Sign-In successful for: ${account?.email}")
-            GoogleSignInResult(
-                data = GoogleUserInfo(
-                    userId = account?.id ?: "",
-                    username = account?.displayName,
-                    profilePictureUrl = account?.photoUrl?.toString(),
-                    email = account?.email,
-                    idToken = account?.idToken
-                ),
-                errorMessage = null
-            )        } catch (e: ApiException) {
-            Log.e("GoogleAuthUiClient", "Google Sign-In failed with code: ${e.statusCode}", e)
             
-            // Temporary debug workaround for DEVELOPER_ERROR (code 10)
-            if (e.statusCode == 10) {
-                Log.w("GoogleAuthUiClient", "DEVELOPER_ERROR detected - using debug fallback")
-                GoogleSignInResult(
-                    data = GoogleUserInfo(
-                        userId = "debug_user_${System.currentTimeMillis()}",
-                        username = "Debug User",
-                        profilePictureUrl = null,
-                        email = "debug@example.com",
-                        idToken = null
-                    ),
-                    errorMessage = null
-                )
-            } else {
-                GoogleSignInResult(
+            if (account?.idToken == null) {
+                Log.e("GoogleAuthUiClient", "❌ Google ID token is null")
+                return GoogleSignInResult(
                     data = null,
-                    errorMessage = "Google Sign-In failed: ${e.message}"
+                    errorMessage = "Failed to get Google ID token"
                 )
             }
-        } catch (e: Exception) {
-            Log.e("GoogleAuthUiClient", "Unexpected error during Google Sign-In", e)
+            
+            Log.d("GoogleAuthUiClient", "🔥 Authenticating with Firebase")
+            
+            // Authenticate with Firebase using the Google ID token
+            val firebaseCredential = GoogleAuthProvider.getCredential(account.idToken, null)
+            val authResult = auth.signInWithCredential(firebaseCredential).await()
+            
+            val firebaseUser = authResult.user
+            if (firebaseUser == null) {
+                Log.e("GoogleAuthUiClient", "❌ Firebase user is null")
+                return GoogleSignInResult(
+                    data = null,
+                    errorMessage = "Failed to authenticate with Firebase"
+                )
+            }
+            
+            Log.d("GoogleAuthUiClient", "✅ Google Sign-In successful: ${firebaseUser.displayName}")
+            
+            val googleUser = GoogleUserInfo(
+                userId = firebaseUser.uid,
+                username = firebaseUser.displayName,
+                profilePictureUrl = firebaseUser.photoUrl?.toString()
+            )
+            
+            GoogleSignInResult(
+                data = googleUser,
+                errorMessage = null
+            )
+        } catch (e: ApiException) {
+            Log.e("GoogleAuthUiClient", "❌ Google Sign-In failed with code: ${e.statusCode}", e)
             GoogleSignInResult(
                 data = null,
-                errorMessage = "Unexpected error: ${e.message}"
+                errorMessage = "Google Sign-In failed: ${e.message}"
+            )
+        } catch (e: Exception) {
+            Log.e("GoogleAuthUiClient", "❌ Google Sign-In error: ${e.message}", e)
+            GoogleSignInResult(
+                data = null,
+                errorMessage = e.message
             )
         }
     }
 
-    suspend fun signOut(): GoogleSignInResult {
-        return suspendCancellableCoroutine { continuation ->
-            googleSignInClient.signOut().addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d("GoogleAuthUiClient", "Google Sign-Out successful")
-                    continuation.resume(GoogleSignInResult(data = null, errorMessage = null))
-                } else {
-                    Log.e("GoogleAuthUiClient", "Google Sign-Out failed", task.exception)
-                    continuation.resume(GoogleSignInResult(data = null, errorMessage = task.exception?.message))
-                }
-            }
+    suspend fun signOut() {
+        try {
+            googleSignInClient.signOut().await()
+            auth.signOut()
+            Log.d("GoogleAuthUiClient", "✅ Signed out successfully")
+        } catch (e: Exception) {
+            Log.e("GoogleAuthUiClient", "❌ Sign out failed: ${e.message}", e)
         }
     }
 
     fun getSignedInUser(): GoogleUserInfo? {
-        val account = GoogleSignIn.getLastSignedInAccount(context)
-        return if (account != null) {            GoogleUserInfo(
-                userId = account.id ?: "",
-                username = account.displayName,
-                profilePictureUrl = account.photoUrl?.toString(),
-                email = account.email,
-                idToken = account.idToken
-            )} else null
+        val firebaseUser = auth.currentUser
+        return firebaseUser?.let { user ->
+            GoogleUserInfo(
+                userId = user.uid,
+                username = user.displayName,
+                profilePictureUrl = user.photoUrl?.toString()
+            )
+        }
     }
 }

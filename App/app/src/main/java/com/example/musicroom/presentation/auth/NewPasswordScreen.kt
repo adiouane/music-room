@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPasswordScreen(

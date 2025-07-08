@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
 import android.util.Patterns
 import android.util.Log
@@ -24,7 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable

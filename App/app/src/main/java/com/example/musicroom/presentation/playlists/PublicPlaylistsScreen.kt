@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.playlists
+package com.example.musicroomi.presentation.playlists
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicroom.data.service.PublicPlaylist
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.service.PublicPlaylist
+import com.example.musicroomi.presentation.theme.*
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)

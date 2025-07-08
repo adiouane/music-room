@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.home
+package com.example.musicroomi.presentation.home
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -26,9 +26,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.musicroom.data.models.*
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.*
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.presentation.theme.*
 
 /**
  * Home Screen - Main dashboard with playlists, recommendations, and notifications

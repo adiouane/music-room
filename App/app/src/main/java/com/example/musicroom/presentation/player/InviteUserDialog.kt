@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.player
+package com.example.musicroomi.presentation.player
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

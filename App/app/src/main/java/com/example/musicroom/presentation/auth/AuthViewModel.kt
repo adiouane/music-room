@@ -1,18 +1,18 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.service.AuthApiService
-import com.example.musicroom.data.service.LoginResponse
-import com.example.musicroom.data.service.SignUpResponse
-import com.example.musicroom.data.service.ForgotPasswordResponse
-import com.example.musicroom.data.service.GoogleSignInResponse
-import com.example.musicroom.data.auth.TokenManager  // Fixed import - changed from data.service to data.auth
-import com.example.musicroom.data.service.PasswordResetApiService
-import com.example.musicroom.data.service.PasswordResetResponse
-import com.example.musicroom.data.service.OTPVerificationResponse
-import com.example.musicroom.data.service.PasswordResetConfirmResponse
+import com.example.musicroomi.data.service.AuthApiService
+import com.example.musicroomi.data.service.LoginResponse
+import com.example.musicroomi.data.service.SignUpResponse
+import com.example.musicroomi.data.service.ForgotPasswordResponse
+import com.example.musicroomi.data.service.GoogleSignInResponse
+import com.example.musicroomi.data.auth.TokenManager  // Fixed import - changed from data.service to data.auth
+import com.example.musicroomi.data.service.PasswordResetApiService
+import com.example.musicroomi.data.service.PasswordResetResponse
+import com.example.musicroomi.data.service.OTPVerificationResponse
+import com.example.musicroomi.data.service.PasswordResetConfirmResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

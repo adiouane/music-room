@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.player
+package com.example.musicroomi.presentation.player
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas

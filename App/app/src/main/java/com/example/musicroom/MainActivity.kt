@@ -46,7 +46,7 @@
  * ========================================================================================
  */
 
-package com.example.musicroom
+package com.example.musicroomi
 
 import android.content.Intent
 import android.net.Uri
@@ -65,31 +65,31 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.example.musicroom.presentation.mainHomeScreen.SimpleHomeScreen
-import com.example.musicroom.presentation.music.MusicSearchScreen
-import com.example.musicroom.presentation.artist.ArtistDetailsScreen
-import com.example.musicroom.presentation.theme.MusicRoomTheme
+import com.example.musicroomi.presentation.mainHomeScreen.SimpleHomeScreen
+import com.example.musicroomi.presentation.music.MusicSearchScreen
+import com.example.musicroomi.presentation.artist.ArtistDetailsScreen
+import com.example.musicroomi.presentation.theme.MusicRoomTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.musicroom.presentation.auth.AuthContainer
+import com.example.musicroomi.presentation.auth.AuthContainer
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavController
-import com.example.musicroom.presentation.splash.SplashScreen
-import com.example.musicroom.presentation.onboarding.OnboardingScreen
-import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
-import com.example.musicroom.presentation.player.NowPlayingScreen
-import com.example.musicroom.data.models.Track
+import com.example.musicroomi.presentation.splash.SplashScreen
+import com.example.musicroomi.presentation.onboarding.OnboardingScreen
+import com.example.musicroomi.presentation.playlist.PlaylistDetailsScreen
+import com.example.musicroomi.presentation.player.NowPlayingScreen
+import com.example.musicroomi.data.models.Track
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import com.example.musicroom.presentation.playlist.PlaylistTracksScreen
-import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen // Fixed: correct package path
-import com.example.musicroom.presentation.events.EventDetailsScreen // Add this import with the other presentation imports
-import com.example.musicroom.presentation.auth.ForgotPasswordScreen // Add import for ForgotPasswordScreen
+import com.example.musicroomi.presentation.playlist.PlaylistTracksScreen
+import com.example.musicroomi.presentation.playlists.PublicPlaylistsScreen // Fixed: correct package path
+import com.example.musicroomi.presentation.events.EventDetailsScreen // Add this import with the other presentation imports
+import com.example.musicroomi.presentation.auth.ForgotPasswordScreen // Add import for ForgotPasswordScreen
 
 @AndroidEntryPoint // Enable Hilt dependency injection for this activity
 class MainActivity : ComponentActivity() {
@@ -147,7 +147,7 @@ class MainActivity : ComponentActivity() {
                       
                     composable("home") {
                         // Create a dummy user since we removed user management from auth
-                        val dummyUser = com.example.musicroom.data.models.User(
+                        val dummyUser = com.example.musicroomi.data.models.User(
                             id = "dummy_user",
                             name = "User",
                             username = "user",
@@ -180,7 +180,7 @@ class MainActivity : ComponentActivity() {
                         val trackDuration = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDuration") ?: "", "UTF-8")
                         val trackDescription = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("trackDescription") ?: "", "UTF-8")
                         
-                        val track = com.example.musicroom.data.models.Track(
+                        val track = com.example.musicroomi.data.models.Track(
                             id = trackId,
                             title = trackTitle,
                             artist = trackArtist,

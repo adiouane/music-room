@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,8 +51,8 @@ fun AuthContainer(onLoginSuccess: () -> Unit) {
                 },
                 onForgotPasswordClick = { 
                     currentScreen = AuthScreenState.ForgotPassword 
-                },
-                viewModel = authViewModel
+                }
+                // Remove the viewModel parameter since LoginScreen creates its own
             )
         }
         

@@ -1,4 +1,4 @@
-package com.example.musicroom.data.models
+package com.example.musicroomi.data.models
 
 /**
  * Data class representing a user in the application
@@ -24,6 +24,6 @@ data class ArtistsApiResponse(
 )
 
 data class PopularArtists(
-    val headers: com.example.musicroom.data.models.ApiHeaders, // Reference the one in HomeModels
-    val results: List<com.example.musicroom.data.models.Artist> // Reference the one in HomeModels
+    val headers: com.example.musicroomi.data.models.ApiHeaders, // Reference the one in HomeModels
+    val results: List<com.example.musicroomi.data.models.Artist> // Reference the one in HomeModels
 )

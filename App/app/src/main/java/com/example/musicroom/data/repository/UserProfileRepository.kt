@@ -1,9 +1,9 @@
-package com.example.musicroom.data.repository
+package com.example.musicroomi.data.repository
 
-import com.example.musicroom.data.models.UserProfile
-import com.example.musicroom.data.service.UserProfileApiService
-import com.example.musicroom.data.service.UserProfileResponse
-import com.example.musicroom.data.service.UpdateUserProfileRequest
+import com.example.musicroomi.data.models.UserProfile
+import com.example.musicroomi.data.service.UserProfileApiService
+import com.example.musicroomi.data.service.UserProfileResponse
+import com.example.musicroomi.data.service.UpdateUserProfileRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 

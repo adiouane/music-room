@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.events
+package com.example.musicroomi.presentation.events
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicroom.data.models.Event
-import com.example.musicroom.presentation.theme.*
-import com.example.musicroom.presentation.events.CreateEventDialog
+import com.example.musicroomi.data.models.Event
+import com.example.musicroomi.presentation.theme.*
+import com.example.musicroomi.presentation.events.CreateEventDialog
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -1,4 +1,4 @@
-package com.example.musicroom.data.auth
+package com.example.musicroomi.data.auth
 
 data class GoogleUserInfo(
     val userId: String,

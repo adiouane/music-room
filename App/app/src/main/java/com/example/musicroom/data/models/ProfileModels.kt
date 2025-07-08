@@ -1,4 +1,4 @@
-package com.example.musicroom.data.models
+package com.example.musicroomi.data.models
 
 /**
  * Updated UserProfile data classes to match backend API

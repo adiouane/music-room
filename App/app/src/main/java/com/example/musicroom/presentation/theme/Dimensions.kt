@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.theme
+package com.example.musicroomi.presentation.theme
 
 import androidx.compose.ui.unit.dp
 

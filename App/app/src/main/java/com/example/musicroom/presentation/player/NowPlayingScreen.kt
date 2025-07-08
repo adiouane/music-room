@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.player
+package com.example.musicroomi.presentation.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,10 +26,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.RepeatMode
-import com.example.musicroom.data.service.PlaylistApiService
-import com.example.musicroom.data.service.PublicPlaylist
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.RepeatMode
+import com.example.musicroomi.data.service.PlaylistApiService
+import com.example.musicroomi.data.service.PublicPlaylist
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -1,11 +1,11 @@
-package com.example.musicroom.presentation.profile
+package com.example.musicroomi.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.auth.TokenManager
-import com.example.musicroom.data.models.UserProfile
-import com.example.musicroom.data.repository.UserProfileRepository
-import com.example.musicroom.data.service.AuthApiService
+import com.example.musicroomi.data.auth.TokenManager
+import com.example.musicroomi.data.models.UserProfile
+import com.example.musicroomi.data.repository.UserProfileRepository
+import com.example.musicroomi.data.service.AuthApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

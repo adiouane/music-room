@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.mainHomeScreen
+package com.example.musicroomi.presentation.mainHomeScreen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.musicroom.data.models.User
+import com.example.musicroomi.data.models.User
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -20,14 +20,14 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController  // Add this import
-import com.example.musicroom.presentation.events.EventsScreen
-import com.example.musicroom.presentation.profile.ProfileScreen
-import com.example.musicroom.presentation.theme.* 
-import com.example.musicroom.presentation.room.*
-import com.example.musicroom.presentation.playlist.PlaylistDetailsScreen
-import com.example.musicroom.presentation.playlists.PublicPlaylistsScreen
-import com.example.musicroom.presentation.home.HomeScreen  // Updated import to use new HomeScreen
-import com.example.musicroom.presentation.player.NowPlayingScreen
+import com.example.musicroomi.presentation.events.EventsScreen
+import com.example.musicroomi.presentation.profile.ProfileScreen
+import com.example.musicroomi.presentation.theme.* 
+import com.example.musicroomi.presentation.room.*
+import com.example.musicroomi.presentation.playlist.PlaylistDetailsScreen
+import com.example.musicroomi.presentation.playlists.PublicPlaylistsScreen
+import com.example.musicroomi.presentation.home.HomeScreen  // Updated import to use new HomeScreen
+import com.example.musicroomi.presentation.player.NowPlayingScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.example.musicroom.data.models
+package com.example.musicroomi.data.models
 
 data class MusicRoom(
     val id: String,

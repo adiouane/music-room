@@ -1,11 +1,11 @@
-package com.example.musicroom.presentation.home
+package com.example.musicroomi.presentation.home
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.HomeResponse
-import com.example.musicroom.data.service.HomeApiService
-import com.example.musicroom.data.service.EventsApiService
+import com.example.musicroomi.data.models.HomeResponse
+import com.example.musicroomi.data.service.HomeApiService
+import com.example.musicroomi.data.service.EventsApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.home
+package com.example.musicroomi.presentation.home
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 
 /**
  * NotificationCard component for displaying event and playlist invitations

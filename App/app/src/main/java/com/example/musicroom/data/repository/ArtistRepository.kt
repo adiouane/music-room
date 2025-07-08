@@ -1,7 +1,7 @@
-package com.example.musicroom.data.repository
+package com.example.musicroomi.data.repository
 
-import com.example.musicroom.data.models.Artist
-import com.example.musicroom.data.models.ArtistsApiResponse
+import com.example.musicroomi.data.models.Artist
+import com.example.musicroomi.data.models.ArtistsApiResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit

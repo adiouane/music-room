@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.events
+package com.example.musicroomi.presentation.events
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -30,10 +30,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.musicroom.data.models.Event
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.EventsApiService
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.Event
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.EventsApiService
+import com.example.musicroomi.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

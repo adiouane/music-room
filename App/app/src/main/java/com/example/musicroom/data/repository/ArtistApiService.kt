@@ -1,6 +1,6 @@
-package com.example.musicroom.data.repository
+package com.example.musicroomi.data.repository
 
-import com.example.musicroom.data.models.ArtistsApiResponse
+import com.example.musicroomi.data.models.ArtistsApiResponse
 import retrofit2.http.GET
 
 interface ArtistApiService {

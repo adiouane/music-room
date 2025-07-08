@@ -1,4 +1,4 @@
-package com.example.musicroom.data.network
+package com.example.musicroomi.data.network
 
 /**
  * Network configuration for the MusicRoom app
@@ -10,7 +10,7 @@ object NetworkConfig {
     private const val CURRENT_ENVIRONMENT = "DEVELOPMENT"
     
     // 🌐 BASE URLS FOR DIFFERENT ENVIRONMENTS
-    private const val CODESPACES_BASE_URL = "https://crispy-fishstick-v7x7p6vgj75hpxrx-8000.app.github.dev"
+    private const val CODESPACES_BASE_URL = "https://verbose-space-palm-tree-44rwj5jrwv2qjrr-8000.app.github.dev"
     private const val LOCAL_BASE_URL_EMULATOR = "http://10.0.2.2:8000"        
     private const val LOCAL_BASE_URL_PHYSICAL = "http://10.32.130.109:8000"   
     private const val STAGING_BASE_URL = "https://staging-api.musicroom.com"
@@ -38,7 +38,7 @@ object NetworkConfig {
         const val LOGIN = "/api/users/login/"
         const val SIGNUP = "/api/users/create/"
         const val FORGOT_PASSWORD = "/auth/forgot-password/"
-        const val GOOGLE_SIGNIN = "/auth/google/"
+        const val GOOGLE_SIGNIN = "/api/users/google-signin/"  // Updated to match your backend pattern
         
         // Home endpoint
         const val HOME = "/api/home/"

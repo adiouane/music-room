@@ -1,8 +1,8 @@
-package com.example.musicroom.data.repository
+package com.example.musicroomi.data.repository
 
-import com.example.musicroom.data.models.Song
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.MusicApiService
+import com.example.musicroomi.data.models.Song
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.MusicApiService
 import javax.inject.Inject
 import javax.inject.Singleton
 

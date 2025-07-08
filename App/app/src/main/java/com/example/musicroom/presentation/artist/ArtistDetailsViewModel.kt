@@ -1,12 +1,12 @@
-package com.example.musicroom.presentation.artist
+package com.example.musicroomi.presentation.artist
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.Song
-import com.example.musicroom.data.models.Artist
-import com.example.musicroom.data.service.MusicApiService
-import com.example.musicroom.data.service.HomeApiService
+import com.example.musicroomi.data.models.Song
+import com.example.musicroomi.data.models.Artist
+import com.example.musicroomi.data.service.MusicApiService
+import com.example.musicroomi.data.service.HomeApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

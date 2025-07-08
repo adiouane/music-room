@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.profile
+package com.example.musicroomi.presentation.profile
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.musicroom.data.models.*
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.*
+import com.example.musicroomi.presentation.theme.*
 import java.util.Locale
 
 enum class ProfileSection {

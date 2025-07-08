@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.onboarding
+package com.example.musicroomi.presentation.onboarding
 
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

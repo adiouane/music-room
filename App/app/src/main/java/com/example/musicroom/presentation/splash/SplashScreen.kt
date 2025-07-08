@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.splash
+package com.example.musicroomi.presentation.splash
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.presentation.theme.*
 import kotlinx.coroutines.delay
 
 @Composable

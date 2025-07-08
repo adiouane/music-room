@@ -1,4 +1,4 @@
-package com.example.musicroom.data.auth
+package com.example.musicroomi.data.auth
 
 import android.content.Context
 import android.content.SharedPreferences

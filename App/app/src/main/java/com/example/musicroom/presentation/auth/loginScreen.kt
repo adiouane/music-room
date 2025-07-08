@@ -1,7 +1,10 @@
-package com.example.musicroom.presentation.auth
+package com.example.musicroomi.presentation.auth
 
+import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -31,10 +35,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicroom.R
-import com.example.musicroom.components.GoogleButton
-import com.example.musicroom.presentation.theme.*
-
+import kotlinx.coroutines.launch
+import com.example.musicroomi.R
+import com.example.musicroomi.components.GoogleButton
+import com.example.musicroomi.presentation.theme.*
+import com.example.musicroom.data.auth.GoogleAuthUiClient
+import com.example.musicroom.data.auth.GoogleSignInResult
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.tasks.await
 /**
  * ========================================================================================
  * LOGIN SCREEN COMPONENT
@@ -79,8 +87,46 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,        // Callback when login succeeds → Navigate to home
     onSignUpClick: () -> Unit,         // Callback to navigate to sign up screen
     onForgotPasswordClick: () -> Unit, // Callback to navigate to forgot password screen
-    viewModel: AuthViewModel = hiltViewModel() // Injected ViewModel for auth logic
+    viewModel: AuthViewModel = hiltViewModel() // Add viewModel parameter with default
 ) {
+    // ============================================================================
+    // GOOGLE SIGN-IN SETUP
+    // ============================================================================
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    // Create GoogleAuthUiClient locally
+    val googleAuthUiClient = remember { GoogleAuthUiClient(context) }
+    
+    // Activity result launcher for Google Sign-In
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { result: ActivityResult ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                scope.launch {
+                    val signInResult = googleAuthUiClient.signInWithIntent(result.data)
+                    // Handle the result
+                    if (signInResult.data != null) {
+                        // Success - Get real Firebase ID token
+                        try {
+                            val idToken = FirebaseAuth.getInstance().currentUser?.getIdToken(false)?.await()?.token
+                            if (idToken != null) {
+                                viewModel.signInWithGoogle(idToken, null)
+                            } else {
+                                Log.e("LoginScreen", "❌ Failed to get ID token")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("LoginScreen", "❌ Error getting ID token: ${e.message}")
+                        }
+                    } else {
+                        // Error - show error message
+                        Log.e("LoginScreen", "Google Sign-In failed: ${signInResult.errorMessage}")
+                    }
+                }
+            }
+        }
+    )
+    
     // ============================================================================
     // STATE MANAGEMENT
     // ============================================================================
@@ -229,11 +275,13 @@ fun LoginScreen(
                                 // ViewModel handles API call and state management
                                 viewModel.login(email.trim(), password)
                             },                            onGoogleSignInClick = { 
-                                Log.d("LoginScreen", "🔗 Google Sign-In button clicked")
-                                // Trigger Google authentication flow
-                                // GoogleAuthUiClient handles the OAuth process
-                                // For mock testing, provide a dummy idToken
-                                viewModel.signInWithGoogle("mock_google_id_token_${System.currentTimeMillis()}")
+                                Log.d("LoginScreen", "🔗 Google Sign-In button clicked - Starting Google authentication")
+                                try {
+                                    val signInIntent = googleAuthUiClient.getSignInIntent()
+                                    googleSignInLauncher.launch(signInIntent)
+                                } catch (e: Exception) {
+                                    Log.e("LoginScreen", "❌ Error launching Google Sign-In: ${e.message}")
+                                }
                             },
                             isLoading = authState is AuthState.Loading, // Show loading state
                             email = email,

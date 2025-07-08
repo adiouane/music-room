@@ -1,10 +1,10 @@
-package com.example.musicroom.data.service
+package com.example.musicroomi.data.service
 
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.network.NetworkConfig
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.network.NetworkConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

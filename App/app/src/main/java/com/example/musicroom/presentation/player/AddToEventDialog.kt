@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.player
+package com.example.musicroomi.presentation.player
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -23,10 +23,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.Event
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.service.EventsApiService
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.Event
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.service.EventsApiService
+import com.example.musicroomi.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

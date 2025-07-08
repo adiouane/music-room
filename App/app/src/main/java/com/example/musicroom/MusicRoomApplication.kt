@@ -1,4 +1,4 @@
-package com.example.musicroom
+package com.example.musicroomi
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

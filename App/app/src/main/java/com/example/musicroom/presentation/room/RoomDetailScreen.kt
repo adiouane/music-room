@@ -1,4 +1,4 @@
-package com.example.musicroom.presentation.room
+package com.example.musicroomi.presentation.room
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,9 +19,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicroom.data.models.MusicRoom
-import com.example.musicroom.data.models.activeRooms
-import com.example.musicroom.presentation.theme.*
+import com.example.musicroomi.data.models.MusicRoom
+import com.example.musicroomi.data.models.activeRooms
+import com.example.musicroomi.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

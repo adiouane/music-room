@@ -29,12 +29,12 @@
  * - Error: Search failed or no results found
  * ========================================================================================
  */
-package com.example.musicroom.presentation.music
+package com.example.musicroomi.presentation.music
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.models.Track
-import com.example.musicroom.data.repository.MusicRepository
+import com.example.musicroomi.data.models.Track
+import com.example.musicroomi.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

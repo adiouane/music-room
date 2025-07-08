@@ -1,11 +1,11 @@
-package com.example.musicroom.presentation.playlists
+package com.example.musicroomi.presentation.playlists
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicroom.data.service.PlaylistApiService
-import com.example.musicroom.data.service.PublicPlaylist
-import com.example.musicroom.data.service.CreatePlaylistRequest
+import com.example.musicroomi.data.service.PlaylistApiService
+import com.example.musicroomi.data.service.PublicPlaylist
+import com.example.musicroomi.data.service.CreatePlaylistRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
