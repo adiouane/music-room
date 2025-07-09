@@ -13,6 +13,7 @@ import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.net.ssl.HttpsURLConnection
+import com.example.musicroomi.data.auth.TokenManager  // Fixed import - changed from data.service to data.auth
 
 /**
  * ========================================================================================
@@ -828,5 +829,14 @@ class AuthApiService @Inject constructor() {
         } catch (e: Exception) {
             null
         }
+    }
+    
+    /**
+     * Debug method to check Google Sign-In endpoint
+     */
+    fun debugGoogleSignInEndpoint(): String {
+        val fullUrl = NetworkConfig.getFullUrl(NetworkConfig.Endpoints.GOOGLE_SIGNIN)
+        Log.d("AuthAPI", "🐛 Google Sign-In Debug URL: $fullUrl")
+        return fullUrl
     }
 }

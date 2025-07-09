@@ -157,6 +157,20 @@ class AuthViewModel @Inject constructor(
                     val response = result.getOrNull()!!
                     if (response.success) {
                         Log.d("AuthViewModel", "✅ Google sign-in successful!")
+                        
+                        // Save tokens for future API calls (same as login)
+                        response.token?.let { token ->
+                            tokenManager.saveToken(token)
+                            Log.d("AuthViewModel", "💾 Access token saved for Google sign-in user")
+                        }
+                        
+                        // If your GoogleSignInResponse includes refresh token, save it too
+                        // You might need to update GoogleSignInResponse to include refreshToken field
+                        // response.refreshToken?.let { refreshToken ->
+                        //     tokenManager.saveRefreshToken(refreshToken)
+                        //     Log.d("AuthViewModel", "💾 Refresh token saved for Google sign-in user")
+                        // }
+                        
                         _authState.value = AuthState.GoogleSignInSuccess(response)
                     } else {
                         Log.d("AuthViewModel", "❌ Google sign-in failed: ${response.message}")
@@ -170,6 +184,60 @@ class AuthViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "❌ Unexpected error: ${e.message}")
+                _authState.value = AuthState.Error("An unexpected error occurred")
+            }
+        }
+    }
+    
+    /**
+     * DEBUG: Google Sign-In with enhanced logging
+     */
+    fun debugSignInWithGoogle(idToken: String, accessToken: String? = null) {
+        viewModelScope.launch {
+            try {
+                Log.d("AuthViewModel", "🐛 DEBUG: Starting Google sign-in")
+                Log.d("AuthViewModel", "🐛 ID Token length: ${idToken.length}")
+                Log.d("AuthViewModel", "🐛 ID Token preview: ${idToken.take(50)}...")
+                Log.d("AuthViewModel", "🐛 Access Token: ${accessToken?.take(20) ?: "null"}")
+                
+                // Check the endpoint URL
+                val debugUrl = authApiService.debugGoogleSignInEndpoint()
+                Log.d("AuthViewModel", "🐛 Will call: $debugUrl")
+                
+                _authState.value = AuthState.Loading
+                
+                val result = authApiService.signInWithGoogle(idToken, accessToken)
+                
+                Log.d("AuthViewModel", "🐛 API Result success: ${result.isSuccess}")
+                
+                if (result.isSuccess) {
+                    val response = result.getOrNull()!!
+                    Log.d("AuthViewModel", "🐛 Response success: ${response.success}")
+                    Log.d("AuthViewModel", "🐛 Response message: ${response.message}")
+                    Log.d("AuthViewModel", "🐛 Response token: ${response.token?.take(20) ?: "null"}")
+                    Log.d("AuthViewModel", "🐛 Response user: ${response.user?.name ?: "null"}")
+                    
+                    if (response.success) {
+                        Log.d("AuthViewModel", "✅ Google sign-in successful!")
+                        
+                        response.token?.let { token ->
+                            tokenManager.saveToken(token)
+                            Log.d("AuthViewModel", "💾 Token saved for Google sign-in user")
+                        }
+                        
+                        _authState.value = AuthState.GoogleSignInSuccess(response)
+                    } else {
+                        Log.d("AuthViewModel", "❌ Google sign-in failed: ${response.message}")
+                        _authState.value = AuthState.Error(response.message)
+                    }
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Network error"
+                    Log.e("AuthViewModel", "❌ Google sign-in error: $error")
+                    _authState.value = AuthState.Error(error)
+                }
+                
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "❌ Unexpected error: ${e.message}", e)
                 _authState.value = AuthState.Error("An unexpected error occurred")
             }
         }
